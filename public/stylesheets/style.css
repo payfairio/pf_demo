@@ -1,0 +1,26 @@
+@import url(https://fonts.googleapis.com/css?family=Raleway:300,400,600);@charset "UTF-8";
+
+body {
+  font-family: "Raleway", sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #636b6f;
+  background-color: #f5f8fa;
+}
+
+a {
+  color: #00B7FF;
+}
+
+.navbar-nav > li .btn-link {
+  padding: 10px 15px;
+}
+#app-content-container {
+  padding-top: 20px;
+}
+@media (min-width: 768px) {
+  .navbar-nav > li .btn-link {
+    padding-top: 15px;
+    padding-bottom: 15px;
+  }
+}
