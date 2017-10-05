@@ -7,7 +7,9 @@ import '../public/stylesheets/style.css'
 import Vue from 'vue';
 import axios from 'axios'
 import VueAxios from 'vue-axios'
-import BootstrapVue from 'bootstrap-vue';
+import BootstrapVue from 'bootstrap-vue'
+import VueSweetAlert from 'vue-sweetalert'
+import VueSocketio from 'vue-socket.io'
 import router from './router'
 
 import App from './App.vue';
@@ -17,6 +19,14 @@ Vue.router = router;
 Vue.use(VueAxios, axios);
 Vue.axios.defaults.baseURL = 'http://localhost:3000';  // todo: вынести в настройки
 Vue.use(BootstrapVue);
+Vue.use(VueSweetAlert);
+const moment = require('moment');
+require('moment/locale/en-gb');
+Vue.use(require('vue-moment'), {
+    moment
+});
+
+Vue.use(VueSocketio, 'http://localhost:3000');
 
 Vue.use(require('@websanova/vue-auth'), {
     auth: require('./auth/authDriver.js'),

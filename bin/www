@@ -24,19 +24,7 @@ var server = http.createServer(app);
 /**
  * sockets
  */
-var io = require('socket.io')(server);
-io.on('connection', function(client) {
-    console.log('Client connected...');
-
-    client.on('join', function (data) {
-        console.log(data);
-    });
-    client.on('messages', function(data) {
-        console.log(data);
-        client.emit('broad', data);
-        client.broadcast.emit('broad',data);
-    });
-});
+require('../socket')(server);
 /**
  * Listen on provided port, on all network interfaces.
  */

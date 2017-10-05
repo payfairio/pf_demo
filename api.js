@@ -10,7 +10,7 @@ var Message = require('./db/models/Message.js');
 // User API
 
 exports.createUser = function (userData) {
-    var user = {
+    let user = {
         _id: new mongoose.Types.ObjectId(),
         username: userData.username,
         email: userData.email,
@@ -26,20 +26,6 @@ exports.getUser = function (id) {
 
 exports.getUserByEmail = function (email) {
     return User.findOne({email: email});
-};
-
-exports.checkUser = function (userData) {
-    return User
-        .findOne({email: userData.email})
-        .then(function (doc) {
-            if (doc.password === hash(userData.password)) {
-                return Promise.resolve(doc)
-            } else {
-                return Promise.reject("Error wrong")
-            }
-        }, function (err) {
-            return Promise.reject("Error wrong")
-        });
 };
 
 // Deal API

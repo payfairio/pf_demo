@@ -4,6 +4,12 @@
             <b-col sm="12" md="5">
                 <b-card header="Login"
                         align="left">
+                    <b-alert variant="danger"
+                             dismissible
+                             :show="errorMsg != ''"
+                             @dismissed="errorMsg=''">
+                        {{errorMsg}}
+                    </b-alert>
                     <b-form @submit="onSubmit">
                         <b-form-group id="emailInputGroup" label="Email address:" label-for="email" :state="isValid('email')" :feedback="errorMessage('email')">
                             <b-form-input id="email" type="text" v-model="form.email" :state="isValid('email')"></b-form-input>
@@ -27,27 +33,29 @@
                     email: '',
                     password: ''
                 },
-                errors: {}
+                errors: {},
+                errorMsg: ''
             }
         },
         methods: {
-            onChange: function (e,w,d) {
-                console.log(e,w,d);
-            },
             onSubmit: function (e) {
                 const vm = this;
                 e.preventDefault();
+                vm.errorMsg = '';
                 this.$auth.login({
                     data: this.form,
                     success: function (response) {
-                        console.log(response);
+                        vm.$socket.connect('http://localhost:3000');
+                        //vm.$socket.emit('authenticate', {token: vm.$auth.token().substr(4)});
                     },
                     error: function (err) {
                         if (err.response.status === 400) {
                             vm.errors = err.response.data.errors;
                         }
-                    },
-                    autoLogin: true,
+                        if (err.response.status === 401) {
+                            this.errorMsg = err.response.data.msg;
+                        }
+                    }
                 });
             },
             isValid: function (key) {

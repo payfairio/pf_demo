@@ -53,16 +53,13 @@
             }
         },
         methods: {
-            onChange: function (e,w,d) {
-                console.log(e,w,d);
-            },
             onSubmit: function (e) {
                 const vm = this;
                 e.preventDefault();
                 this.$auth.register({
                     data: this.form,
                     success: function (response) {
-                        console.log(response);
+                        vm.$socket.emit('authenticate', {token: vm.$auth.token().substr(4)});
                     },
                     error: function (err) {
                         if (err.response.status === 400) {

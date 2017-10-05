@@ -1,13 +1,13 @@
 <template>
     <div class="deals-list">
         <p>
-            <router-link :to="{name: deals}" class="btn btn-success">Create new deal</router-link>
+            <router-link :to="{name: 'create-deal'}" class="btn btn-success">Create new deal</router-link>
         </p>
         <b-table striped hover
                  :items="getDeals"
                  :fields="fields"
         >
-            <template slot="name" scope="row">{{row.value}}</template>
+            <template slot="name" scope="row"><router-link :to="{name: 'deal', params: {id: row.item.dId}}">{{row.value}}</router-link></template>
             <template slot="role" scope="row">{{row.item.seller._id == $auth.user()._id ? 'seller' : 'buyer'}}</template>
             <template slot="counterparty" scope="row">{{row.item.seller._id == $auth.user()._id ? row.item.buyer.email : row.item.seller.email}}</template>
             <template slot="created_at" scope="row">{{row.value}}</template>
@@ -30,6 +30,7 @@
             }
         },
         methods: {
+            // TODO: sort-changed, page-change, filter-change сделать методы
             getDeals: function (ctx) {
                 let promise = this.$http.get('/deals');
                 return promise.then(function (response) {

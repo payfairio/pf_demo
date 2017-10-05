@@ -2,7 +2,7 @@ var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 
 var Message = new mongoose.Schema({
-    user : {
+    sender : {
         type: Schema.Types.ObjectId,
         ref: 'User'
     },
@@ -19,4 +19,4 @@ var Message = new mongoose.Schema({
     }
 });
 
-module.exports = mongoose.model('Message', Message)
+module.exports = mongoose.model('Message', Message);

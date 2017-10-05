@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const crypto = require('crypto');
 const Schema = mongoose.Schema;
 
 const config = require('../../config/database');
@@ -7,38 +6,15 @@ const config = require('../../config/database');
 const SparkPost = require('sparkpost');
 const mailClient = new SparkPost(config.mailApiKey);
 
-const User = Schema({
-    _id: Schema.Types.ObjectId,
-    username : {
-        type: String,
-        unique: true,
-    },
+const Invite = new Schema({
     email : {
         type: String,
         unique: true,
         required: true
-    },
-    password : {
-        type: String,
-    },
-    type: {
-        type: String,
-        required: true
-    },
-    profileImg: {
-        type: String,
-    },
-    status: {
-        type: String,
-        default: 'active'
     }
 });
 
-User.methods.comparePassword = function (passw) {
-    return this.password === hash(passw);
-};
-
-User.methods.sendMailInviteNotification = function (offer) {
+Invite.methods.sendMailNotification = function (offer) {
     return mailClient.transmissions.send({
         options: {
             transactional: true
@@ -59,9 +35,4 @@ User.methods.sendMailInviteNotification = function (offer) {
     });
 };
 
-function hash(text) {
-    return crypto.createHash('sha1')
-        .update(text).digest('base64')
-}
-
-module.exports = mongoose.model('User', User);
+module.exports = mongoose.model('Invite', Invite);

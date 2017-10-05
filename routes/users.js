@@ -2,14 +2,24 @@ const express = require('express');
 const router = express.Router();
 const api = require('../api.js');
 
-var User = require('../db/models/User.js');
-var mongoose = require('mongoose');
-var passport = require('passport');
-var config = require('../config/database');
+const User = require('../db/models/User.js');
+const mongoose = require('mongoose');
+const passport = require('passport');
+const config = require('../config/database');
 require('../config/passport')(passport);
-var jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
+const multer  = require('multer');
+const fs = require('fs');
+const path = require('path');
 
-var validator = require('express-validator');
+// todo: set multer dest into memory storage for validate image width and height
+const upload = multer({dest: 'public/profile-pic', fileFilter: function (req, file, cb) {
+    // todo: file filtering function (file type, file size, etc.)
+    console.log(file);
+    cb(null, true);
+}}).single('profileImg');
+
+const validator = require('express-validator');
 
 router.use(validator({
     customValidators: {
@@ -70,13 +80,13 @@ router.post('/login', function(req, res, next) {
             if (err) throw err;
 
             if (!user) {
-                res.status(401).send({success: false, msg: 'Authentication failed. User not found.'});
+                res.status(401).send({success: false, msg: 'Authentication failed. Wrong email or password.'});
             } else {
                 // check if password matches
                 if (user.comparePassword(req.body.password)) {
                     // if user is found and password is right create a token
                     let payload = {
-                        id: user._id,
+                        _id: user._id,
                         username: user.username,
                         email: user.email
                     };
@@ -85,7 +95,7 @@ router.post('/login', function(req, res, next) {
                     });
                     return res.json({success: true, token: 'JWT ' + token});
                 } else {
-                    return res.status(401).send({success: false, msg: 'Authentication failed. Wrong password.'});
+                    return res.status(401).send({success: false, msg: 'Authentication failed. Wrong email or password.'});
                 }
             }
         });
@@ -141,8 +151,9 @@ router.post('/register', function(req, res, next) {
         // todo: убрать из апи создание юзера, перенести все действия с юзерами сюда
         api.createUser(req.body)
             .then(function (user) {
+                // todo: при создании пользователя после инвайта, заменять его модель инвайта на реальную модель пользователя по всех сделках
                 let payload = {
-                    id: user._id,
+                    _id: user._id,
                     username: user.username,
                     email: user.email
                 };
@@ -157,10 +168,52 @@ router.post('/register', function(req, res, next) {
     });
 });
 
-router.get('/info', passport.authenticate('jwt', { session: false}), function (req, res) {
-    User.findById(req.user.id)
+router.post('/profile', passport.authenticate('jwt', {session: false}), function (req, res) {
+    User.findById(req.user._id).select("-password")
+        .then(function (doc) {
+            if (!doc) {
+                return res.status(401).send({success: false, msg: 'Authentication failed. User not found.'});
+            }
+            upload(req, res, function (err) {
+                if (err) {
+                    // An error occurred when uploading
+                    return res.status(500).json(err);
+                }
+                let old_avatar = null;
+                if (doc.profileImg) {
+                    old_avatar = doc.profileImg;
+                }
+                doc.profileImg = req.file.filename;
+                doc.save().then(function (doc) {
+                    if (old_avatar) {
+                        fs.unlink(path.resolve('public/profile-pic/'+old_avatar), function (err) {
+                            if (err) {
+                                return res.status(500).json(err);
+                            }
+                            return res.json(doc);
+                        });
+                    } else {
+                        return res.json(doc);
+                    }
+                }).catch(function (err) {
+                    return res.status(500).json(err);
+                })
+            });
+        }).catch(function (err) {
+        return res.status(500).json(err);
+    });
+});
+
+router.get('/info', passport.authenticate('jwt', {session: false}), function (req, res) {
+    User.findById(req.user._id).select("-password")
         .then(function (doc) {
             if (doc) {
+                //let data = Object.assign({}, doc);
+                if (!doc.profileImg) {
+                    doc.profileImg = 'http://localhost:3000/images/default-user-img.png';
+                } else {
+                    doc.profileImg = 'http://localhost:3000/profile-pic/'+doc.profileImg;
+                }
                 return res.json(doc);
             }
             return res.status(401).send({success: false, msg: 'Authentication failed. User not found.'});
