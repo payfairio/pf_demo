@@ -1,10 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const api = require('../api.js');
 
 const User = require('../db/models/User.js');
 const Deal = require('../db/models/Deal.js');
-const Invite = require('../db/models/Invite.js');
 
 const mongoose = require('mongoose');
 const passport = require('passport');
@@ -31,8 +29,42 @@ router.get('/', passport.authenticate('jwt', { session: false}), function (req, 
     });
 });
 
+router.get('/dispute',  passport.authenticate('jwt', { session: false}), function (req, res, next) {
+    if (req.user.type !== 'escrow') {
+        return res.status(403).json({error: "Forbidden"});
+    }
+    Deal.find({"escrows.escrow": req.user._id})
+        .then(function (docs) {
+            let deals = docs.map(function (deal) {
+                let escIndex = 0;
+                deal.escrows.forEach(function (esc, index) {
+                    if (esc.escrow === req.user._id) {
+                        escIndex = index;
+                    }
+                });
+                let tmp = Object.assign({}, deal._doc);
+                tmp.decision = deal.escrows[escIndex].decision ? deal.escrows[escIndex].decision : 'pending';
+                tmp.called_at = deal.escrows[escIndex].created_at;
+                delete tmp.escrows;
+                return tmp;
+            });
+            deals.sort(function (a, b) {
+                if (a.called_at < b.called_at) {
+                    return -1;
+                }
+                if (a.called_at > b.called_at) {
+                    return 1;
+                }
+                return 0;
+            });
+            return res.json(deals);
+        }).catch(function (err) {
+        return res.json(err);
+    });
+});
+
 router.get('/deal/:id', passport.authenticate('jwt', { session: false}), function (req, res, next) {
-    api.getDeal(req.params.id)
+    Deal.findOne({dId: req.params.id}).populate('seller').populate('buyer').populate('messages')
         .then(function (doc) {
             if (!doc) {
                 return res.status(404).json({error: "Deal not found"});
@@ -47,6 +79,9 @@ router.get('/deal/:id', passport.authenticate('jwt', { session: false}), functio
 });
 
 router.post('/create', passport.authenticate('jwt', { session: false}), function(req, res, next) {
+    if (req.user.type !== 'client') {
+        return res.status(403).json({error: "Forbidden"});
+    }
     req.checkBody({
         role: {
             notEmpty: {
@@ -65,18 +100,31 @@ router.post('/create', passport.authenticate('jwt', { session: false}), function
             isEmail: {
                 errorMessage: 'Counterparty email is invalid'
             }
-        }
+        },
+        conditions: {
+            notEmpty: {
+                errorMessage: 'Please fill your conditions'
+            }
+        },
+        sum: {
+            notEmpty: {
+                errorMessage: 'Sum is required'
+            },
+            matches: {
+                options: /^([0-9]+[.])?[0-9]+$/i,
+                errorMessage: 'Wrong sum. Use only digits and one dot'
+            }
+        },
     });
     req.getValidationResult().then(function (result) {
         if (result.array().length > 0) {
             return res.status(400).json({success: false, errors: result.mapped(), msg: 'Bad request'});
         }
-        var data = {};
-        var otherUser = null;
+
         User.findOne({email: req.body.counterparty}).then(function (doc) {
             return new Promise(function (resolve, reject) {
                 if (!doc) { // create user with status 'invited'
-                    new User({email: req.body.counterparty, status: 'invited'}).save(function (err, user) {
+                    new User({_id: new mongoose.Types.ObjectId(), email: req.body.counterparty, type: 'client', status: 'invited'}).save(function (err, user) {
                         if (err) {
                             reject(err);
                         }
@@ -89,7 +137,7 @@ router.post('/create', passport.authenticate('jwt', { session: false}), function
         }).then(function (user) {
             return new Promise(function (resolve, reject) {
                 if (user.status === 'invited') {
-                    user.sendMailInviteNotification().then(function (data) {
+                    user.sendMailInviteNotification({name: req.body.name, email: req.user.email}).then(function (mailData) {
                         resolve(user);
                     }, function (err) {
                         reject(err);
@@ -98,59 +146,24 @@ router.post('/create', passport.authenticate('jwt', { session: false}), function
                     resolve(user);
                 }
             });
-        })
-/*
-
-            if (!doc) {
-                // TODO: юзера нет у нас в системе, надо выслать емайл с инвайтом.
-                Invite.findOne({email: req.body.counterparty}).then(function (invDoc) {
-                    return new Promise(function (resolve, reject) {
-                       if (invDoc) {
-                           resolve(invDoc);
-                       } else {
-                           new Invite({email: req.body.counterparty}).save(function (err, invDoc) {
-                               if (err) {
-                                   reject(err);
-                               }
-                               resolve(invDoc);
-                           });
-                       }
-                    });
-                }).then(function (invDoc) {
-                    otherUser = invDoc._id;
-                    if (req.body.role === 'seller') {
-                        data.seller = req.user._id;
-                        data.buyer = otherUser;
-                    } else {
-                        data.seller = otherUser;
-                        data.buyer = req.user._id;
-                    }
-                    return api.createDeal({});
-                    return invDoc.sendMailNotification();
-                }).then(function (data) {
-                    return res.json(data);
-                }).catch(function (err) {
-                    console.log(err);
-                    return res.status(500).json({success: false, error: err});
-                });
-            } else {*/
-            .then(function (doc) {
-                otherUser = doc._id;
-                if (req.body.role === 'seller') {
-                    data.seller = req.user._id;
-                    data.buyer = otherUser;
-                } else {
-                    data.seller = otherUser;
-                    data.buyer = req.user._id;
-                }
-                data.name = req.body.name;
-                api.createDeal(data)
-                    .then(function (result) {
-                        return res.json({success: true, deal: result});
-                    })
-                    .catch(function (err) {
-                        return res.status(500).json({success: false, error: err});
-                    });
+        }).then(function (user) {
+            let data = {
+                _id: new mongoose.Types.ObjectId(),
+                name: req.body.name,
+                sum: req.body.sum
+            };
+            if (req.body.role === 'seller') {
+                data.seller = req.user._id;
+                data.buyer = user._id;
+                data.sellerConditions = req.body.conditions;
+            } else {
+                data.seller = user._id;
+                data.buyer = req.user._id;
+                data.buyerConditions = req.body.conditions;
+            }
+            return new Deal(data).save();
+        }).then(function (result) {
+            return res.json({success: true, deal: result});
         }).catch(function (err) {
             return res.status(500).json({success: false, error: err});
         });

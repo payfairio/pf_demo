@@ -45,8 +45,7 @@
                 this.$auth.login({
                     data: this.form,
                     success: function (response) {
-                        vm.$socket.connect('http://localhost:3000');
-                        //vm.$socket.emit('authenticate', {token: vm.$auth.token().substr(4)});
+                        vm.$socket.connect(vm.$config.backendUrl);
                     },
                     error: function (err) {
                         if (err.response.status === 400) {

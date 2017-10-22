@@ -11,14 +11,29 @@ import BootstrapVue from 'bootstrap-vue'
 import VueSweetAlert from 'vue-sweetalert'
 import VueSocketio from 'vue-socket.io'
 import router from './router'
-
+import vueConfig from 'vue-config'
 import App from './App.vue';
+
+import config from './config/config';
+Vue.use(vueConfig, config);
 
 Vue.router = router;
 
 Vue.use(VueAxios, axios);
-Vue.axios.defaults.baseURL = 'http://localhost:3000';  // todo: вынести в настройки
+Vue.axios.defaults.baseURL = config.backendUrl;  // todo: вынести в настройки
+//Vue.use(BootstrapVue);
+// костыль до обновы бутстрап-вью
+let originalVueComponent = Vue.component;
+Vue.component = function(name, definition) {
+    if (name === 'bFormCheckboxGroup' || name === 'bCheckboxGroup' ||
+        name === 'bCheckGroup' || name === 'bFormRadioGroup') {
+        definition.components = {bFormCheckbox: definition.components[0]}
+    }
+    originalVueComponent.apply(this, [name, definition])
+};
 Vue.use(BootstrapVue);
+Vue.component = originalVueComponent;
+// конец костыля
 Vue.use(VueSweetAlert);
 const moment = require('moment');
 require('moment/locale/en-gb');
@@ -26,7 +41,7 @@ Vue.use(require('vue-moment'), {
     moment
 });
 
-Vue.use(VueSocketio, 'http://localhost:3000');
+Vue.use(VueSocketio, config.backendUrl);
 
 Vue.use(require('@websanova/vue-auth'), {
     auth: require('./auth/authDriver.js'),
@@ -45,14 +60,6 @@ Vue.use(require('@websanova/vue-auth'), {
         return data;
     }
 });
-
-//import vueConfig from 'vue-config';
-/*const config = {
-    apiUrl: '/api',
-    apiFiles: '/api-files'
-};*/
-//Vue.use(vueConfig, config);
-
 
 new Vue({
     el: '#app',

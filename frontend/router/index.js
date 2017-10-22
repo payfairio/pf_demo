@@ -7,16 +7,19 @@ import Profile from '@/components/routes/users/Profile'
 import List from '@/components/routes/deals/List'
 import CreateDeal from '@/components/routes/deals/Create'
 import Deal from '@/components/routes/deals/Deal'
+import EscrowList from '@/components/routes/escrow/EscrowList'
+import EscrowDeal from '@/components/routes/escrow/EscrowDeal'
 
 Vue.use(Router);
 
 export default new Router({
     routes: [
+        // client section
         {
             path: '/',
             name: 'deals',
             meta: {
-                auth: true
+                auth: {roles: 'client', forbiddenRedirect: '/disputes/'}
             },
             component: List,
         },
@@ -24,7 +27,7 @@ export default new Router({
             path: '/deals/create',
             name: 'create-deal',
             meta: {
-                auth: true
+                auth: 'client'
             },
             component: CreateDeal,
         },
@@ -32,11 +35,30 @@ export default new Router({
             path: '/deals/deal/:id',
             name: 'deal',
             meta: {
-                auth: true
+                auth: {roles: 'client'}
             },
             component: Deal,
             props: true
         },
+        // escrow section
+        {
+            path: '/disputes',
+            name: 'disputes',
+            meta: {
+                auth: 'escrow'
+            },
+            component: EscrowList,
+        },
+        {
+            path: '/disputes/dispute/:id',
+            name: 'dispute',
+            meta: {
+                auth: {roles: 'escrow'}
+            },
+            component: EscrowDeal,
+            props: true
+        },
+        // common actions
         {
             path: '/profile',
             name: 'profile',
@@ -45,6 +67,7 @@ export default new Router({
             },
             component: Profile,
         },
+        // login and register
         {
             path: '/login',
             name: 'login',
@@ -60,6 +83,15 @@ export default new Router({
                 auth: false
             },
             component: Register
+        },
+        {
+            path: '/register/:invId',
+            name: 'register-by-inv',
+            meta: {
+                auth: false
+            },
+            component: Register,
+            props: true
         }
     ]
 })

@@ -29,5 +29,7 @@ coverage
 benchmarks/graphs
 
 config/database.js
+frontend/config/config.js
+public/javascripts/build.*
 public/profile-pic/*
 !/public/profile-pic/.gitkeep

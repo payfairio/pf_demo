@@ -7,11 +7,10 @@ const config = require('../../config/database');
 const SparkPost = require('sparkpost');
 const mailClient = new SparkPost(config.mailApiKey);
 
-const User = Schema({
+const User = new Schema({
     _id: Schema.Types.ObjectId,
     username : {
         type: String,
-        unique: true,
     },
     email : {
         type: String,
@@ -23,7 +22,7 @@ const User = Schema({
     },
     type: {
         type: String,
-        required: true
+        required: true // client, escrow, trust
     },
     profileImg: {
         type: String,
@@ -31,6 +30,10 @@ const User = Schema({
     status: {
         type: String,
         default: 'active'
+    },
+    eth: {
+        type: Number,
+        default: 0
     }
 });
 
@@ -50,7 +53,7 @@ User.methods.sendMailInviteNotification = function (offer) {
             '<h2>You recieved invite into deal via payfair.io</h2>'+
             '<p>Deal name: '+offer.name+'</p>'+
             '<p>Invited by: '+offer.email+'</p>'+
-            '<p><a href="'+config.frontUrl+'/#/register">JOIN</a></p>'+
+            '<p><a href="'+config.frontUrl+'/#/register/'+this._id+'">JOIN</a></p>'+
             '</body></html>'
         },
         recipients: [

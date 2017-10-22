@@ -1,7 +1,11 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-const Message = new Schema({
+const Notification = new Schema({
+    user: {
+        type: Schema.Types.ObjectId,
+        ref: 'User'
+    },
     sender : {
         type: Schema.Types.ObjectId,
         ref: 'User'
@@ -19,8 +23,7 @@ const Message = new Schema({
     },
     type: {
         type: String,
-        default: 'message' // message, system
     }
 });
 
-module.exports = mongoose.model('Message', Message);
+module.exports = mongoose.model('Notification', Notification);

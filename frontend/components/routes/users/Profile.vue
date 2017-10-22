@@ -71,6 +71,7 @@
                     vm.form.profileImg = '';
                     vm.$auth.fetch();
                 }, function (err) {
+                    vm.errorMsg = 'Some error occured. Try again later';
                     console.log(err);
                 });
             },
