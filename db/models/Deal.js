@@ -6,6 +6,10 @@ const Deal = new Schema({
     dId: {
         type: Number
     },
+    type: {
+        type: String, // 'custom', 'exchange'
+        default: 'custom'
+    },
     name: {
         type: String,
         required: true
@@ -64,20 +68,17 @@ const Deal = new Schema({
     wallet: {
         type: String
     },
+    exchange: {
+        type: Schema.Types.ObjectId,
+        ref: 'Exchange'
+    },
     created_at: {
         type: Date,
         default: Date.now
     }
 });
 
-const CounterSchema = new Schema({
-    _id: {type: String, required: true},
-    seq: {
-        type: Number,
-        default: 0
-    }
-});
-const counter = mongoose.model('Counter', CounterSchema);
+const counter = require('./Counter');
 
 Deal.pre('save', function(next) {
     if (this.isNew) {

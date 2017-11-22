@@ -71,6 +71,10 @@
                         <b-input-group>
                             <b-form-textarea id="message-text" @keydown.native="inputHandler" v-model="form.text" :max-rows="1" style="resize: none;"></b-form-textarea>
                             <b-input-group-button>
+                                <b-button @click="openUploadDialog"><svg style="width:24px;height:24px" viewBox="0 0 24 24">
+                                    <path fill="#ffffff" d="M16.5,6V17.5A4,4 0 0,1 12.5,21.5A4,4 0 0,1 8.5,17.5V5A2.5,2.5 0 0,1 11,2.5A2.5,2.5 0 0,1 13.5,5V15.5A1,1 0 0,1 12.5,16.5A1,1 0 0,1 11.5,15.5V6H10V15.5A2.5,2.5 0 0,0 12.5,18A2.5,2.5 0 0,0 15,15.5V5A4,4 0 0,0 11,1A4,4 0 0,0 7,5V17.5A5.5,5.5 0 0,0 12.5,23A5.5,5.5 0 0,0 18,17.5V6H16.5Z" />
+                                </svg></b-button>
+                                <input @change="fileChosen" type="file" id="attachment" style="display: none" ref="file-input">
                                 <b-button type="submit" variant="primary">Send</b-button>
                             </b-input-group-button>
                         </b-input-group>
@@ -103,7 +107,7 @@
         <!-- Modal Sum Component -->
         <b-modal v-model="sumModal" :title="'Deal sum'">
             <p>Current sum: {{deal.sum}}ETH</p>
-            <b-form-input type="number" v-model="editedSum"></b-form-input>
+            <b-form-input type="number" step="any" v-model="editedSum"></b-form-input>
             <div slot="modal-footer" class="w-100">
                 <b-btn size="sm" class="float-right" @click="submitSum" variant="success">Save</b-btn>
                 <b-btn size="sm" class="float-right" @click="sumModal = false">Cancel</b-btn>
@@ -243,6 +247,13 @@
             }
         },
         methods: {
+            openUploadDialog: function () {
+                this.$refs['file-input'].click();
+            },
+            fileChosen: function (e) {
+                  /*e.target.files[0];
+                FReader = new FileReader();*/
+            },
             openConditions: function (role) {
                 this.conditionsModal = true;
                 switch (role) {

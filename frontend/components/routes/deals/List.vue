@@ -10,7 +10,7 @@
             <template slot="name" slot-scope="row"><router-link :to="{name: 'deal', params: {id: row.item.dId}}">{{row.value}}</router-link></template>
             <template slot="role" slot-scope="row">{{row.item.seller._id == $auth.user()._id ? 'seller' : 'buyer'}}</template>
             <template slot="counterparty" slot-scope="row">{{row.item.seller._id == $auth.user()._id ? row.item.buyer.email : row.item.seller.email}}</template>
-            <template slot="created_at" slot-scope="row">{{row.value}}</template>
+            <template slot="created_at" slot-scope="row">{{row.value | date}}</template>
 
         </b-table>
     </div>
@@ -38,6 +38,11 @@
                 }, function (err) {
                     return [];
                 });
+            }
+        },
+        filters: {
+            date: function (value) {
+                return (new Date(value)).toLocaleString();
             }
         },
         watch: {

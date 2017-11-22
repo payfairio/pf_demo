@@ -10,6 +10,10 @@ import Deal from '@/components/routes/deals/Deal'
 import EscrowList from '@/components/routes/escrow/EscrowList'
 import EscrowDeal from '@/components/routes/escrow/EscrowDeal'
 
+//exchanges
+import ExchangesList from '@/components/routes/exchanges/List'
+import CreateExchange from '@/components/routes/exchanges/Create'
+
 Vue.use(Router);
 
 export default new Router({
@@ -39,6 +43,23 @@ export default new Router({
             },
             component: Deal,
             props: true
+        },
+        // exchanges section
+        {
+            path: '/exchanges',
+            name: 'exchanges',
+            meta: {
+                auth: {roles: 'client', forbiddenRedirect: '/disputes'}
+            },
+            component: ExchangesList
+        },
+        {
+            path: '/exchanges/create',
+            name: 'create-exchange',
+            meta: {
+                auth: {roles: 'client', forbiddenRedirect: '/disputes'}
+            },
+            component: CreateExchange
         },
         // escrow section
         {

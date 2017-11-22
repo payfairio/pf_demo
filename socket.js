@@ -44,7 +44,10 @@ module.exports = function(server) {
     io.on('connection', socketioJwt.authorize({
         secret: config.secret,
     })).on('authenticated', function(client) {
-        clients[client.decoded_token._id] = client.id;
+        if (!clients[client.decoded_token._id]) {
+            clients[client.decoded_token._id] = [];
+        }
+        clients[client.decoded_token._id].push(client.id);
 
         client.on('join_chat', function (data) {
             Deal.findOne({dId: data.deal_id}).populate({path: 'messages', populate: {path: 'sender', select: '-password'}})
@@ -513,6 +516,13 @@ module.exports = function(server) {
                 .catch(function (err) {
                     console.log(err);
                 });
+        });
+
+        client.on('logout', function () {
+            const logoutClients = clients[client.decoded_token._id];
+            for (let id of logoutClients) {
+                io.to(id).emit('refresh');
+            }
         });
 
         client.on('disconnect', function () {

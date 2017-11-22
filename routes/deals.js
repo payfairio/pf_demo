@@ -82,6 +82,7 @@ router.post('/create', passport.authenticate('jwt', { session: false}), function
     if (req.user.type !== 'client') {
         return res.status(403).json({error: "Forbidden"});
     }
+    req.checkBody('counterparty', 'Not allowed to add youself as counterparty').not().equals(req.user.email);
     req.checkBody({
         role: {
             notEmpty: {

@@ -28,7 +28,7 @@
                                     <b-form-textarea id="conditions" v-model="form.conditions" :rows="6" :state="isValid('conditions')"></b-form-textarea>
                                 </b-form-group>
                                 <b-form-group id="sumInputGroup" label="Deal sum:" label-for="sum" :state="isValid('sum')" :feedback="errorMessage('sum')">
-                                    <b-form-input id="sum" type="number" v-model="form.sum" :state="isValid('sum')"></b-form-input>
+                                    <b-form-input id="sum" type="number" step="any" v-model="form.sum" :state="isValid('sum')"></b-form-input>
                                 </b-form-group>
                             </b-col>
                         </b-row>
