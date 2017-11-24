@@ -20,7 +20,7 @@ router.use(validator({
 }));
 
 router.get('/', passport.authenticate('jwt', { session: false}), function (req, res, next) {
-    Exchange.find({owner: req.user._id}).populate('owner').sort('-created_at')
+    Exchange.find({owner: req.user._id}).sort('-created_at')
         .then(function (docs) {
             return res.json(docs);
         }).catch(function (err) {
@@ -69,16 +69,36 @@ router.post('/create', passport.authenticate('jwt', { session: false}), function
         return res.status(403).json({error: "Forbidden"});
     }
     req.checkBody({
+        tradeType: {
+            notEmpty: {
+                errorMessage: 'Field is required'
+            }
+        },
+        coin: {
+            notEmpty: {
+                errorMessage: 'Field is required'
+            }
+        },
+        paymentType: {
+            notEmpty: {
+                errorMessage: 'Field is required'
+            }
+        },
         currency: {
             notEmpty: {
                 errorMessage: 'Field is required'
             }
         },
-        payCurrency: {
+        rate: {
             notEmpty: {
                 errorMessage: 'Field is required'
+            },
+            matches: {
+                options: /^([0-9]+[.])?[0-9]+$/i,
+                errorMessage: 'Wrong rate. Use only digits and one dot'
             }
-        }
+        },
+
     });
     req.getValidationResult().then(function (result) {
         if (result.array().length > 0) {
@@ -87,10 +107,12 @@ router.post('/create', passport.authenticate('jwt', { session: false}), function
         let ex = {
             _id: new mongoose.Types.ObjectId(),
             owner: req.user._id,
+            tradeType: req.body.tradeType,
+            coin: req.body.coin,
+            paymentType: req.body.paymentType,
             currency: req.body.currency,
-            payCurrency: req.body.payCurrency,
-            wallet: req.body.wallet,
-            terms: req.body.terms
+            rate: req.body.rate,
+            conditions: req.body.conditions
         };
         new Exchange(ex).save()
         .then(function (result) {

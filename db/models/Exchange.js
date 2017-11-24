@@ -10,17 +10,21 @@ const Exchange = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'User'
     },
-    changeType: {
+    tradeType: {
         type: String,
         required: true // 'sell', 'buy'
     },
-    currency: {
+    coin: {
         type: String, // 'BTC' 'ETH' 'PFR'
+        required: true
+    },
+    currency: {
+        type: String, // 'USD', 'RUB'
         required: true
     },
     paymentType: {
         type: String,
-        required: true // 'USD', 'PayPal', etc.
+        required: true // 'Cash deposit', 'Transfers with specific bank', 'PayPal', etc.
     },
     paymentTypeDetail: {
         type: String

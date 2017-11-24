@@ -20,20 +20,35 @@ router.use(validator({
     }
 }));
 
-router.get('/', passport.authenticate('jwt', { session: false}), function (req, res, next) {
-    Deal.find({$or: [{'buyer': req.user._id}, {'seller': req.user._id}]}).populate('seller').populate('buyer').sort('-created_at')
+router.get('/', passport.authenticate('jwt', {
+    session: false
+}), function (req, res, next) {
+    // req.query: offset, limit, order, sortBy
+    Deal.find({
+            $or: [{
+                'buyer': req.user._id
+            }, {
+                'seller': req.user._id
+            }]
+        }).populate('seller').populate('buyer').sort('-created_at')
         .then(function (docs) {
             return res.json(docs);
         }).catch(function (err) {
-        return res.json(err);
-    });
+            return res.json(err);
+        });
 });
 
-router.get('/dispute',  passport.authenticate('jwt', { session: false}), function (req, res, next) {
+router.get('/dispute', passport.authenticate('jwt', {
+    session: false
+}), function (req, res, next) {
     if (req.user.type !== 'escrow') {
-        return res.status(403).json({error: "Forbidden"});
+        return res.status(403).json({
+            error: "Forbidden"
+        });
     }
-    Deal.find({"escrows.escrow": req.user._id})
+    Deal.find({
+            "escrows.escrow": req.user._id
+        })
         .then(function (docs) {
             let deals = docs.map(function (deal) {
                 let escIndex = 0;
@@ -59,18 +74,26 @@ router.get('/dispute',  passport.authenticate('jwt', { session: false}), functio
             });
             return res.json(deals);
         }).catch(function (err) {
-        return res.json(err);
-    });
+            return res.json(err);
+        });
 });
 
-router.get('/deal/:id', passport.authenticate('jwt', { session: false}), function (req, res, next) {
-    Deal.findOne({dId: req.params.id}).populate('seller').populate('buyer').populate('messages')
+router.get('/deal/:id', passport.authenticate('jwt', {
+    session: false
+}), function (req, res, next) {
+    Deal.findOne({
+            dId: req.params.id
+        }).populate('seller').populate('buyer').populate('messages')
         .then(function (doc) {
             if (!doc) {
-                return res.status(404).json({error: "Deal not found"});
+                return res.status(404).json({
+                    error: "Deal not found"
+                });
             }
             if (doc.seller._id.toString() !== req.user._id && doc.buyer._id.toString() !== req.user._id) {
-                return res.status(403).json({error: "Forbidden"});
+                return res.status(403).json({
+                    error: "Forbidden"
+                });
             }
             return res.json(doc);
         }, function (err) {
@@ -78,11 +101,15 @@ router.get('/deal/:id', passport.authenticate('jwt', { session: false}), functio
         });
 });
 
-router.post('/create', passport.authenticate('jwt', { session: false}), function(req, res, next) {
+router.post('/create', passport.authenticate('jwt', {
+    session: false
+}), function (req, res, next) {
     if (req.user.type !== 'client') {
-        return res.status(403).json({error: "Forbidden"});
+        return res.status(403).json({
+            error: "Forbidden"
+        });
     }
-    req.checkBody('counterparty', 'Not allowed to add youself as counterparty').not().equals(req.user.email);
+    req.checkBody('counterparty', 'Not allowed to add yourself as counterparty').not().equals(req.user.email);
     req.checkBody({
         role: {
             notEmpty: {
@@ -119,13 +146,24 @@ router.post('/create', passport.authenticate('jwt', { session: false}), function
     });
     req.getValidationResult().then(function (result) {
         if (result.array().length > 0) {
-            return res.status(400).json({success: false, errors: result.mapped(), msg: 'Bad request'});
+            return res.status(400).json({
+                success: false,
+                errors: result.mapped(),
+                msg: 'Bad request'
+            });
         }
 
-        User.findOne({email: req.body.counterparty}).then(function (doc) {
+        User.findOne({
+            email: req.body.counterparty
+        }).then(function (doc) {
             return new Promise(function (resolve, reject) {
                 if (!doc) { // create user with status 'invited'
-                    new User({_id: new mongoose.Types.ObjectId(), email: req.body.counterparty, type: 'client', status: 'invited'}).save(function (err, user) {
+                    new User({
+                        _id: new mongoose.Types.ObjectId(),
+                        email: req.body.counterparty,
+                        type: 'client',
+                        status: 'invited'
+                    }).save(function (err, user) {
                         if (err) {
                             reject(err);
                         }
@@ -138,7 +176,10 @@ router.post('/create', passport.authenticate('jwt', { session: false}), function
         }).then(function (user) {
             return new Promise(function (resolve, reject) {
                 if (user.status === 'invited') {
-                    user.sendMailInviteNotification({name: req.body.name, email: req.user.email}).then(function (mailData) {
+                    user.sendMailInviteNotification({
+                        name: req.body.name,
+                        email: req.user.email
+                    }).then(function (mailData) {
                         resolve(user);
                     }, function (err) {
                         reject(err);
@@ -164,12 +205,17 @@ router.post('/create', passport.authenticate('jwt', { session: false}), function
             }
             return new Deal(data).save();
         }).then(function (result) {
-            return res.json({success: true, deal: result});
+            return res.json({
+                success: true,
+                deal: result
+            });
         }).catch(function (err) {
-            return res.status(500).json({success: false, error: err});
+            return res.status(500).json({
+                success: false,
+                error: err
+            });
         });
     });
 });
-
 
 module.exports = router;

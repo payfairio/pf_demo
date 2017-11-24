@@ -8,8 +8,10 @@
                  :fields="fields"
         >
             <template slot="eId" slot-scope="row"><router-link :to="{name: 'manage-exchange', params: {id: row.item.eId}}">Exchange #{{row.value}}</router-link></template>
-            <template slot="currency" slot-scope="row">{{row.value}}</template>
-            <template slot="payCurrency" slot-scope="row">{{row.value}}</template>
+            <template slot="tradeType" slot-scope="row">{{row.value}}</template>
+            <template slot="coin" slot-scope="row">{{row.value}}</template>
+            <template slot="paymentType" slot-scope="row">{{row.value}}</template>
+            <template slot="rate" slot-scope="row">{{row.value}}</template>
             <template slot="created_at" slot-scope="row">{{row.value}}</template>
 
         </b-table>
@@ -22,8 +24,10 @@
             return {
                 fields: {
                     eId: {label: 'Exhange', sortable: false},
-                    currency: {label: 'You will get', sortable: true},
-                    payCurrency: {label: 'You will pay', sortable: true},
+                    tradeType: {label: 'Trade Type', sortable: true},
+                    coin: {label: 'Coin', sortable: true},
+                    paymentType: {label: 'Payment type', sortable: true},
+                    rate: {label: 'Rate(fiat to coins)', sortable: true},
                     created_at: {label: 'Created at', sortable: true},
                     //actions: {label: 'Actions'}
                 },

@@ -17,6 +17,7 @@ a {
 }
 #app-content-container {
   padding-top: 20px;
+  padding-bottom: 20px;
 }
 @media (min-width: 768px) {
   .navbar-nav > li .btn-link {
