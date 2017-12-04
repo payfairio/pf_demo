@@ -2,7 +2,9 @@
     <div id="app">
         <div class="wrap">
             <b-navbar toggleable="md" type="dark" variant="info">
-                <b-navbar-brand :to="{name: 'deals'}">PayFair</b-navbar-brand>
+                <b-navbar-brand v-if="$auth.user().type === 'client'" :to="{name: 'deals'}">PayFair</b-navbar-brand>
+                <b-navbar-brand v-if="$auth.user().type === 'trust'" :to="{name: 'suggestions'}">PayFair</b-navbar-brand>
+
                 <b-nav-toggle target="nav_collapse"></b-nav-toggle>
                 <b-collapse is-nav id="nav_collapse">
                     <b-nav is-nav-bar class="ml-auto">
@@ -10,17 +12,20 @@
                         <b-nav-item v-if="!$auth.check()" :to="{name: 'register'}">Register</b-nav-item>
 
                         <b-nav-item v-if="false && $auth.check()" v-on:click="showNotifications">{{notificationsCount}}</b-nav-item>
+
                         <b-nav-item-dropdown v-if="$auth.check()">
                             <template slot="button-content">
                                <span>Exchanges</span>
                             </template>
-                            <b-dropdown-item :to="{name: 'exchanges'}">Your exchange ads</b-dropdown-item>
-                            <b-dropdown-item>Buy/Sell coins</b-dropdown-item>
+                            <b-dropdown-item :to="{name: 'my-exchanges'}">Your exchange ads</b-dropdown-item>
+                            <b-dropdown-item :to="{name: 'exchanges'}">Buy/Sell coins</b-dropdown-item>
                         </b-nav-item-dropdown>
 
                         <b-nav-item v-if="$auth.check() && $auth.user().type === 'client'" :to="{name: 'deals'}">Deals</b-nav-item>
 
                         <b-nav-item v-if="$auth.check() && $auth.user().type === 'escrow'" :to="{name: 'disputes'}">Disputes</b-nav-item>
+
+                        <b-nav-item v-if="$auth.check() && $auth.user().type === 'trust'" :to="{name: 'suggestions'}">Suggestions</b-nav-item>
 
                         <b-nav-item-dropdown v-if="$auth.check()" right>
                             <template slot="button-content">

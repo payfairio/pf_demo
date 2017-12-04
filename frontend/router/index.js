@@ -10,14 +10,45 @@ import Deal from '@/components/routes/deals/Deal'
 import EscrowList from '@/components/routes/escrow/EscrowList'
 import EscrowDeal from '@/components/routes/escrow/EscrowDeal'
 
+import SuggestionList from '@/components/routes/trust/List'
+import SuggestionCreate from '@/components/routes/trust/Create'
+import Suggestion from '@/components/routes/trust/Suggestion'
+
 //exchanges
-import ExchangesList from '@/components/routes/exchanges/List'
+import MyExchanges from '@/components/routes/exchanges/List'
+import Exchanges from '@/components/routes/exchanges/Exchanges'
 import CreateExchange from '@/components/routes/exchanges/Create'
 
 Vue.use(Router);
 
 export default new Router({
     routes: [
+        //trust sections
+        {
+            path: '/suggestions/suggestion/:id',
+            name: 'suggestion',
+            meta: {
+                auth: {roles: 'trust'}
+            },
+            component: Suggestion,
+            props: true
+        },
+        {
+            path: '/suggestions/create',
+            name: 'create-suggestion',
+            meta: {
+                auth: {roles: 'trust'}
+            },
+            component: SuggestionCreate
+        },
+        {
+            path: '/suggestions',
+            name: 'suggestions',
+            meta: {
+                auth: {roles: 'trust'}
+            },
+            component: SuggestionList
+        },
         // client section
         {
             path: '/',
@@ -46,12 +77,20 @@ export default new Router({
         },
         // exchanges section
         {
+            path: '/exchanges/my',
+            name: 'my-exchanges',
+            meta: {
+                auth: {roles: 'client', forbiddenRedirect: '/disputes'}
+            },
+            component: MyExchanges
+        },
+        {
             path: '/exchanges',
             name: 'exchanges',
             meta: {
                 auth: {roles: 'client', forbiddenRedirect: '/disputes'}
             },
-            component: ExchangesList
+            component: Exchanges
         },
         {
             path: '/exchanges/create',

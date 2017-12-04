@@ -59,10 +59,10 @@
                         text: 'Escrow-node',
                         value: 'escrow'
                     },
-                    /*{
+                    {
                         text: 'Trust-node',
                         value: 'trust'
-                    }*/
+                    }
                 ],
                 errors: {}
             }

@@ -49,6 +49,9 @@ module.exports = function(server) {
         }
         clients[client.decoded_token._id].push(client.id);
 
+        // attachments in chats
+        require('./socket/uploads')(client);
+
         client.on('join_chat', function (data) {
             Deal.findOne({dId: data.deal_id}).populate({path: 'messages', populate: {path: 'sender', select: '-password'}})
                 .populate({path: 'seller', select: '-password'})
