@@ -13,12 +13,34 @@ const jwt = require('jsonwebtoken');
 const validator = require('express-validator');
 router.use(validator())
 
+const max_suggestion_per_user = 3;
+const need_likes_to_change_status = 5;
+const need_dislikes_to_change_status = 5;
+
+const statuses = [
+    'Active',
+    'In Process',
+    'Approved',
+    'Disapproved'
+];
+/**
+ * To generate list of suggestions
+ */
 router.get('/', passport.authenticate('jwt', {
     session: false
 }), function (req, res, next) {
-    Suggestions.find()
+    let {offset, limit, order, sortBy} = req.query;
+    order = order === 'true' ? -1 : 1;
+
+    let filter = req.query.status == 4 ? {author: req.user._id} : {status: statuses[req.query.status]}
+
+    Suggestions.find(filter)
         .populate('author')
-        .sort('-created_at')
+        .sort({
+            [sortBy]: order
+        })
+        .skip(+offset)
+        .limit(+limit)
         .then(function (docs) {
             return res.json(docs);
         }).catch(function (err) {
@@ -26,70 +48,132 @@ router.get('/', passport.authenticate('jwt', {
         });
 });
 
+/**
+ * To generate simple suggestion
+ */
 router.get('/suggestion/:id', passport.authenticate('jwt', {
-    session: false
-}), function (req, res, next) {
-    if (req.user.type !== 'trust') {
-        return res.status(403).json({
-            error: "Forbidden"
+        session: false
+    }), function (req, res, next) {
+        if (req.user.type !== 'trust') {
+            return res.status(403).json({
+                error: "Forbidden"
+            });
+        }
+        Suggestions.findOne({
+                _id: req.params.id
+            }).populate('author')
+            .then(function (doc) {
+                if (!doc) {
+                    return res.status(404).json({
+                        error: "Suggestion not found"
+                    });
+                }
+                can_vote = !(doc.like.indexOf(req.user._id) != -1 || doc.dislike.indexOf(req.user._id) != -1);
+                return res.json({suggestion: doc, can_vote: can_vote});
+            }, function (err) {
+                return res.status(500).json(err);
+            });
+});
+
+/**
+ * To create suggestion
+ */
+router.post('/create', passport.authenticate('jwt', {
+        session: false
+    }), function (req, res, next) {
+        if (req.user.type !== 'trust') {
+            return res.status(403).json({
+                error: "Forbidden"
+            });
+        }
+        req.checkBody({
+            name: {
+                notEmpty: {
+                    errorMessage: 'Suggestion name is required'
+                }
+            },
+            text: {
+                notEmpty: {
+                    errorMessage: 'Text is required'
+                }
+            }
         });
-    }
-    Suggestions.findOne({
-            _id: req.params.id
-        }).populate('author')
-        .then(function (doc) {
-            if (!doc) {
-                return res.status(404).json({
-                    error: "Suggestion not found"
+        req.getValidationResult().then(function (result) {
+            if (result.array().length > 0) {
+                return res.status(400).json({
+                    success: false,
+                    errors: result.mapped(),
+                    msg: 'Bad request'
                 });
             }
-            return res.json(doc);
-        }, function (err) {
-            return res.status(500).json(err);
+
+            Suggestions.find({
+                status: statuses[0]
+            }).then(function (docs) {
+                if (docs.length >= max_suggestion_per_user){
+                    throw {e_code: 400, msg: "You can have only " + max_suggestion_per_user + " active suggestions"};
+                }
+                let data = {
+                    _id: new mongoose.Types.ObjectId(),
+                    name: req.body.name,
+                    text: req.body.text,
+                    author: req.user._id
+                }
+                return new Suggestions(data).save();
+            }).then(function (result) {
+                return res.json({success: true, suggestion: result});
+            }).catch(function (err) {
+                if (err.e_code){
+                    return res.status(err.e_code).json({success: false, error: err.msg});
+                }
+                return res.status(500).json({success: false, error: err});
+            });
         });
 });
 
-router.post('/create', passport.authenticate('jwt', {
-    session: false
-}), function (req, res, next) {
-    if (req.user.type !== 'trust') {
-        return res.status(403).json({
-            error: "Forbidden"
-        });
-    }
-    req.checkBody({
-        name: {
-            notEmpty: {
-                errorMessage: 'Suggestion name is required'
-            }
-        },
-        text: {
-            notEmpty: {
-                errorMessage: 'Text is required'
-            }
-        }
-    });
-    req.getValidationResult().then(function (result) {
-        if (result.array().length > 0) {
-            return res.status(400).json({
-                success: false,
-                errors: result.mapped(),
-                msg: 'Bad request'
+/**
+ * To vote for suggestion
+ */
+router.post('/suggestion/:id/vote', passport.authenticate('jwt', {
+        session: false
+    }), function (req, res, next) {
+        if (req.user.type !== 'trust') {
+            return res.status(403).json({
+                error: "Forbidden"
             });
         }
+        Suggestions.findOne({_id: req.params.id}).populate('author')
+            .then(function (doc){
+                if (!doc) {
+                    return res.status(404).json({
+                        error: "Suggestion not found"
+                    });
+                }
+                if (doc.like.indexOf(req.user._id) != -1 || doc.dislike.indexOf(req.user._id) != -1){
+                    return res.status(404).json({
+                        error: "You are already voted"
+                    });
+                }
 
-        let data = {
-            _id: new mongoose.Types.ObjectId(),
-            name: req.body.name,
-            text: req.body.text,
-            author: req.user._id
-        }
-        return new Suggestions(data).save().then(function (result) {
-            return res.json({success: true, exchange: result});
-        }).catch(function (err) {
-            return res.status(500).json({success: false, error: err});
-        });
-    });
+                if (req.body.value === 1){
+                    doc.like.push(req.user._id);
+                } else if (req.body.value === 0){
+                    doc.dislike.push(req.user._id);
+                }
+
+                if (doc.like.length === need_likes_to_change_status && doc.status == statuses[0]){
+                    doc.status = statuses[1];
+                }
+
+                if (doc.dislike.length === need_dislikes_to_change_status && doc.status == statuses[0]){
+                    doc.status = statuses[3];
+                }
+
+                doc.save();
+                return res.json({suggestion: doc, can_vote: false});
+            }).catch(function (err) {
+                return res.status(500).json({success: false, error: err});
+            });
 });
 
 module.exports = router;

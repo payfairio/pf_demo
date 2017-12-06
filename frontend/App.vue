@@ -43,10 +43,10 @@
                 </b-collapse>
             </b-navbar>
             <div class="container" id="app-content-container">
-                <div v-if="$auth.ready()">
+                <div v-if="$auth.ready() && (socketReady || !$auth.check())">
                     <router-view></router-view>
                 </div>
-                <div v-if="!$auth.ready()">
+                <div v-if="!$auth.ready() || (!socketReady && $auth.check())">
                     Loading ...
                 </div>
             </div>
@@ -71,7 +71,8 @@
                     messages: {}
                 },
                 notificationsCount: 0,
-                notificationsVisible: false
+                notificationsVisible: false,
+                socketReady: false,
             }
         },
         sockets: {
@@ -79,7 +80,11 @@
                 this.$socket.emit('authenticate', {token: this.$auth.token() ? this.$auth.token().substr(4) : ''});
             },
             disconnect: function () {
+                this.socketReady = false;
                 console.log('socket disconnected');
+            },
+            authorized: function () {
+                this.socketReady = true;
             },
             unauthorized: function () {
                 console.log('socket unauthorized');

@@ -8,10 +8,12 @@
                  :fields="fields"
                  :current-page="currentPage"
                  :per-page="perPage"
+                 sort-by="created_at"
+                 :sort-desc="true"
         >
             <template slot="name" slot-scope="row"><router-link :to="{name: 'deal', params: {id: row.item.dId}}">{{row.value}}</router-link></template>
-            <template slot="role" slot-scope="row">{{row.item.seller._id == $auth.user()._id ? 'seller' : 'buyer'}}</template>
-            <template slot="counterparty" slot-scope="row">{{row.item.seller._id == $auth.user()._id ? row.item.buyer.email : row.item.seller.email}}</template>
+            <template slot="role" slot-scope="row">{{row.value}}</template>
+            <template slot="counterparty" slot-scope="row">{{row.value}}</template>
             <template slot="created_at" slot-scope="row">{{row.value | date}}</template>
 
         </b-table>
@@ -26,7 +28,7 @@
             return {
                 perPage: 5,
                 currentPage: 1,
-                totalRows: 30,
+                totalRows: 0,
                 fields: {
                     name: {label: 'Deal name', sortable: true},
                     role: {label: 'Your role', sortable: true},
@@ -36,8 +38,16 @@
                 },
             }
         },
+
+        created: function() {
+            const limit = Number.MAX_SAFE_INTEGER;
+            this.$http.get(`/deals?limit=${limit}&offset=0&sortBy=name&order=false`)
+            .then(response => {
+                this.totalRows = response.data.length;
+            })
+        },
+
         methods: {
-            // TODO: sort-changed, page-change, filter-change сделать методы
             getDeals: function (ctx) {
                 console.log(ctx);
                 const limit = ctx.perPage;

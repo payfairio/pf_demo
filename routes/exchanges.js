@@ -20,7 +20,15 @@ router.use(validator({
 }));
 
 router.get('/', passport.authenticate('jwt', { session: false}), function (req, res, next) {
-    Exchange.find({owner: req.user._id}).sort('-created_at')
+    let {offset, limit, order, sortBy} = req.query;
+    order = order === 'true' ? -1 : 1;
+
+    Exchange.find({owner: req.user._id})
+        .sort({
+            [sortBy]: order
+        })
+        .skip(+offset)
+        .limit(+limit)
         .then(function (docs) {
             return res.json(docs);
         }).catch(function (err) {
@@ -29,7 +37,15 @@ router.get('/', passport.authenticate('jwt', { session: false}), function (req, 
 });
 
 router.get('/list', passport.authenticate('jwt', {session: false}), function (req, res, next) {
-    Exchange.find().populate('owner').sort('-created_at')
+    let {offset, limit, order, sortBy} = req.query;
+    order = order === 'true' ? -1 : 1;
+
+    Exchange.find().populate('owner')
+        .sort({
+            [sortBy]: order
+        })
+        .skip(+offset)
+        .limit(+limit)
         .then(function (docs) {
             return res.json(docs);
         }).catch(function (err) {

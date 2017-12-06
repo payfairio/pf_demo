@@ -23,19 +23,83 @@ router.use(validator({
 router.get('/', passport.authenticate('jwt', {
     session: false
 }), function (req, res, next) {
-    // req.query: offset, limit, order, sortBy
-    Deal.find({
-            $or: [{
-                'buyer': req.user._id
-            }, {
-                'seller': req.user._id
-            }]
-        }).populate('seller').populate('buyer').sort('-created_at')
-        .then(function (docs) {
-            return res.json(docs);
-        }).catch(function (err) {
-            return res.json(err);
-        });
+    let {
+        offset,
+        limit,
+        order,
+        sortBy
+    } = req.query;
+    order = order === 'true' ? -1 : 1;
+    Deal.aggregate([{
+            $match: {
+                $or: [{
+                    'buyer': req.user._id
+                }, {
+                    'seller': req.user._id
+                }]
+            }
+        }, {
+            $project: {
+                dId: true,
+                name: true,
+                created_at: true,
+                seller: true,
+                buyer: true
+            }
+        }, {
+            $lookup: {
+                from: 'users',
+                localField: 'seller',
+                foreignField: '_id',
+                as: 'seller'
+            }
+        }, {
+            $unwind: '$seller'
+        }, {
+            $lookup: {
+                from: 'users',
+                localField: 'buyer',
+                foreignField: '_id',
+                as: 'buyer'
+            }
+        }, {
+            $unwind: '$buyer'
+        }, {
+            $addFields: {
+                role: {
+                    $cond: {
+                        if: {
+                            $eq: ['$seller.email', req.user.email]
+                        },
+                        then: 'seller',
+                        else: 'buyer'
+                    }
+                },
+                counterparty: {
+                    $cond: {
+                        if: {
+                            $eq: ['$seller.email', req.user.email]
+                        },
+                        then: '$buyer.email',
+                        else: '$seller.email'
+                    }
+                }
+            }
+        }, {
+            $sort: {
+                [sortBy]: order
+            }
+        }, {
+            $skip: +offset
+        },
+        {
+            $limit: +limit
+        }
+    ]).then(docs => {
+        return res.json(docs);
+    }).catch(error => {
+        return res.json(error);
+    });
 });
 
 router.get('/dispute', passport.authenticate('jwt', {

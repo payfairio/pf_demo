@@ -43,30 +43,33 @@
             </b-col>
             <b-col md="6">
                 <div class="chat-frame">
-                    <ul class="chat" ref="messages-box">
-                        <li v-for="message in messages">
-                            <div v-if="message.type === 'message'" :class="message.sender._id == $auth.user()._id ? 'msj macro' : 'msj-rta macro'">
-                                <div :class="message.sender._id == $auth.user()._id ? 'text text-l' : 'text text-r'">
-                                    <p class="msg-sender">{{message.sender._id == $auth.user()._id ? 'You' : message.sender.username}}</p>
-                                    <p class="msg-text">{{message.text}}</p>
-                                    <p class="msg-time">
-                                        <small v-if="isToday(message.created_at)">Today, {{message.created_at | moment("HH:mm:ss")}}</small>
-                                        <small v-if="!isToday(message.created_at)">{{message.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</small>
-                                    </p>
+                    <div class="messages-box" ref="messages-box">
+                        <ul class="chat">
+                            <li v-for="message in messages">
+                                <div v-if="message.type === 'message'" :class="message.sender._id == $auth.user()._id ? 'msj macro' : 'msj-rta macro'">
+                                    <div :class="message.sender._id == $auth.user()._id ? 'text text-l' : 'text text-r'">
+                                        <p class="msg-sender">{{message.sender._id == $auth.user()._id ? 'You' : message.sender.username}}</p>
+                                        <p class="msg-text">{{message.text}}</p>
+                                        <div v-for="attachment in message.attachments"><a target="_blank" :href="attachment._id">{{attachment.name}}</a></div>
+                                        <p class="msg-time">
+                                            <small v-if="isToday(message.created_at)">Today, {{message.created_at | moment("HH:mm:ss")}}</small>
+                                            <small v-if="!isToday(message.created_at)">{{message.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</small>
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div v-if="message.type === 'system'">
-                                <div :class="'system-msg'">
-                                    <p class="sys-msg-sender">{{message.sender ? (message.sender._id == $auth.user()._id ? 'You' : message.sender.username) : 'PayFair System'}}</p>
-                                    <p class="sys-msg-text">{{message.text}}</p>
-                                    <p class="sys-msg-time">
-                                        <small v-if="isToday(message.created_at)">Today, {{message.created_at | moment("HH:mm:ss")}}</small>
-                                        <small v-if="!isToday(message.created_at)">{{message.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</small>
-                                    </p>
+                                <div v-if="message.type === 'system'">
+                                    <div :class="'system-msg'">
+                                        <p class="sys-msg-sender">{{message.sender ? (message.sender._id == $auth.user()._id ? 'You' : message.sender.username) : 'PayFair System'}}</p>
+                                        <p class="sys-msg-text">{{message.text}}</p>
+                                        <p class="sys-msg-time">
+                                            <small v-if="isToday(message.created_at)">Today, {{message.created_at | moment("HH:mm:ss")}}</small>
+                                            <small v-if="!isToday(message.created_at)">{{message.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</small>
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                        </li>
-                    </ul>
+                            </li>
+                        </ul>
+                    </div>
                     <b-form @submit="onSubmit" class="message-form" v-if="deal.status !== 'completed'">
                         <b-input-group>
                             <b-form-textarea id="message-text" @keydown.native="inputHandler" v-model="form.text" :max-rows="1" style="resize: none;"></b-form-textarea>
@@ -74,10 +77,15 @@
                                 <b-button @click="openUploadDialog"><svg style="width:24px;height:24px" viewBox="0 0 24 24">
                                     <path fill="#ffffff" d="M16.5,6V17.5A4,4 0 0,1 12.5,21.5A4,4 0 0,1 8.5,17.5V5A2.5,2.5 0 0,1 11,2.5A2.5,2.5 0 0,1 13.5,5V15.5A1,1 0 0,1 12.5,16.5A1,1 0 0,1 11.5,15.5V6H10V15.5A2.5,2.5 0 0,0 12.5,18A2.5,2.5 0 0,0 15,15.5V5A4,4 0 0,0 11,1A4,4 0 0,0 7,5V17.5A5.5,5.5 0 0,0 12.5,23A5.5,5.5 0 0,0 18,17.5V6H16.5Z" />
                                 </svg></b-button>
-                                <input @change="fileChosen" type="file" id="attachment" style="display: none" ref="file-input">
+                                <input @change="fileChosen" type="file" id="attachment" multiple style="display: none" ref="file-input">
                                 <b-button type="submit" variant="primary">Send</b-button>
                             </b-input-group-button>
                         </b-input-group>
+                        <div class="attach-box">
+                            <ul class="attachments-items">
+                                <li v-for="file, index in attachments">{{file.name}} - {{file.progress}}% [x]</li>
+                            </ul>
+                        </div>
                     </b-form>
                 </div>
             </b-col>
@@ -120,7 +128,15 @@
         name: 'Deal',
         props: ['id'],
         created: function () {
-            this.$socket.emit('join_chat', {deal_id: this.id});
+            const vm = this;
+            vm.$socket.emit('join_chat', {deal_id: this.id});
+            vm.FReader.onload = function (e) {
+                let uintArr = new Uint8Array(e.target.result);
+                let content = uintArr.buffer;
+                vm.$socket.emit('uploadChunk', {
+                    content: content
+                });
+            };
         },
         beforeDestroy: function () {
             this.$socket.emit('leave_chat', {deal_id: this.id});
@@ -153,7 +169,12 @@
                 },
                 editedSum: 0,
                 conditionsEdition: false,
-                FReader: new FileReader()
+                // files upload
+                chunkSize: 1024 * 100,
+                FReader: new FileReader(),
+                uploading: false,
+                filesForUpload: [],
+                attachments: [],
             }
         },
         sockets: {
@@ -170,7 +191,7 @@
                     this.counterparty.profileImg = this.$config.backendUrl+'/profile-pic/'+this.counterparty.profileImg;
                 }
 
-                let vm = this;
+                const vm = this;
                 vm.$nextTick(function () {vm.$refs['messages-box'].scrollTop = this.$refs['messages-box'].scrollHeight;});
             },
             message: function (data) {
@@ -208,7 +229,26 @@
                 this.$socket.emit('leave_chat', {deal_id: this.id});
                 this.$socket.emit('join_chat', {deal_id: this.id});
             },
-            fileInited: function (data) {
+            // files upload
+            uploaderReady: function (data) {
+                const vm = this;
+                vm.uploadChunk(data.id, vm.attachments[data.id].file);
+            },
+            chunkUploaded: function (data) {
+                const vm = this;
+                vm.attachments[data.id].downloaded = data.downloaded;
+                vm.attachments[data.id].progress = ((parseFloat(data.downloaded) /  vm.attachments[data.id].size)*100).toFixed(2);
+                vm.uploadChunk(data.id, vm.attachments[data.id].file, data.downloaded);
+            },
+            uploadComplete: function (data) {
+                const vm = this;
+                vm.attachments[data.id].downloaded = vm.attachments[data.id].size;
+                vm.attachments[data.id].progress = 100;
+                vm.attachments[data.id]._id = data._id;
+                vm.uploading = false;
+                vm.startUploadCurrentFile();
+            },
+            uploadError: function (data) {
 
             }
         },
@@ -255,19 +295,45 @@
                 this.$refs['file-input'].click();
             },
             fileChosen: function (e) {
-                var file = e.target.files[0];
-                this.FReader.onload = function (evnt) {
-                    console.log(evnt, 'foaaa');
-                };
-                this.$socket.emit('startUpload', {
-                    name: file.name,
-                    size: file.size,
-                    type: file.type
+                const vm = this;
+                Array.from(e.target.files).forEach(function (item) {
+                   vm.attachments.push({
+                       name: item.name,
+                       size: item.size,
+                       file: item,
+                       progress: 0,
+                       downloaded: 0,
+                       _id: null
+                   });
+                   vm.filesForUpload.push({
+                       id: vm.attachments.length - 1
+                   });
                 });
-                console.log(file);
-
-                //this.FReader.readAsBinaryString(file);
+                if (!vm.uploading) {
+                    vm.startUploadCurrentFile();
+                }
             },
+            startUploadCurrentFile: function () {
+                const vm = this;
+                if (vm.filesForUpload.length > 0) {
+                    vm.uploading = true;
+                    let file = vm.filesForUpload.shift();
+                    if (file) {
+                        vm.$socket.emit('startUpload', {
+                            id: file.id,
+                            name: vm.attachments[file.id].name,
+                            size: vm.attachments[file.id].size
+                        });
+                    }
+                }
+            },
+            uploadChunk: function (id, file, offset = 0) {
+                const vm = this;
+                let chunk = file.slice(offset, Math.min(offset+vm.chunkSize, file.size));
+                vm.FReader.readAsArrayBuffer(chunk);
+            },
+
+
             openConditions: function (role) {
                 this.conditionsModal = true;
                 switch (role) {
@@ -351,10 +417,14 @@
             // chat
             onSubmit: function (e) {
                 e.preventDefault();
+                if (this.uploading) {
+                    return;
+                }
                 if (this.form.text.trim()) {
                     let data = {
                         deal_id: this.id,
                         text: this.form.text.trim(),
+                        attachments: this.attachments
                     };
                     this.form.text = '';
                     this.$socket.emit('message', data);
@@ -379,8 +449,6 @@
 
     /* chat box start*/
     .chat-frame {
-        background:#e0e0de;
-        height: 450px;
         overflow:hidden;
         padding:0;
         position: relative;
@@ -391,14 +459,22 @@
     .message-form {
         width: 100%;
     }
+    .messages-box {
+        background:#e0e0de;
+        display:flex;
+        flex-direction: column-reverse;
+        overflow-y: auto;
+        height: 420px;
+    }
+    ul.attachments-items {
+        list-style-type: none;
+    }
     ul.chat {
         width:100%;
         list-style-type: none;
         padding:18px;
         margin: 0;
-        display:flex;
-        flex-direction: column;
-        overflow-y: auto;
+
     }
     ul.chat li {
         width: 100%;

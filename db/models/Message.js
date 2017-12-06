@@ -9,12 +9,12 @@ const Message = new Schema({
     text : {
         type: String
     },
-    /*attachments: [
+    attachments: [
         {
             type: Schema.Types.ObjectId,
             ref: 'Attachment'
         }
-    ],*/
+    ],
     deal : {
         type: Schema.Types.ObjectId,
         ref: 'Deal'

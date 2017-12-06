@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const Attachment = new Schema({
-    file: {
+    name: {
         type: String
     },
     type: {
@@ -15,6 +15,10 @@ const Attachment = new Schema({
     user: {
         type: Schema.Types.ObjectId,
         ref: 'User'
+    },
+    created_at: {
+        type: Date,
+        default: Date.now
     }
 });
 

@@ -4,6 +4,7 @@ const config = require('./config/database');
 const User = require('./db/models/User.js');
 const Deal = require('./db/models/Deal.js');
 const Message = require('./db/models/Message.js');
+const Attachment = require('./db/models/Attachment.js');
 
 // on client first call and on decision of prev escrow
 function findEscrows(deal) {
@@ -44,6 +45,8 @@ module.exports = function(server) {
     io.on('connection', socketioJwt.authorize({
         secret: config.secret,
     })).on('authenticated', function(client) {
+        client.emit('authorized');
+
         if (!clients[client.decoded_token._id]) {
             clients[client.decoded_token._id] = [];
         }
@@ -53,13 +56,13 @@ module.exports = function(server) {
         require('./socket/uploads')(client);
 
         client.on('join_chat', function (data) {
-            Deal.findOne({dId: data.deal_id}).populate({path: 'messages', populate: {path: 'sender', select: '-password'}})
+            Deal.findOne({dId: data.deal_id}).populate({path: 'messages', populate: [{path: 'sender', select: '-password'}, {path: 'attachments'}]})
                 .populate({path: 'seller', select: '-password'})
                 .populate({path: 'buyer', select: '-password'})
                 .then(function (deal) {
                     if (!deal) {
                         return;
-                    }
+                    }console.log(deal.messages);
                     let role = deal.getUserRole(client.decoded_token._id);
                     if (role) {
                         if (role === 'escrow') {
@@ -114,13 +117,16 @@ module.exports = function(server) {
                                 sender: client.decoded_token._id,
                                 text: data.text,
                                 deal: deal._id,
-                                type: data.type
+                                type: data.type,
+                                attachments: data.attachments.map(function (item) {return item._id})
                             };
                             new Message(message).save(function (err, message) {
                                 if (err) {
                                     reject(err);
                                 }
-                                resolve({deal: deal, message: message});
+                                Attachment.update({_id: {$in: data.attachments.map(function (item) {return item._id})}}, {$set: {message: message._id}}, function () {
+                                    resolve({deal: deal, message: message});
+                                });
                             });
 
                         } else {

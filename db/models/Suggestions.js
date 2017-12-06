@@ -19,13 +19,15 @@ const Suggestion = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'User'
     },
-    agree: {
-        type: Number,
-        default: 0
+    like: {
+        type: [String]
     },
-    disagree: {
-        type: Number,
-        default: 0
+    dislike: {
+        type: [String]
+    },
+    status: { // Active, In Process, Approved, Disapproved
+        type: String,
+        default: "Active"
     }
 });
 

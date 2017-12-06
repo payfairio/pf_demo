@@ -3,6 +3,8 @@
         <b-row align-h="center">
             <b-col sm="12" md="8">
                 <b-card header="Create new suggestion"
+                        footer-bg-variant="warning"
+                        :footer="'You can have only <b>' + max_suggestion + '</b> active ssuggestions'"
                         align="left">
                     <b-alert variant="danger"
                              dismissible
@@ -33,6 +35,7 @@
         name: 'CreateSuggestion',
         data: function () {
             return {
+                max_suggestion: 3,
                 form: {
                     name: '',
                     text: ''
@@ -47,11 +50,12 @@
                 e.preventDefault();
                 vm.errorMsg = '';
                 this.$http.post('/suggestions/create', this.form).then(function (response) {
-                    vm.$router.push({name: 'suggestion'});
+                    console.log(response);
+                    vm.$router.push({name: 'suggestion', params: {id: response.data.suggestion._id}});
                     vm.$swal('Success', 'Suggestion was created', 'success');
                 }, function (err) {
                     if (err.response.status === 400) {
-                        vm.errors = err.response.data.errors;
+                        vm.$swal('Error', err.response.data.error, 'error');
                     }
                     if (err.response.status === 500) {
                         vm.errorMsg = 'Some error occured. Try again later';
@@ -59,10 +63,16 @@
                 });
             },
             isValid: function (key) {
-                return this.errors.hasOwnProperty(key) ? 'invalid' : '';
+                if (this.errors){
+                    return this.errors.hasOwnProperty(key) ? 'invalid' : '';
+                }
+                return '';
             },
             errorMessage: function(key) {
-                return this.errors.hasOwnProperty(key) ? this.errors[key].msg : '';
+                if (this.errors){
+                    return this.errors.hasOwnProperty(key) ? this.errors[key].msg : '';
+                }
+                return '';
             }
         },
         watch: {
