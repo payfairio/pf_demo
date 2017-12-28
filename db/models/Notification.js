@@ -22,7 +22,11 @@ const Notification = new Schema({
         default: Date.now
     },
     type: {
-        type: String,
+        type: String
+    },
+    viewed: {
+        type: Boolean,
+        default: false
     }
 });
 

@@ -22,6 +22,10 @@ const Deal = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'User'
     },
+    coin: {
+        type: String, // 'BTC' 'ETH' 'PFR'
+        required: true
+    },
     sum: {
         type: Number
     },
@@ -59,6 +63,10 @@ const Deal = new Schema({
             created_at: {
                 type: Date,
                 default: Date.now
+            },
+            join_at: {
+                type: Date,
+                default: 0
             }
         }
     ],

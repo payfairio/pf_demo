@@ -25,10 +25,10 @@ const _emitComplete = function (socket, id) {
         return;
     }
     new Attachment({
-        file: fileInfo.name,
+        name: fileInfo.name,
         user: socket.decoded_token._id,
     }).save().then(function (doc) {
-        fs.rename(path.resolve('temp/'+socket.id+fileInfo.name), path.resolve('private-docs/'+doc._id+'_'+doc.file), function (err) {});
+        fs.rename(path.resolve('temp/'+socket.id+fileInfo.name), path.resolve('private-docs/'+doc._id+'_'+doc.name), function (err) {});
         socket.emit('uploadComplete', {
             id: fileInfo.id,
             _id: doc._id.toString(),

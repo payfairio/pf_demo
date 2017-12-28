@@ -34,17 +34,22 @@ router.get('/', passport.authenticate('jwt', {
 
     let filter = req.query.status == 4 ? {author: req.user._id} : {status: statuses[req.query.status]}
 
-    Suggestions.find(filter)
-        .populate('author')
-        .sort({
-            [sortBy]: order
-        })
-        .skip(+offset)
-        .limit(+limit)
-        .then(function (docs) {
-            return res.json(docs);
-        }).catch(function (err) {
-            return res.json(err);
+    Suggestions.count(filter)
+        .then(total => {
+            Suggestions.find(filter)
+            .populate('author', ['-password', '-wallet'])
+            .sort({
+                [sortBy]: order
+            })
+            .skip(+offset)
+            .limit(+limit)
+                .then(docs => {
+                    return res.json({total, data: docs});
+                }).catch(error => {
+                    return res.json(error);
+                });
+        }).catch(error => {
+            return res.json(error);
         });
 });
 
@@ -61,7 +66,7 @@ router.get('/suggestion/:id', passport.authenticate('jwt', {
         }
         Suggestions.findOne({
                 _id: req.params.id
-            }).populate('author')
+            }).populate('author', ['-password', '-wallet'])
             .then(function (doc) {
                 if (!doc) {
                     return res.status(404).json({
@@ -142,7 +147,7 @@ router.post('/suggestion/:id/vote', passport.authenticate('jwt', {
                 error: "Forbidden"
             });
         }
-        Suggestions.findOne({_id: req.params.id}).populate('author')
+        Suggestions.findOne({_id: req.params.id}).populate('author', ['-password', '-wallet'])
             .then(function (doc){
                 if (!doc) {
                     return res.status(404).json({

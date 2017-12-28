@@ -6,7 +6,6 @@ const config = require('../../config/database');
 
 const SparkPost = require('sparkpost');
 const mailClient = new SparkPost(config.mailApiKey);
-
 const User = new Schema({
     _id: Schema.Types.ObjectId,
     username : {
@@ -27,13 +26,36 @@ const User = new Schema({
     profileImg: {
         type: String,
     },
-    status: {
+    status: { //unverified, active
         type: String,
-        default: 'active'
+        default: 'unverified'
     },
-    eth: {
-        type: Number,
-        default: 0
+    wallet: {
+        type: Schema.Types.ObjectId,
+        ref: 'Account'
+    },
+    holds: {
+        type: Object,
+        default: {
+            eth: 0,
+            pfr: 0
+        }
+    },
+    online: {
+        status: {
+            type: Boolean,
+            default: false
+        },
+        lastConnect: {
+            type: Date,
+            default: Date.now
+        }
+    },
+    verifyCode: {
+        type: String
+    },
+    changePwdCode: {
+        type: String
     }
 });
 
@@ -59,6 +81,65 @@ User.methods.sendMailInviteNotification = function (offer) {
         recipients: [
             {address: this.email}
         ]
+    });
+};
+
+User.methods.sendMailVerification = function () {
+    let _user = this;
+    return new Promise(function (resolve, reject) {
+        let verifyCode = crypto.createHash('md5').update(Date.now + '').digest("hex");
+        return mailClient.transmissions.send({
+            options: {
+                transactional: true
+            },
+            content: {
+                from: 'noreply@mail.payfair.io',
+                subject: 'Please confirm your email address',
+                html: '<html><body>'+
+                '<p>We need to make sure you are human. Please verify your email.</p>' +
+                '<p><a href="' + config.frontUrl + '/#/verify/' + verifyCode + '">Verify email</a></p>' +
+                '</body></html>'
+            },
+            recipients: [
+                {address: _user.email}
+            ]
+        }).then(function (res) {
+            _user.verifyCode = verifyCode;
+            return _user.save();
+        }).then(function (user) {
+            resolve(user);
+        }).catch(function (err) {
+            reject(err);
+        });
+    });
+};
+
+User.methods.sendMailReset = function () {
+    let _user = this;
+    return new Promise(function (resolve, reject) {
+        let resetCode = crypto.createHash('md5').update(Date.now + '').digest("hex");
+        return mailClient.transmissions.send({
+            options: {
+                transactional: true
+            },
+            content: {
+                from: 'noreply@mail.payfair.io',
+                subject: 'Reset password',
+                html: '<html><body>'+
+                '<p>Follow by <a href="' + config.frontUrl + '/#/reset/' + resetCode + '">link</a> for password reset</p>' +
+                '</body></html>'
+            },
+            recipients: [
+                {address: _user.email}
+            ]
+        }).then(function (res) {
+            _user.changePwdCode = resetCode;
+            return _user.save();
+        }).then(function (user) {
+            resolve(user);
+        }).catch(function (err) {
+            reject(err);
+        });
     });
 };
 

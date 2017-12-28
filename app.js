@@ -2,7 +2,12 @@ const express = require('express');
 const path = require('path');
 const logger = require('morgan');
 const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
 
+const Web3 = require('web3');
+const web3 = new Web3(
+    new Web3.providers.HttpProvider('https://ropsten.infura.io/')
+);
 const app = express();
 
 const passport = require('passport');
@@ -21,6 +26,7 @@ app.use(passport.initialize());
 // app.set('view engine', 'jade');
 
 app.use(logger('dev'));
+app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
@@ -34,11 +40,13 @@ app.use(function(req, res, next) {
     next();
 });
 
-app.use('/', require('./routes/index'));
-app.use('/users', require('./routes/users'));
-app.use('/deals', require('./routes/deals'));
+app.use('/', require('./routes/index')(web3));
+app.use('/users', require('./routes/users')(web3));
+app.use('/deals', require('./routes/deals')(web3));
+app.use('/wallet', require('./routes/wallet')(web3));
 app.use('/exchanges', require('./routes/exchanges'));
 app.use('/suggestions', require('./routes/suggestions'));
+app.use('/attachments', require('./routes/attachments'));
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
