@@ -38,7 +38,8 @@ const User = new Schema({
         type: Object,
         default: {
             eth: 0,
-            pfr: 0
+            pfr: 0,
+            omg: 0
         }
     },
     online: {
@@ -85,9 +86,9 @@ User.methods.sendMailInviteNotification = function (offer) {
 };
 
 User.methods.sendMailVerification = function () {
-    let _user = this;
-    return new Promise(function (resolve, reject) {
-        let verifyCode = crypto.createHash('md5').update(Date.now + '').digest("hex");
+    const _user = this;
+    return new Promise( (resolve, reject) => {
+        const verifyCode = crypto.createHash('md5').update(Date.now + '').digest("hex");
         return mailClient.transmissions.send({
             options: {
                 transactional: true

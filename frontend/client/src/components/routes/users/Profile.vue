@@ -1,7 +1,7 @@
 <template>
     <div class="profile">
         <b-row align-h="center">
-            <b-col sm="12" md="5">
+            <b-col sm="12" md="4">
                 <b-card header="Profile"
                         align="left">
                     <b-alert variant="danger"
@@ -12,27 +12,42 @@
                     </b-alert>
                     <div class="profile-card">
                         <h2>{{username}}</h2>
-                        <img :src="profileImg">
+
+                        <img :src="$props.id ? profileImg : $auth.user().profileImg">
+
+                        <div class="review no-float">
+                            <span><b>{{averageRating}}</b></span><span></span>
+                        </div>
+
                     </div>
-                    <hr>
+                    <b-tabs>
+                        <template slot="tabs">
+                            <b-nav-item>Change profile image</b-nav-item>
+                        </template>
+                        <template slot="tabs">
+                            <b-nav-item>Rating</b-nav-item>
+                        </template>
+                    </b-tabs>
+                </b-card>
+            </b-col>
+            <b-col sm="12" md="8" class="card justify-content-center">
                     <b-form v-if="!$props.id || $auth.user()._id == $props.id" @submit="onSubmit" enctype="multipart/form-data">
                         <b-form-group id="imgInputGroup" label="Change profile image:" label-for="profileImg">
                             <image-upload v-model="form.profileImg" :init="form.profileImg" :width="256" :height="256" :label="'Загрузить 256 X 256'"></image-upload>
                         </b-form-group>
                         <b-button type="submit" variant="primary">Save</b-button>
                     </b-form>
-                    <hr>
                     <h3>Reviews:</h3>
-                    <div v-for="review in reviews" class="review">
-                        <p>
+                     <div v-for="review in reviews" class="review">
+                         <p>
                             <b>By:</b> <router-link :to="{name: 'user-by-id', params: {id: review.author._id}}">{{review.author.username}}</router-link><br>
-                            <b>Rating:</b> {{review.rating}}<br>
-                            <b>Comment:</b><br>
-                            {{review.comment}}
                         </p>
-                        <hr>
-                    </div>
-                </b-card>
+                        <p class="float-left">Rating:</p>
+                        <div v-for="i in review.rating">
+                            <span></span>
+                        </div>
+                       <p>{{review.comment}}</p>
+                     </div>
             </b-col>
         </b-row>
     </div>
@@ -45,7 +60,7 @@
         components: {
             'image-upload': imageUpload
         },
-        data: function () {
+        data: () => {
             return {
                 form: {
                     profileImg: '',
@@ -57,7 +72,7 @@
                 profileImg: ''
             }
         },
-        created: function(){
+        created: function () {
             this.getUser();
         },
         methods: {
@@ -79,16 +94,18 @@
                 return new Blob([ia], {type:mimeString});
             },
             onSubmit: function (e) {
-                const vm = this;
                 e.preventDefault();
+                const vm = this;
+                if (!vm.form.profileImg) {
+                    return;
+                }
                 vm.errorMsg = '';
                 let data = new FormData();
-                data.append('profileImg', this.dataURItoBlob(this.form.profileImg));
-                this.$http.post('/users/profile', data).then(function (response) {
-                    console.log(response);
+                data.append('profileImg', vm.dataURItoBlob(vm.form.profileImg));
+                this.$http.post('/users/profile', data).then(response => {
                     vm.form.profileImg = '';
                     vm.$auth.fetch();
-                }, function (err) {
+                }).catch(err => {
                     vm.errorMsg = 'Some error occured. Try again later';
                     console.log(err);
                 });
@@ -99,36 +116,59 @@
             errorMessage: function(key) {
                 return this.errors.hasOwnProperty(key) ? this.errors[key].msg : '';
             },
-            getUser: function(){
+            getUser: function () {
                 const vm = this;
 
                 if (this.$props.id){
-                    this.$http.get('/users/user/' + this.$props.id).then(function (response){
+                    this.$http.get('/users/user/' + this.$props.id).then(response => {
                         console.log(response);
                         vm.reviews = response.data.reviews;
                         vm.username = response.data.user.username;
                         vm.profileImg = response.data.user.profileImg;
-                    }, function(err){
+                    }, err => {
                         console.log(err);
                     });
                 } else {
                     vm.username = vm.$auth.user().username;
                     vm.profileImg = vm.$auth.user().profileImg;
-                    this.$http.get('/users/user/' + this.$auth.user()._id + '/review').then(function (response){
+                    this.$http.get('/users/user/' + this.$auth.user()._id + '/review').then(response => {
                         vm.reviews = response.data;
-                    }, function(err){
+                    }, err => {
                         console.log(err);
                     });
                 }
             }
         },
         watch: {
-            id: function(){
+            id: function () {
                 this.getUser();
             }
+        },
+        computed: {
+            averageRating: function(){
+                const vm = this;
+                var review = 0;
+                var totalRating = 0;
+                for (var i = 0; i < vm.reviews.length; i++){
+                    review = vm.reviews[i].rating;
+                    totalRating = totalRating + review;
+                }
+                //return (totalRating / vm.reviews.length).toFixed(1);
+                return (Math.round(totalRating / vm.reviews.length * 100) / 100);
+            }
         }
+        //reviews.length - total count of reviews
+        //review.rating - rating of current review
     }
 </script>
-<style>
-
+<style scoped>
+    .review.no-float span:first-child{
+        background: none;
+        float:none;
+    }
+    .review.no-float span:last-child{
+        float: none;
+        display: inline-block;
+        vertical-align: top;
+    }
 </style>

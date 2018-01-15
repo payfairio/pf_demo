@@ -84,7 +84,7 @@ const Deal = new Schema({
         type: Date,
         default: Date.now
     }
-});
+}, { usePushEach: true });
 
 const counter = require('./Counter');
 

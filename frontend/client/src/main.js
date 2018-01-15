@@ -1,6 +1,7 @@
 // styles
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-vue/dist/bootstrap-vue.css'
+import '../../../public/stylesheets/font-awesome.min.css'
 import '../../../public/stylesheets/style.css'
 
 // main part
@@ -14,15 +15,17 @@ import router from './router'
 import vueConfig from 'vue-config'
 import App from './App.vue';
 
+const VueBreadcrumbs = require('vue2-breadcrumbs');
 const VueCookie = require('vue-cookie');
 import config from './config/config';
 Vue.use(vueConfig, config);
 Vue.use(VueCookie);
+Vue.use(VueBreadcrumbs);
 
 Vue.router = router;
 
 Vue.use(VueAxios, axios);
-Vue.axios.defaults.baseURL = config.backendUrl;  // todo: вынести в настройки
+Vue.axios.defaults.baseURL = config.backendUrl;
 //Vue.use(BootstrapVue);
 // костыль до обновы бутстрап-вью
 let originalVueComponent = Vue.component;
@@ -43,7 +46,7 @@ Vue.use(require('vue-moment'), {
     moment
 });
 
-Vue.use(VueSocketio, config.backendUrl);
+Vue.use(VueSocketio, config.staticUrl);
 
 Vue.use(require('@websanova/vue-auth'), {
     auth: require('./auth/authDriver.js'),

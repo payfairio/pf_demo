@@ -20,9 +20,9 @@ function createAccount (data) {
     return new Account(data).save();
 }
 
-User.find({holds: {$exists: false}}).then(async function (users) {
+User.find({'holds.omg': {$exists: false}}).then(async function (users) {
     await Promise.all(users.map(async function (user) {
-            user.holds = {eth: 0, pfr: 0};
+            user.holds.omg = 0;
             user.markModified('holds');
             await user.save();
         })

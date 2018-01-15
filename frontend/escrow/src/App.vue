@@ -3,7 +3,7 @@
         <div class="wrap">
             <div class="demo-topbar">This is just demo on ropsten testnet. Don't use this app for real trades. <a href="https://ropsten.etherscan.io">etherscan for ropsten</a></div>
             <b-navbar toggleable="md" type="dark" variant="gray">
-                <b-navbar-brand :to="'/'"><img :src="$config.backendUrl+'/images/pfr_logo.svg'" alt="PayFair"></b-navbar-brand>
+                <b-navbar-brand :to="'/'"><img :src="$config.staticUrl+'/images/pfr_logo.svg'" alt="PayFair"></b-navbar-brand>
 
                 <b-nav-toggle target="nav_collapse"></b-nav-toggle>
                 <b-collapse is-nav id="nav_collapse">
@@ -74,9 +74,9 @@
                 <div class="firstscreen_market">
                     <h4 class="text-center">You can buy/sell PFR token here:</h4>
                     <div class="bir-list">
-                        <a href="https://etherdelta.com/#PFR-ETH" target="_blank" class="bir_item item-1"><img :src="$config.backendUrl + '/images/bir/ether_delta.jpg'" alt=""></a>
-                        <a href="https://idex.market/eth/pfr" target="_blank" class="bir_item item-2"><img :src="$config.backendUrl + '/images/bir/idex.jpg'" alt=""></a>
-                        <a href="https://stocks.exchange/trade/PFR/BTC" target="_blank" class="bir_item item-3"><img :src="$config.backendUrl + '/images/bir/stocks_exchange.jpg'" alt=""></a>
+                        <a href="https://etherdelta.com/#PFR-ETH" target="_blank" class="bir_item item-1"><img :src="$config.staticUrl+'/images/bir/ether_delta.jpg'" alt=""></a>
+                        <a href="https://idex.market/eth/pfr" target="_blank" class="bir_item item-2"><img :src="$config.staticUrl+'/images/bir/idex.jpg'" alt=""></a>
+                        <a href="https://stocks.exchange/trade/PFR/BTC" target="_blank" class="bir_item item-3"><img :src="$config.staticUrl+'/images/bir/stocks_exchange.jpg'" alt=""></a>
                     </div>
                 </div>
                 <hr>
@@ -95,10 +95,10 @@
                     <b-col sm="12" md="3">
                         <ul class="footer-menu">
                             <li><b>About us</b></li>
-                            <li><a href="https://payfair.io/whitepapers/full_PF.pdf">White Paper</a></li>
-                            <li><a href="https://payfair.io/#team">Team</a></li>
-                            <li><a href="https://payfair.io/ru/blog">Blog</a></li>
-                            <li><a href="https://payfair.io/ru/about">About</a></li>
+                            <li><a target="_blank" href="https://payfair.io/whitepapers/full_PF.pdf">White Paper</a></li>
+                            <li><a target="_blank" href="https://payfair.io/team">Team</a></li>
+                            <li><a target="_blank" href="https://payfair.io/blog">Blog</a></li>
+                            <li><a target="_blank" href="https://payfair.io/about">About</a></li>
                         </ul>
                     </b-col>
                     <b-col sm="12" md="3">

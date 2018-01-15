@@ -39,7 +39,7 @@
                             <b-form-input id="amount" type="text" v-model="send_form.amount" :state="isValid('amount')"></b-form-input>
                         </b-form-group>
                         <b-button disabled v-if="balance[active_currency] == 0">Send</b-button>
-                        <b-button v-if="balance[active_currency] != 0" type="submit" variant="primary">Send</b-button> <span v-if="sending"><img :src="$config.backendUrl+'/images/loading.gif'"> Transaction pending</span>
+                        <b-button v-if="balance[active_currency] != 0" type="submit" variant="primary">Send</b-button> <span v-if="sending"><img :src="$config.staticUrl+'/images/loading.gif'"> Transaction pending</span>
                     </b-form>
                 </b-card>
                 <b-card :header="'Receive ' + active_currency" class="send">

@@ -318,7 +318,7 @@ module.exports = function (web3) {
                     sender: req.user._id,
                     user: req.body.role === 'seller' ? result.buyer : result.seller,
                     deal: result._id,
-                    type: 'deal',
+                    type: 'newDeal',
                     text: result.name,
                 };
 
@@ -326,6 +326,7 @@ module.exports = function (web3) {
             }).then(function (notification) {
                 Notification.findById(notification._id)
                     .populate('deal')
+                    .populate('sender', 'username')
                     .then(notification => {
                         const io = req.app.io;
                         const clients = io.clients[notification.user];
@@ -386,6 +387,8 @@ module.exports = function (web3) {
                 });
             }
 
+            let owner = null;
+
             Exchange.findOne({
                 _id: req.body.exchange
             }).populate('owner', ['-password', '-wallet']).then(function (exchange) {
@@ -398,6 +401,8 @@ module.exports = function (web3) {
                     exchange: exchange._id
                 };
 
+                owner = exchange.owner;
+
                 if (exchange.tradeType === 'sell') {
                     deal.seller = req.user._id;
                     deal.buyer = exchange.owner;
@@ -409,7 +414,33 @@ module.exports = function (web3) {
                 }
                 return new Deal(deal).save();
             }).then(function(deal){
-                return res.json({success: true, deal: deal});
+                const notification = {
+                    sender: req.user._id,
+                    user: owner,
+                    deal: deal._id,
+                    type: 'dealFromExchange',
+                    text: deal.name,
+                };
+
+                return new Notification(notification).save().then(function (notification) {
+                    return {deal: deal, notification: notification}
+                });
+            }).then(function (data) {
+                Notification
+                    .findById(data.notification._id)
+                    .populate({path: 'deal', populate: [{path: 'exchange', select: ['tradeType']}]})
+                    .populate('sender', 'username')
+                    .then(function (notification) {
+                        const io = req.app.io;
+                        const clients = io.clients[data.notification.user._id];
+
+                        if (clients) {
+                            for (let client of clients) {
+                                io.to(client).emit('notification', notification);
+                            }
+                        }
+                    })
+                return res.json({success: true, deal: data.deal});
             }).catch(function (err){
                 console.log('/deals/exchange error:', err);
             });

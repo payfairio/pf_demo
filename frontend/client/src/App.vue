@@ -1,9 +1,9 @@
 <template>
     <div id="app">
         <div class="wrap">
-            <div class="demo-topbar">This is just demo on ropsten testnet. Don't use this app for real trades. <a href="https://ropsten.etherscan.io">etherscan for ropsten</a></div>
+            <div class="demo-topbar">This is just a demo on the ropsten testnet. Please do not use this app for real trades. <a href="https://ropsten.etherscan.io">etherscan for ropsten</a></div>
             <b-navbar toggleable="md" type="dark" variant="gray">
-                <b-navbar-brand :to="'/'"><img :src="$config.backendUrl+'/images/pfr_logo.svg'" alt="PayFair"></b-navbar-brand>
+                <b-navbar-brand :to="'/'"><img :src="$config.staticUrl+'/images/pfr_logo.svg'" alt="PayFair"></b-navbar-brand>
 
                 <b-nav-toggle target="nav_collapse"></b-nav-toggle>
                 <b-collapse is-nav id="nav_collapse">
@@ -14,8 +14,30 @@
                         <b-nav-item v-if="$auth.check()" :to="{name: 'deals'}">Your deals</b-nav-item>
                     </b-nav>
                     <b-nav is-nav-bar class="ml-auto">
-                        <b-nav-item v-if="false && $auth.check()" v-on:click="showNotifications" class="ntf"><span id="notify">{{this.notifications.length}}</span></b-nav-item>
-
+                        <b-nav-item-dropdown v-if="$auth.check()" v-on:click="showNotifications" id="notifdown" class="ntf">
+                            <template slot="button-content">
+                                <span id="notify"><span>{{uncheckedNotifications}}</span></span>
+                            </template>
+                            <b-dropdown-header>Notifications</b-dropdown-header>
+                            <div class="notif-body">
+                                <template
+                                    v-for="notification in notifications"
+                                >
+                                    <b-dropdown-item v-bind:key="notification._id" @click="$router.push({name: 'deal', params: {id: notification.deal.dId}})">
+                                        <div :class="'title' + (notification.viewed ? '' : ' new')">
+                                            {{getNotificationTitle(notification)}}
+                                            <div class="time">
+                                                <small v-if="isToday(notification.created_at)">Today, {{notification.created_at | moment("HH:mm:ss")}}</small>
+                                                <small v-if="!isToday(notification.created_at)">{{notification.created_at | moment("MM.D, HH:mm:ss")}}</small>
+                                            </div>
+                                        </div>
+                                        <div class="text">
+                                            {{getNotificationText(notification)}}
+                                        </div>
+                                    </b-dropdown-item>
+                                </template>
+                            </div>
+                        </b-nav-item-dropdown>
                         <b-nav-item-dropdown v-if="$auth.check() && $auth.ready()" right>
                             <template slot="button-content">
                                 <span>Wallet</span>
@@ -29,7 +51,7 @@
                                     </span>
                                 </div>
                                 <div v-for="(value, name) in getBalances()" class="currency">
-                                    <span>{{name}}</span>
+                                    <span>{{name.toUpperCase()}}</span>
                                     <span class="right">
                                         <span class="total">{{value.total}}</span>
                                         <span class="hold">({{value.hold}})</span>
@@ -57,15 +79,48 @@
                 </b-collapse>
             </b-navbar>
             <div class="container" id="app-content-container">
-                <div v-if="$auth.ready() && (socketReady || !$auth.check())">
-                    <b-alert variant="info"
+                <div v-if="$auth.user().status == 'unverified'">
+                    <div class="welcome">
+                        <b-row align-h="center">
+                            <b-col sm="12">
+                                <div class="wel-inner text-center">
+                                    <h3>Hello, {{$auth.user().username}}</h3>
+                                    <p>Please check email and verify your account.</p>
+                                </div>
+                            </b-col>
+                        </b-row>
+                    </div>
+                </div>
+                <div v-if="$auth.ready() && (socketReady || !$auth.check()) && ($auth.user().status == 'active' || !$auth.check())">
+                    <!-- <b-alert variant="info"
                              dismissible
                              :show="showNotification"
                              @dismissed="showNotification=false">
                         <router-link :to="{name: 'deal', params: {id: notification.id}}"><span @click="showNotification=false">{{notification.message}}</span></router-link>
-                    </b-alert>
+                    </b-alert> -->
+
+                    <div id="new-notifics">
+                        <div class="notification" v-for="notif in newNotifications" v-bind:key="notif._id" @click="noitfTimer(notif)">
+                            <div class="notification-header">
+                                {{getNotificationTitle(notif)}}
+                                <span class="close" @click="newNotifications.splice(newNotifications.indexOf(notif), 1)">×</span>
+                            </div>
+                            <div class="notification-body">
+                                <template v-for="item in getNotificationMessage(notif)">
+                                    {{item.name}}: <router-link v-if="item.link" :to="item.link">{{item.text}}</router-link>{{!item.link ? item.text : ''}}<br>
+                                </template>
+                            </div>
+                        </div>
+                        <div v-if="newNotifications.length > 1" class="hide-notif" @click="newNotifications = []">
+                            Hide All
+                        </div>
+                    </div>
+
                     <router-view></router-view>
                 </div>
+
+                
+
                 <div v-if="!$auth.ready() || (!socketReady && $auth.check())">
                     Loading ...
                 </div>
@@ -73,22 +128,23 @@
         </div>
         <footer class="footer">
             <div class="container">
-                <div class="coinmarket_inner">
+                <b-row>
+                <b-col md="6" class="coinmarket_inner">
                     <div class="coinmarketcap-currency-widget" data-currency="payfair" data-base="ETH" data-secondary="USD" data-ticker="true" data-rank="true" data-marketcap="true" data-volume="true" data-stats="USD" data-statsticker="false"></div>
-                </div>
-                <hr>
-                <div class="firstscreen_market">
-                    <h4 class="text-center">You can buy/sell PFR token here:</h4>
+                </b-col>
+                <b-col md="6" class="firstscreen_market">
+                    <h4 class="text-center">You can buy/sell PFR tokens here:</h4>
                     <div class="bir-list">
-                        <a href="https://etherdelta.com/#PFR-ETH" target="_blank" class="bir_item item-1"><img :src="$config.backendUrl + '/images/bir/ether_delta.jpg'" alt=""></a>
-                        <a href="https://idex.market/eth/pfr" target="_blank" class="bir_item item-2"><img :src="$config.backendUrl + '/images/bir/idex.jpg'" alt=""></a>
-                        <a href="https://stocks.exchange/trade/PFR/BTC" target="_blank" class="bir_item item-3"><img :src="$config.backendUrl + '/images/bir/stocks_exchange.jpg'" alt=""></a>
+                        <a href="https://etherdelta.com/#PFR-ETH" target="_blank" class="bir_item item-1"><img :src="$config.staticUrl + '/images/bir/ether_delta.jpg'" alt=""></a>
+                        <a href="https://idex.market/eth/pfr" target="_blank" class="bir_item item-2"><img :src="$config.staticUrl + '/images/bir/idex.jpg'" alt=""></a>
+                        <a href="https://stocks.exchange/trade/PFR/BTC" target="_blank" class="bir_item item-3"><img :src="$config.staticUrl + '/images/bir/stocks_exchange.jpg'" alt=""></a>
                     </div>
-                </div>
+                </b-col>
+                </b-row>
                 <hr>
                 <div class="row footer-row">
                     <b-col sm="12" md="3">
-                        <a href="/">PayFair</a>
+                        <a href="/"><img :src="$config.staticUrl+'/images/pfr_logo.svg'" alt="PayFair"></a>
                     </b-col>
                     <b-col sm="12" md="3">
                         <ul class="footer-menu">
@@ -101,10 +157,10 @@
                     <b-col sm="12" md="3">
                         <ul class="footer-menu">
                             <li><b>About us</b></li>
-                            <li><a href="https://payfair.io/whitepapers/full_PF.pdf">White Paper</a></li>
-                            <li><a href="https://payfair.io/#team">Team</a></li>
-                            <li><a href="https://payfair.io/ru/blog">Blog</a></li>
-                            <li><a href="https://payfair.io/ru/about">About</a></li>
+                            <li><a target="_blank" href="https://payfair.io/whitepapers/full_PF.pdf">White Paper</a></li>
+                            <li><router-link :to="{name: 'team'}">Team</router-link></li>
+                            <li><router-link :to="{name: 'blog'}">Blog</router-link></li>
+                            <li><router-link :to="{name: 'about'}">About</router-link></li>
                         </ul>
                     </b-col>
                     <b-col sm="12" md="3">
@@ -114,9 +170,15 @@
                             <li><a target="_blank" href="https://t.me/payfair">Telegram</a></li>
                             <li><a target="_blank" href="https://twitter.com/payfairio">Twitter</a></li>
                             <li><a target="_blank" href="https://www.facebook.com/Payfairio/">Facebook</a></li>
-                            <li><a target="_blank" href="https://vk.com/iopayfair">VK</a></li>
+                            <li><a target="_blank" href="https://github.com/payfairio/pf_demo">Github</a></li>
                         </ul>
                     </b-col>
+                </div>
+                <div class="footer-dashboard-links">
+                    <ul>
+                        <li><a target="_blank" href="https://trust.payfair.io">Trust-node dashboard</a></li>
+                        <li><a target="_blank" href="https://escrow.payfair.io">Escrow-node dashboard</a></li>
+                    </ul>
                 </div>
             </div>
         </footer>
@@ -134,10 +196,12 @@
                 notificationsCount: 0,
                 notificationsVisible: false,
                 socketReady: false,
+                uncheckedNotifications: 0,
                 balance: {
                     pfr: {total: 0, hold: 0},
                     eth: {total: 0, hold: 0}
-                }
+                },
+                newNotifications: []
             }
         },
         sockets: {
@@ -150,6 +214,7 @@
             },
             authorized: function () {
                 this.socketReady = true;
+                this.getNotifications();
             },
             unauthorized: function () {
                 console.log('socket unauthorized');
@@ -159,20 +224,34 @@
                 location.reload();
             },
             notification: function (data) {
-                console.log(data);
-                if (data.type === 'deal') {
-                    this.notifications.push(`New deal: ${data.text}`);
-                    this.notification = {
-                        message: `New deal: ${data.text}`,
-                        id: data.deal.dId
-                    };
-                } else if (data.type === 'message') {
-                    this.notifications.push(`New message: ${data.text}`);
-                    this.notification = {
-                        message: `New message: ${data.text}`,
-                        id: data.deal.dId
-                    };
+                // if (data.type === 'deal') {
+                //     this.notification = {
+                //         message: `New deal: ${data.text}`,
+                //         id: data.deal.dId
+                //     };
+                // } else if (data.type === 'message') {
+                //     this.notification = {
+                //         message: `New message: ${data.text}`,
+                //         id: data.deal.dId
+                //     };
+                // }
+                let flag = true;
+                if (data.type == 'message') {
+                    data.notifications = 1;
+                    for (let notif of this.notifications) {
+                        if (notif.deal._id ==  data.deal._id) {
+                            notif.notifications++;
+                            this.uncheckedNotifications--;
+                            flag = false;
+                            break;
+                        }
+                    }
                 }
+                if (flag) {
+                    this.notifications.unshift(data);
+                }
+                this.newNotifications.unshift(data);
+                this.uncheckedNotifications++;
                 const route = this.$router.currentRoute;
                 if (route.name !== 'deal' || route.params.id !== data.deal.dId) {
                     this.showNotification = true;
@@ -185,13 +264,18 @@
                  };
                  this.notificationsCount++;
                  }*/
+            },
+            notifications: function (data) {
+                this.notifications = data;
+                this.uncheckedNotifications = 0;
+                this.notifications.map((n) => !n.viewed ? this.uncheckedNotifications++ : false);
             }
         },
         methods: {
-            updateBalance: function(){
+            updateBalance: function () {
                 const balances = this.$auth.user().balances;
                 const holds = this.$auth.user().holds;
-                for (var i in balances) {
+                for (let i in balances) {
                     this.balance[i].total = balances[i];
                     this.balance[i].hold = holds[i];
                 }
@@ -199,8 +283,11 @@
             getBalances: function () {
                 const balances = this.$auth.user().balances;
                 const holds = this.$auth.user().holds;
-                let balance = {};
-                for (var i in balances){
+                const balance = {};
+                for (let i in balances) {
+                    if (!balances.hasOwnProperty(i)) {
+                        continue;
+                    }
                     balance[i] = {};
                     balance[i].total = balances[i];
                     balance[i].hold = holds[i];
@@ -221,6 +308,227 @@
             showNotifications: function (e) {
                 e.preventDefault();
                 this.notificationsVisible = true;
+            },
+            noitfTimer: function (notif) {
+                const vm = this;
+                setTimeout(function () {
+                    if (vm.newNotifications.indexOf(notif) != -1) {
+                        vm.newNotifications.splice(vm.newNotifications.indexOf(notif), 1);
+                    }
+                }, 5000);
+            },
+            isToday(date) {
+                date = new Date(date);
+                return new Date().toLocaleDateString() === date.toLocaleDateString();
+            },
+            getNotifications: function () {
+                const vm = this;
+                this.$http
+                    .get('/users/notifications')
+                    .then(function (response) {
+                        vm.notifications = response.data;
+                        vm.uncheckedNotifications = 0;
+                        vm.notifications.map((n) => !n.viewed ? vm.uncheckedNotifications++ : false);
+                    }, function (err) {
+                        console.log(err);
+                    });
+            },
+            getNotificationTitle: function (notification) {
+                let titles = {
+                    newDeal: 'New deal',
+                    message: 'New message',
+                    dealFromExchange: 'New deal',
+                    changeDealConditions: 'New conditions',
+                    dealConditionsAccepted: 'Conditions accepted',
+                    changeDealSum: 'Deal sum changed',
+                    dealCompleted: 'Deal completed'
+                }
+                return titles[notification.type];
+            },
+            getNotificationText: function (notification) {
+                let result = '';
+                switch (notification.type) {
+                    case 'newDeal' : {
+                        result = 'You have new deal: ' + notification.deal.name
+                    } break;
+                    case 'message' : {
+                        result = 'You have ' + notification.notifications + ' unread messages in deal ' + notification.deal.name
+                    } break;
+                    case 'dealFromExchange' : {
+                        result = notification.sender.username + ' responded to your ' + notification.deal.exchange.tradeType +' - ' + notification.deal.name
+                    } break;
+                    case 'changeDealConditions' : {
+                        result = notification.sender.username + ' changed conditions in deal ' + notification.deal.name
+                    } break;
+                    case 'dealConditionsAccepted' : {
+                        result = notification.sender.username + ' accepted conditions in deal ' + notification.deal.name
+                    } break;
+                    case 'changeDealSum' : {
+                        result = notification.sender.username + ' change deal sum to ' + notification.deal.sum + ' ' + notification.deal.coin + ' in deal ' + notification.deal.name
+                    } break;
+                    case 'dealCompleted' : {
+                        result = notification.deal.name + ' was completed';
+                    } break;
+                }
+                return result;
+            },
+            getNotificationMessage: function (notification) {
+                function getPartOfText (text) {
+                    return text.length > 75 ? text.substr(0, 75) + '...' : text 
+                }
+                /**
+                 * notifications types:
+                 * newDeal - create new deal
+                 * message - get new message in deal
+                 * dealFromExchange - new deal from exchange
+                 * changeDealConditions - change deal conditions
+                 * ...
+                 */
+                let messages = {
+                    newDeal: [
+                        {
+                            name: 'Deal',
+                            link: {
+                                name: 'deal',
+                                params: {
+                                    id: notification.deal.dId
+                                }
+                            },
+                            text: notification.deal.name
+                        },
+                        {
+                            name: 'Counterparty',
+                            link: {
+                                name: 'user-by-id',
+                                params: {
+                                    id: notification.sender._id
+                                }
+                            },
+                            text: notification.sender.username
+                        },
+                        {
+                            name: 'Message',
+                            text: `You have new deal: ${notification.deal.name}`
+                        }
+                    ],
+                    message: [
+                        {
+                            name: 'Deal',
+                            link: {
+                                name: 'deal',
+                                params: {
+                                    id: notification.deal.dId
+                                }
+                            },
+                            text: notification.deal.name
+                        },
+                        {
+                            name: 'From',
+                            link: {
+                                name: 'user-by-id',
+                                params: {
+                                    id: notification.sender._id
+                                }
+                            },
+                            text: notification.sender.username
+                        },
+                        {
+                            name: 'Message',
+                            text: getPartOfText(notification.text)
+                        }
+                    ],
+                    dealFromExchange: [
+                        {
+                            name: 'Deal',
+                            link: {
+                                name: 'deal',
+                                params: {
+                                    id: notification.deal.dId
+                                }
+                            },
+                            text: notification.deal.name
+                        },
+                        {
+                            name: 'Counterparty',
+                            link: {
+                                name: 'user-by-id',
+                                params: {
+                                    id: notification.sender._id
+                                }
+                            },
+                            text: notification.sender.username
+                        },
+                        {
+                            name: 'Message',
+                            text: `You have new deal: ${notification.deal.name}`
+                        }
+                    ],
+                    changeDealConditions: [
+                        {
+                            name: 'Deal',
+                            link: {
+                                name: 'deal',
+                                params: {
+                                    id: notification.deal.dId
+                                }
+                            },
+                            text: notification.deal.name
+                        },
+                        {
+                            name: 'Conditions',
+                            text: getPartOfText(notification.text)
+                        }
+                    ],
+                    dealConditionsAccepted: [
+                        {
+                            name: 'Deal',
+                            link: {
+                                name: 'deal',
+                                params: {
+                                    id: notification.deal.dId
+                                }
+                            },
+                            text: notification.deal.name
+                        },
+                        {
+                            name: 'Message',
+                            text: notification.sender.username + ' accepted your conditions conditions'
+                        }
+                    ],
+                    changeDealSum: [
+                        {
+                            name: 'Deal',
+                            link: {
+                                name: 'deal',
+                                params: {
+                                    id: notification.deal.dId
+                                }
+                            },
+                            text: notification.deal.name
+                        },
+                        {
+                            name: 'Message',
+                            text: notification.sender.username + ' change deal sum to ' + notification.deal.sum + ' ' + notification.deal.coin + ' in deal ' + notification.deal.name
+                        }
+                    ],
+                    dealCompleted: [
+                        {
+                            name: 'Deal',
+                            link: {
+                                name: 'deal',
+                                params: {
+                                    id: notification.deal.dId
+                                }
+                            },
+                            text: notification.deal.name
+                        },
+                        {
+                            name: 'Message',
+                            text: notification.sender.username + ' accept deal ' + notification.deal.name
+                        }
+                    ]
+                }
+                return messages[notification.type] || [];
             }
         },
         watch: {
@@ -281,7 +589,6 @@
         border-radius: 100%;
         background: #636b6f;
     }
-
     .profile-card {
         text-align: center;
     }
@@ -291,11 +598,23 @@
         background: #636b6f;
         width: 256px;
     }
-
+    #notifdown .dropdown-toggle::after{
+        content: none;
+    }
+    #notifdown .dropdown-menu{
+        left: auto;
+        right: -20px;
+    }
+    #notifdown .dropdown-item:focus,
+    #notifdown .dropdown-item:hover{
+        background-color: inherit;
+        color: inherit;
+    }
     .footer {
         background-color: #f5f5f5;
         border-top: 1px solid #ddd;
         padding-top: 20px;
+        box-shadow: 0 0 20px -5px;
     }
     .footer-links {
         text-align: center;
@@ -320,5 +639,99 @@
     .currencies{
         width: 250px;
         margin-bottom: 10px;
+    }
+
+    .footer-dashboard-links ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        text-align: center;
+    }
+    .footer-dashboard-links ul li {
+        margin: 0 15px;
+        display: inline-block;
+    }
+
+
+    #notifdown > .dropdown-menu {
+        max-height: 200px;
+        width: 300px;
+    }
+    #notifdown > .dropdown-menu > .notif-body > .dropdown-item {
+        white-space: normal;
+        outline: none;
+    }
+    #notifdown .dropdown-header {
+        box-shadow: 0 3px 3px #dedede;
+        margin-bottom: 1px;
+    }
+    #notifdown .dropdown-item .title {
+        font-size: 16px;
+        position: relative;
+    }
+    #notifdown .dropdown-item .title .time {
+        position: absolute;
+        top: 0px;
+        right: -10px;
+        font-size: 14px;
+        color: #7e7e7e;
+    }
+    #notifdown .dropdown-item .text {
+        font-size: 14px;
+        color: #777;
+    }
+    #notifdown .dropdown-item:not(:last-child) {
+        border-bottom: 1px solid #dedede;
+    }
+    .notif-body {
+        overflow-y: auto;
+        position: relative;
+        max-height: calc(167px - 0.3rem);
+    }
+    #notifdown .title.new:after {
+        content: '';
+        width: 8px;
+        height: 8px;
+        background: #47e2ce;
+        display: inline-block;
+        border-radius: 100%;
+    }
+    #new-notifics {
+        position: fixed;
+        left: 20px;
+        bottom: -10px;
+        width: 300px;
+        z-index: 10;
+    }
+    .notification {
+        background: #fff;
+        box-shadow: 0 0 10px #999;
+        margin-bottom: 20px;
+    }
+    .notification-header {
+        padding: 10px;
+        background: #53e5d3;
+        color: #fff;
+    }
+    .notification .close {
+        line-height: 0.5;
+        color: #777;
+        cursor: pointer;
+    }
+    .notification-body {
+        padding: 10px;
+    }
+    .hide-notif {
+        padding: 5px;
+        margin-bottom: 20px;
+        background: #7ae1d2;
+        font-size: 16px;
+        text-align: center;
+        color: #fff;
+        cursor: pointer;
+        box-shadow: 0 0 10px #999;
+    }
+    .hide-notif:hover {
+        box-shadow: 0 0 10px #666;
     }
 </style>

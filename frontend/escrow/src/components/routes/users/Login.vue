@@ -45,7 +45,7 @@
                 this.$auth.login({
                     data: this.form,
                     success: function (response) {
-                        vm.$socket.connect(vm.$config.backendUrl);
+                        vm.$socket.connect(vm.$config.staticUrl);
                     },
                     error: function (err) {
                         if (err.response.status === 400) {

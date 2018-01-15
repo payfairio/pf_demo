@@ -32,10 +32,14 @@
                     <div v-for="review in reviews" class="review">
                         <p>
                             <b>By:</b> <router-link :to="{name: 'user-by-id', params: {id: review.author._id}}">{{review.author.username}}</router-link><br>
-                            <b>Rating:</b> {{review.rating}}<br>
-                            <b>Comment:</b><br>
-                            {{review.comment}}
+                            <!-- <b>Rating:</b> {{review.rating}}<br>
+                            <b>Comment:</b><br> -->
                         </p>
+                        <p class="float-left">Rating:</p>
+                        <div v-for="i in review.rating">
+                            <span></span>
+                        </div>
+                        <p>{{review.comment}}</p>
                         <hr>
                     </div>
                 </b-card>
@@ -127,5 +131,15 @@ export default {
 }
 </script>
 <style scoped>
-
+.review span {
+    width: 20px;
+    height: 20px;
+}
+.review p{
+    clear:both;
+}
+.review div{
+    float: left;
+    margin-left: 5px;
+}
 </style>

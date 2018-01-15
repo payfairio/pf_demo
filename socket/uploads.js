@@ -26,7 +26,7 @@ const _emitComplete = function (socket, id) {
     }
     new Attachment({
         name: fileInfo.name,
-        user: socket.decoded_token._id,
+        user: socket.decoded_token._id, 
     }).save().then(function (doc) {
         fs.rename(path.resolve('temp/'+socket.id+fileInfo.name), path.resolve('private-docs/'+doc._id+'_'+doc.name), function (err) {});
         socket.emit('uploadComplete', {

@@ -20,9 +20,6 @@
                 </div>
                 <hr>
                 <div class="deal-actions">
-                    <div class="form-group"><button @click="openConditions('seller')" class="btn btn-default">Seller conditions</button> <button v-if="deal.seller && deal.seller._id === $auth.user()._id && deal.status === 'new'" class="btn btn-primary" @click="openConditions('seller');changeConditionsClick();">change</button></div>
-                    <div class="form-group"><button @click="openConditions('buyer')" class="btn btn-default">Buyer conditions</button> <button v-if="deal.buyer && deal.buyer._id === $auth.user()._id && deal.status === 'new'" class="btn btn-primary" @click="openConditions('buyer');changeConditionsClick();">change</button></div>
-
                     <div class="form-group" v-if="deal.status === 'new'">
                         <button v-if="!conditionsAcceptedByMe" class="btn btn-success" @click="acceptConditionsAndSum">Accept conditions and sum</button>
                         <p v-if="conditionsAcceptedByMe">You are already accepted conditions and sum. If your counterparty change them then you will have to accept them again for deal start.</p>
@@ -55,6 +52,7 @@
                                     <div :class="message.sender._id == $auth.user()._id ? 'text text-l' : 'text text-r'">
                                         <p class="msg-sender">{{message.sender._id == $auth.user()._id ? 'You' : message.sender.username}}</p>
                                         <p class="msg-text">{{message.text}}</p>
+                                        <div v-for="attachment in message.attachments" v-if="isType(attachment.name) === 'png' || isType(attachment.name) === 'jpeg' || isType(attachment.name) === 'gif' || isType(attachment.name) === 'bmp'"><img class="img-deal" :src="$config.backendUrl+'/attachments/'+attachment._id"></div>
                                         <div v-for="attachment in message.attachments"><a target="_blank" :href="$config.backendUrl+'/attachments/'+attachment._id">{{attachment.name}}</a></div>
                                         <p class="msg-time">
                                             <small v-if="isToday(message.created_at)">Today, {{message.created_at | moment("HH:mm:ss")}}</small>
@@ -96,7 +94,7 @@
             </b-col>
             <b-col md="3">
                 <div class="profile-card">
-                    Counterparty: <router-link :to="{name: 'user-by-id', params: {id: counterparty._id}}">{{counterparty.username ? counterparty.username : counterparty.email}}</router-link><br>
+                    Counterparty: <router-link v-if="counterparty._id" :to="{name: 'user-by-id', params: {id: counterparty._id}}">{{counterparty.username ? counterparty.username : counterparty.email}}</router-link><br>
                     Role: {{counterPartyRole}}<br>
                     <img :src="counterparty.profileImg">
                     <!-- <div class="rating">
@@ -107,14 +105,52 @@
                 </div>
             </b-col>
         </b-row>
-
+        <hr>
+        <b-row class="buy-sel-conditions">
+            <b-col md="6">
+                <div class="" v-if="deal.seller && deal.seller._id === $auth.user()._id">
+                    <h4>Seller conditions</h4>
+                    <p>{{deal.sellerConditions}}</p>
+                    <button v-if="deal.status === 'new' && conditionsEdition === false" class="btn btn-primary" @click="openConditions('seller');changeConditionsClick();">change</button>
+                </div>
+                <div class="" v-if="deal.buyer && deal.buyer._id === $auth.user()._id">
+                    <h4>Buyer conditions</h4>
+                    <p>{{deal.buyerConditions}}</p>
+                    <button v-if="deal.status === 'new' && conditionsEdition === false" class="btn btn-primary" @click="openConditions('buyer');changeConditionsClick();">change</button>
+                </div>
+                <div class="" v-if="((deal.seller && deal.seller._id === $auth.user()._id) || (deal.buyer && deal.buyer._id === $auth.user()._id)) && deal.status === 'new' && conditionsEdition === true">
+                    <h4>{{activeCondition.role}} conditions</h4>
+                    <b-form-textarea class="form-modal-conditions" v-model="activeCondition.editedText" :rows="9"></b-form-textarea>
+                    <div slot="modal-footer" class="w-100">
+                        <b-btn v-if="conditionsEdition" size="sm" class="float-right" @click="submitConditions" variant="success">Save</b-btn>
+                        <b-btn v-if="conditionsEdition" size="sm" class="float-right" @click="cancelConditionsChange">Cancel</b-btn>
+                    </div>
+                </div>
+            </b-col>
+            <b-col md="6">
+                <div class="" v-if="deal.seller && deal.seller._id === $auth.user()._id">
+                    <h4>Buyer conditions</h4>
+                    <p>{{deal.buyerConditions}}</p>
+                </div>
+                <div class="" v-if="deal.buyer && deal.buyer._id === $auth.user()._id">
+                    <h4>Seller conditions</h4>
+                   <p>{{deal.sellerConditions}}</p>
+                </div>
+            </b-col>
+        </b-row>
         <b-modal v-model="reviewModal" title="Comment your counterparty!" @hide="cancelReview">
+            <p>Rate: </p>
             <div class="rating">
-                <p>Rate: </p>
-                <span v-for="i in 5" >
-                    <input type="radio" :id="'r_' + i" v-model="review.rating" :value="i">
-                    <label :for="'r_' + i">{{i}}</label>
-                </span>
+                <input type="radio" :id="'r_5'" v-model="review.rating" :value="5">
+                <label :for="'r_5'"></label>
+                <input type="radio" :id="'r_4'" v-model="review.rating" :value="4">
+                <label :for="'r_4'"></label>
+                <input type="radio" :id="'r_3'" v-model="review.rating" :value="3">
+                <label :for="'r_3'"></label>
+                <input type="radio" :id="'r_2'" v-model="review.rating" :value="2">
+                <label :for="'r_2'"></label>
+                <input type="radio" :id="'r_1'" v-model="review.rating" :value="1">
+                <label :for="'r_1'"></label>                
                 
             </div>
             <b-form-group id="commentInputGroup" label="Your comment:" label-for="comment" :state="isValid('comment')" :feedback="errorMessage('comment')">
@@ -127,21 +163,6 @@
             </div>
         </b-modal>
         
-
-        <!-- Modal Conditions Component -->
-        <b-modal v-model="conditionsModal" :title="activeCondition.role+' conditions'" @hide="cancelConditionsChange">
-            <p v-if="conditionsEdition === false" class="">{{activeCondition.text}}</p>
-            <div v-if="conditionsEdition === true" class="">
-                <b-form-textarea v-model="activeCondition.editedText" :rows="9"></b-form-textarea>
-            </div>
-            <div slot="modal-footer" class="w-100">
-                <b-btn v-if="activeCondition.role && !conditionsEdition && deal[activeCondition.role.toLowerCase()] && deal[activeCondition.role.toLowerCase()]._id === $auth.user()._id" size="sm" @click="changeConditionsClick" class="float-right" variant="primary">Change</b-btn>
-
-                <b-btn v-if="conditionsEdition" size="sm" class="float-right" @click="submitConditions" variant="success">Save</b-btn>
-                <b-btn v-if="conditionsEdition" size="sm" class="float-right" @click="cancelConditionsChange">Cancel</b-btn>
-            </div>
-        </b-modal>
-
         <!-- Modal Sum Component -->
         <b-modal v-model="sumModal" :title="'Deal sum'">
             <p>Current sum: {{deal.sum}}ETH</p>
@@ -194,6 +215,11 @@
                 },
                 sumModal: false,
                 conditionsModal: false,
+                /*sellerConditions:{
+                    text: '',
+                    editedText: ''
+                },*/
+
                 activeCondition: {
                     role: '',
                     text: '',
@@ -228,9 +254,9 @@
                 this.counterparty = data.counterparty;
                 this.deal = data.deal;
                 if (!this.counterparty.profileImg) {
-                    this.counterparty.profileImg = this.$config.backendUrl+'/images/default-user-img.png';
+                    this.counterparty.profileImg = this.$config.staticUrl+'/images/default-user-img.png';
                 } else {
-                    this.counterparty.profileImg = this.$config.backendUrl+'/profile-pic/'+this.counterparty.profileImg;
+                    this.counterparty.profileImg = this.$config.staticUrl+'/profile-pic/'+this.counterparty.profileImg;
                 }
 
                 const vm = this;
@@ -367,6 +393,7 @@
                        name: item.name,
                        size: item.size,
                        file: item,
+                       type: item.type,
                        progress: 0,
                        downloaded: 0,
                        _id: null
@@ -401,7 +428,7 @@
 
 
             openConditions: function (role) {
-                this.conditionsModal = true;
+                //this.conditionsModal = true;
                 switch (role) {
                     case 'seller':
                         this.activeCondition.role = 'Seller';
@@ -431,6 +458,7 @@
                     vm.$socket.emit('set_deal_condition', data);
                     vm.conditionsModal = false;
                     vm.$swal('Success', 'Deal conditions changed. But it must be accepted by your counterparty', 'success');
+                    this.conditionsEdition = false;
                 }
             },
             acceptConditionsAndSum: function () {
@@ -509,6 +537,9 @@
                 date = new Date(date);
                 return new Date().toLocaleDateString() === date.toLocaleDateString();
             },
+            isType(filename) {
+                return filename.split('.').pop();
+            },
             cancelReview: function () {
                 this.reviewModal = false;
             },
@@ -541,10 +572,10 @@
             }
         },
         watch: {
-            id: function(){
+            id: function (val, oldVal) {
                 // reset data
-                this.$socket.emit('leave_chat', {deal_id: this.id});
-                this.$socket.emit('join_chat', {deal_id: this.id});
+                this.$socket.emit('leave_chat', {deal_id: oldVal});
+                this.$socket.emit('join_chat', {deal_id: val});
             }
         }
     }
@@ -662,29 +693,31 @@
     }
 
     div.rating {
-        height: 30px;
         display: flex;
         justify-content: center;
         margin: 10px 0;
+        direction: rtl;
     }
 
     div.rating label {
         float: left;
-        width: 30px;
-        height: 30px;
-        border: 1px solid #aaa;
-        margin: 0px 3px;
-        border-radius: 100px;
-        background: #fff;
+        width: 50px;
+        height: 50px;
+        margin: 0px 10px;
         overflow: hidden;
         text-align: center;
+        background-size: contain;
+        background-repeat: no-repeat;
+        filter: grayscale(1);
     }
     div.rating input{
         display: none;
     }
     div.rating label:hover,
-    div.rating input:checked+label{
-        background: #b0fb78
+    div.rating input:checked+label,
+    div.rating input:checked ~ label,
+    div.rating label:hover ~ label{
+        filter: grayscale(0);
     }
 
     div.rating .fill{
@@ -704,5 +737,26 @@
         border: 1px solid #ddd!important;
         border-radius: 100%;
         margin: 0 5px;
+    }
+    .modal .btn-success, .btn-secondary{
+        margin-left:5px;
+    }
+    .img-deal {
+        max-width: 70%;
+    }
+    .buy-sel-conditions h3 {
+        text-align: center;
+        padding-bottom: 20px;
+    }
+    .form-modal-conditions {
+        height: 150px;
+        overflow: hidden;
+        resize: none;
+    }
+    .buy-sel-conditions .btn-secondary{
+        margin-right: 10px;
+    }
+    .buy-sel-conditions .btn-sm{
+        margin-top: 5px;
     }
 </style>

@@ -18,12 +18,14 @@ mongoose.connect(config.database, {
     useMongoClient: true
 });
 
+const Sequelize = require('sequelize');
+const Op = Sequelize.Op;
+const sequelize = new Sequelize(config.mysql, {
+    operatorsAliases: Op
+});
+
 
 app.use(passport.initialize());
-
-// view engine setup
-// app.set('views', path.join(__dirname, 'views'));
-// app.set('view engine', 'jade');
 
 app.use(logger('dev'));
 app.use(cookieParser());
@@ -34,29 +36,31 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname + '/node_modules'));
 
 
-app.use(function(req, res, next) {
+app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
     next();
 });
 
-app.use('/', require('./routes/index')(web3));
-app.use('/users', require('./routes/users')(web3));
-app.use('/deals', require('./routes/deals')(web3));
-app.use('/wallet', require('./routes/wallet')(web3));
-app.use('/exchanges', require('./routes/exchanges'));
-app.use('/suggestions', require('./routes/suggestions'));
-app.use('/attachments', require('./routes/attachments'));
+app.use('/api/', require('./routes/index')(web3));
+app.use('/api/users', require('./routes/users')(web3));
+app.use('/api/deals', require('./routes/deals')(web3));
+app.use('/api/wallet', require('./routes/wallet')(web3));
+app.use('/api/exchanges', require('./routes/exchanges'));
+app.use('/api/suggestions', require('./routes/suggestions'));
+app.use('/api/attachments', require('./routes/attachments'));
+app.use('/api/blog', require('./routes/blog')(sequelize));
+app.use('/api/coins', require('./routes/coins'));
 
 // catch 404 and forward to error handler
-app.use(function(req, res, next) {
+app.use((req, res, next) => {
   let err = new Error('Not Found');
   err.status = 404;
   next(err);
 });
 
 // error handler
-app.use(function(err, req, res, next) {
+app.use((err, req, res) => {
   // set locals, only providing error in development
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};

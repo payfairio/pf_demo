@@ -75,7 +75,7 @@
                     this.$auth.register({
                         data: this.form,
                         success: function (response) {
-                            vm.$socket.connect(vm.$config.backendUrl);
+                            vm.$socket.connect(vm.$config.staticUrl);
                         },
                         error: function (err) {
                             if (err.response.status === 400) {
@@ -86,7 +86,7 @@
                     });
                 } else {
                     vm.$http.post('/users/acceptinv/'+this.invite, this.form).then(function (response) {
-                        vm.$socket.connect(vm.$config.backendUrl);
+                        vm.$socket.connect(vm.$config.staticUrl);
                         vm.$auth.login({
                             data: vm.form
                         })

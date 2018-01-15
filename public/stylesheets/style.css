@@ -14,9 +14,23 @@ body {
   font-weight: 300;
 }
 
+h1 {
+  margin-top: 1rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+h2 {
+  text-align: center;
+  margin-top: 1rem;
+  margin-bottom: 2rem;
+}
 
 a {
-  color: #00B7FF;
+  color: #3db895;
+}
+a:hover {
+  color: #308f70;
 }
 
 .navbar-nav > li .btn-link {
@@ -24,13 +38,34 @@ a {
 }
 #app-content-container {
   padding-top: 20px;
-  padding-bottom: 20px;
+  padding-bottom: 30px;
 }
-
+#notify{
+  background: url(../images/notify-icon.png);
+  background-size: contain;
+  background-repeat: no-repeat;
+  display: block;
+  width: 15px;
+  height: 17px;
+  margin-top: 2px;
+  position: relative;
+}
+#notify span{
+  background-color: #47e2ce;
+  width: 13px;
+  height: 13px;
+  position: absolute;
+  text-align: center;
+  border-radius: 10px;
+  font-size: 10px;
+  left: -8px;
+  top: 8px;
+  line-height: 13px;
+  color: #fff;
+}
 .centered-rows-table.table td {
   vertical-align: middle;
 }
-
 .coinmarket_inner {
   margin: 20px 0;
   display: flex;
@@ -50,13 +85,16 @@ ul.footer-menu a {
 }
 .bir-list {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   justify-content: space-around;
+  align-items: center;
 }
 .bir-list a {
   overflow: hidden;
   border: 1px solid #dedede;
   box-shadow: 0 0 1px #dedede;
+  width: 150px;
+  margin: 5px 0;
 }
 .bir-list a img {
   transform: scale(1);
@@ -68,8 +106,9 @@ ul.footer-menu a {
   filter: grayscale(70%);
 }
 .firstscreen_market > h4 {
-  font-size: 24px;
-  margin-bottom: 20px;
+  font-size: 18px;
+  margin: 5px 10px;
+  font-weight: bold;
 }
 
 .wrap {
@@ -162,32 +201,74 @@ li.nav-item {
 .nav-profile-card span{
   margin-left: 15px;
 }
-
-.exchanges-list .card-header:focus, .exchanges-list .card-header-tabs:focus{
+.exchanges-list .card-header:focus, .exchanges-list .card-header-tabs:focus,
+.deals-list .card-header:focus, .deals-list .card-header-tabs:focus{
   color:#333;
   border-bottom: 2px solid #49e1cd;
 }
 .exchanges-list .card-header a{
   border: none;
-
-
 }
-.exchanges-list .card-header a.active, .exchanges-list .card-header a:hover{
+.exchanges-list .card-header a.active, .exchanges-list .card-header a:hover,
+.deals-list .card-header a.active, .deals-list .card-header a:hover{
   border-color: #49e1cd;
   border-bottom: 2px solid #49e1cd;
   border-left: 1px solid #eee;
   border-top: 1px solid #eee;
   border-right: 1px solid #eee;
 }
-.exchanges-list table{
+.exchanges-list table,
+.deals-list table{
   background-color: #fff;
   color:#333;
   box-shadow: 0 0 20px -5px;
 }
-
-.exchanges-list table thead tr{
+.exchanges-list table thead tr,
+.deals-list table thead tr{
   background-color: #49e1cd;
   color: #fff;
+}
+
+.welcome {
+  margin-bottom: 40px;
+}
+.wel-inner {
+  background: #fff;
+  padding: 20px;
+  border: 1px solid #dedede;
+  border-radius: 4px;
+}
+.wel-inner > h3 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+}
+div.rating label, .review span{
+  background: url(../images/rating-star.png);
+}
+.review span{
+    float: left;
+    width: 20px;
+    height: 20px;    
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+.review p{
+    clear:both;
+}
+.review div{
+    float: left;
+    margin-left: 5px;
+}
+#sec-1{
+  background: url(../images/about/sec-1-bg.png) no-repeat 100% 0;
+  background-size: 52.5%;
+  padding-top: 62px;
+}
+#sec-2{
+  background: url(../images/about/sec-2-right-bg.png) no-repeat 100% 0,
+              url(../images/about/sec-2-left-bg.png) no-repeat -80px 4px;
+  background-size: 100%;
+  height: 1057px;
 }
 /**
 * Media query

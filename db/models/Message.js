@@ -27,6 +27,6 @@ const Message = new Schema({
         type: String,
         default: 'message' // message, system
     }
-});
+}, { usePushEach: true });
 
 module.exports = mongoose.model('Message', Message);

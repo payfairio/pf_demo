@@ -13,83 +13,86 @@ const jwt = require('jsonwebtoken');
 
 
 const validator = require('express-validator');
+router.use(validator());
 
-router.use(validator({
-    customValidators: {
-
-    }
-}));
-
-router.get('/', passport.authenticate('jwt', { session: false}), function (req, res, next) {
+router.get('/', passport.authenticate('jwt', { session: false}), (req, res) => {
     let {offset, limit, order, sortBy} = req.query;
     order = order === 'true' ? -1 : 1;
+    let totalItems = 0;
     Exchange.count({owner: req.user._id})
         .then(total => {
-            Exchange.find({owner: req.user._id})
-            .sort({
-                [sortBy]: order
-            })
-            .skip(+offset)
-            .limit(+limit)
-                .then(function (docs) {
-                    return res.json({total, data: docs});
-                }).catch(function (err) {
-                    return res.json(err);
-                });
-        }).catch(error => {
-            return res.json(error);
-        })
+            totalItems = total;
+            return Exchange.find({owner: req.user._id})
+                .sort({
+                    [sortBy]: order
+                })
+                .skip(+offset)
+                .limit(+limit)
+        }).then(docs => {
+            return res.json({total: totalItems, data: docs});
+        }).catch(error => res.json(error));
 });
 
-router.get('/list', function (req, res, next) {
-    let {offset, limit, order, sortBy, type} = req.query;
-    order = order === 'true' ? -1 : 1;
+router.get('/list', async (req, res) => {
+    try {
+        let {offset, limit, order, sortBy, type, coin, currency, payment} = req.query;
+        order = order === 'true' ? -1 : 1;
+        let conditions = {status: 'active'};
+        if (type) {
+            conditions.tradeType = type;
+        }
+        if (coin) {
+            conditions.coin = coin.toUpperCase();
+        }
+        if (currency) {
+            conditions.currency = currency.toUpperCase();
+        }
+        if (payment) {
+            conditions.paymentType = payment;
+        }
 
-    Exchange.count({
-        $and: [
-            {tradeType: type},
-            {status: 'active'}
-        ]
-    })
-        .then(total => {
-            Exchange.aggregate([{
-                $match: {
-                    tradeType: type,
-                    status: 'active'
-                }
-            }, {
+        const total = await Exchange.count(conditions);
+        const items = await Exchange.aggregate([
+            {
+                $match: conditions
+            },
+            {
                 $lookup: {
                     from: 'users',
                     localField: 'owner',
                     foreignField: '_id',
                     as: 'owner'
                 }
-            }, {
+            },
+            {
                 $project: {
                     'owner.password': false,
                     'owner.wallet': false
                 }
-            }, {
+            },
+            {
                 $unwind: '$owner'
-            }, {
+            },
+            {
                 $sort: {
                     'owner.online.status': -1,
                     [sortBy]: order
                 }
-            }, {
+            },
+            {
                 $skip: +offset
-            }, {
+            },
+            {
                 $limit: +limit
             }
-        ]).then(function (docs) {
-            return res.json({total, data: docs});
-        }).catch(function (err) {
-            return res.json(err);
-        });
-    })
+        ]);
+        return res.json({total: total, data: items});
+    } catch(err) {
+        return res.status(500).json(err);
+    }
 });
 
-router.post('/edit/:id', passport.authenticate('jwt', { session: false}), function(req, res, next) {
+router.post('/edit/:id', passport.authenticate('jwt', { session: false}), (req, res) => {
     if (req.user.type !== 'client') {
         return res.status(403).json({error: "Forbidden"});
     }
@@ -104,7 +107,7 @@ router.post('/edit/:id', passport.authenticate('jwt', { session: false}), functi
             }
         },
     });
-    req.getValidationResult().then(function (result) {
+    req.getValidationResult().then(result => {
         if (result.array().length > 0) {
             return res.status(400).json({success: false, errors: result.mapped(), msg: 'Bad request'});
         }
@@ -113,7 +116,7 @@ router.post('/edit/:id', passport.authenticate('jwt', { session: false}), functi
         }
         Exchange.findOne({
             eId: req.params.id
-        }).then(function (doc){
+        }).then(doc => {
             if (!doc) {
                 return res.status(404).json({error: "Exchange not found"});
             }
@@ -126,38 +129,38 @@ router.post('/edit/:id', passport.authenticate('jwt', { session: false}), functi
             doc.conditions = req.body.conditions;
 
             return doc.save();
-        }).then(function(doc){
+        }).then(doc => {
             return res.json(doc);
-        }).catch(function (err){
+        }).catch(err => {
             console.log(err);
         });
     });
 });
 
-router.get('/:id', function (req, res, next) {
+router.get('/:id', (req, res) => {
     Exchange.findOne({eId: req.params.id}).populate('owner', ['-password', '-wallet'])
         .then(function (doc) {
-            return new Promise(function(resolve, reject){
+            return new Promise((resolve, reject) => {
                 if (!doc) {
                     resolve({error: "Exchange not found"});
                 }
-                Review.find({user: doc.owner._id}).populate('author', ['-password', '-wallet']).then(function(reviews){
+                Review.find({user: doc.owner._id}).populate('author', ['-password', '-wallet']).then(reviews => {
                     resolve({exchange: doc, reviews: reviews})
-                }).catch(function(err){
+                }).catch(err => {
                     reject(err);
                 });
             });
-        }).then(function(doc){
+        }).then(doc => {
             if (doc.error){
                 return res.status(404).json(doc.error);
             }
             return res.json(doc);
-        }, function (err) {
+        }).catch(err => {
             return res.status(500).json(err);
         });
 });
 
-router.post('/create', passport.authenticate('jwt', { session: false}), function(req, res, next) {
+router.post('/create', passport.authenticate('jwt', { session: false}), (req, res) => {
     if (req.user.type !== 'client') {
         return res.status(403).json({error: "Forbidden"});
     }
@@ -193,7 +196,7 @@ router.post('/create', passport.authenticate('jwt', { session: false}), function
         },
 
     });
-    req.getValidationResult().then(function (result) {
+    req.getValidationResult().then(result => {
         if (result.array().length > 0) {
             return res.status(400).json({success: false, errors: result.mapped(), msg: 'Bad request'});
         }
@@ -212,22 +215,19 @@ router.post('/create', passport.authenticate('jwt', { session: false}), function
             conditions: req.body.conditions
         };
         new Exchange(ex).save()
-        .then(function (result) {
-            return res.json({success: true, exchange: result});
-        }).catch(function (err) {
-            return res.status(500).json({success: false, error: err});
-        });
+            .then(result => res.json({success: true, exchange: result}))
+            .catch(err => res.status(500).json({success: false, error: err}));
     });
 });
 
-router.post('/close', passport.authenticate('jwt', { session: false}), function(req, res, next) {
+router.post('/close', passport.authenticate('jwt', { session: false}), (req, res) => {
     if (req.user.type !== 'client') {
         return res.status(403).json({error: "Forbidden"});
     }
     Exchange.findOne({
         eId: req.body.id
     })
-        .then(function(ex){
+        .then(ex => {
             if (!ex){
                 throw {msg: "Exchange not found"};
             }
@@ -238,10 +238,10 @@ router.post('/close', passport.authenticate('jwt', { session: false}), function(
             ex.status = 'closed';
             return ex.save();
         })
-        .then(function (ex){
+        .then(ex => {
             return res.json(ex);
         })
-        .catch(function(err){
+        .catch(err => {
             console.log(err);
             return res.status(500).json({success: false, error: err});
         });

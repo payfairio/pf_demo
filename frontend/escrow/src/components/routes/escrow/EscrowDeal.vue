@@ -132,15 +132,15 @@
                 }
                 this.deal = data.deal;
                 if (!this.deal.seller.profileImg) {
-                    this.deal.seller.profileImg = this.$config.backendUrl+'/images/default-user-img.png';
+                    this.deal.seller.profileImg = this.$config.staticUrl+'/images/default-user-img.png';
                 } else {
-                    this.deal.seller.profileImg = this.$config.backendUrl+'/profile-pic/'+this.deal.seller.profileImg;
+                    this.deal.seller.profileImg = this.$config.staticUrl+'/profile-pic/'+this.deal.seller.profileImg;
                 }
 
                 if (!this.deal.buyer.profileImg) {
-                    this.deal.buyer.profileImg = this.$config.backendUrl+'/images/default-user-img.png';
+                    this.deal.buyer.profileImg = this.$config.staticUrl+'/images/default-user-img.png';
                 } else {
-                    this.deal.buyer.profileImg = this.$config.backendUrl+'/profile-pic/'+this.deal.buyer.profileImg;
+                    this.deal.buyer.profileImg = this.$config.staticUrl+'/profile-pic/'+this.deal.buyer.profileImg;
                 }
 
                 let vm = this;

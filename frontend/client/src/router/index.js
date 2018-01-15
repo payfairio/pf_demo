@@ -13,17 +13,32 @@ import List from '@/components/routes/deals/List'
 import CreateDeal from '@/components/routes/deals/Create'
 import Deal from '@/components/routes/deals/Deal'
 
+import Blog from '@/components/routes/blog/List'
+import BlogPost from '@/components/routes/blog/Post'
 
+import Team from '@/components/routes/pages/Team'
+import About from '@/components/routes/pages/About'
 //exchanges
 import Exchange from '@/components/routes/exchanges/Exchange'
 import MyExchanges from '@/components/routes/exchanges/List'
 import Exchanges from '@/components/routes/exchanges/Exchanges'
+
 import CreateExchange from '@/components/routes/exchanges/Create'
 import ManageExchange from '@/components/routes/exchanges/Manage'
 
 Vue.use(Router);
 
 export default new Router({
+    mode: 'history',
+    scrollBehavior (to, from, savedPosition) {
+        if (from.name === to.name && to.name === 'exchanges') {
+            return savedPosition;
+        }
+        if (!savedPosition || to !== from) {
+            return { x: 0, y: 0 }
+        }
+        return savedPosition;
+    },
     routes: [
         // client section
         {
@@ -63,10 +78,10 @@ export default new Router({
         {
             path: '/',
             name: 'exchanges',
-            /*meta: {
-                auth: {roles: 'client'}
-            },*/
-            component: Exchanges
+            component: Exchanges,
+            meta: {
+                breadcrumb: 'Home'
+            },
         },
         {
             path: '/exchanges/create',
@@ -79,9 +94,6 @@ export default new Router({
         {
             path: '/exchange/:id',
             name: 'exchange',
-            /*meta: {
-                auth: {roles: 'client'}
-            },*/
             component: Exchange,
             props: true
         },
@@ -93,6 +105,17 @@ export default new Router({
             },
             props: true,
             component: CreateExchange
+        },
+        {
+            path: '/blog',
+            name: 'blog',
+            component: Blog
+        },
+        {
+            path: '/blog/:url',
+            name: 'blog-post',
+            component: BlogPost,
+            props: true
         },
         // common actions
         {
@@ -163,6 +186,17 @@ export default new Router({
             name: 'resetPasswordCode',
             component: ResetPassword,
             props: true
-        }
+        },
+
+        {
+            path: '/team',
+            name: 'team',
+            component: Team,
+        },
+        {
+            path: '/about',
+            name: 'about',
+            component: About,
+        },
     ]
 })

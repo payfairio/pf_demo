@@ -1,5 +1,6 @@
 const socketioJwt = require('socketio-jwt');
 const config = require('./config/database');
+const mongoose = require('mongoose');
 
 const User = require('./db/models/User.js');
 const Deal = require('./db/models/Deal.js');
@@ -14,41 +15,41 @@ const web3 = new Web3(
     new Web3.providers.HttpProvider('https://ropsten.infura.io/')
 );
 const config_crypto = require('./config/crypto');
+
 // on client first call and on decision of prev escrow
-function findEscrows(deal) {
-    let used_ids = deal.escrows.map(function (escrow) {
-        return escrow.escrow;
-    });
+const findEscrows = deal => {
+    const used_ids = deal.escrows.map(escrow => escrow.escrow);
     return User.find({$and: [{type: 'escrow'}, {_id: {$nin: used_ids}}]});
-}
-async function sendCoins(deal, from_id, to_id, sum, coin) { // todo: error handling
+};
+
+const sendCoins = async (deal, from_id, to_id, sum, coin) => { // todo: error handling
     const from_user = await User.findById(from_id).populate('wallet');
     const to_user = await User.findById(to_id).populate('wallet');
     let count = 0;
     let txData = null;
     let receipt = null;
-    switch (coin.toLowerCase()) {
-        case 'pfr':
-            amount = sum * Math.pow(10, 8);
-            const contract = new web3.eth.Contract(require('./abi/Token.json'), config_crypto.pfr_address);
+    switch (config_crypto[coin.toLowerCase()].type) {
+        case 'erc20':
+            amount = sum * Math.pow(10, config_crypto[coin.toLowerCase()].decimals);
+            const contract = new web3.eth.Contract(require('./abi/'+coin.toLowerCase()+'/Token.json'), config_crypto[coin.toLowerCase()].address);
             // transfer
             count = await web3.eth.getTransactionCount(from_user.wallet.address);
-            // I chose gas price and gas limit based on what ethereum wallet was recommending for a similar transaction. You may need to change the gas price!
+            // Choose gas price and gas limit based on what ethereum wallet was recommending for a similar transaction. You may need to change the gas price!
             /*let gasLimit = await web3.eth.estimateGas({
              nonce: count,
-             to: config_crypto.pfr_address,
+             to: config_crypto[coin.toLowerCase()].address,
              data: contract.methods.transfer(toAddress, amount).encodeABI()
              });*/
             txData = await web3.eth.accounts.signTransaction({
-                to: config_crypto.pfr_address,
+                to: config_crypto[coin.toLowerCase()].address,
                 gas: 110000,//gasLimit,
                 gasPrice: await web3.eth.getGasPrice(),
                 data: contract.methods.transfer(to_user.wallet.address, amount).encodeABI(),
                 nonce: count
             }, from_user.wallet.privateKey);
             receipt = await web3.eth.sendSignedTransaction(txData.rawTransaction);
-            from_user.holds.pfr -= parseFloat(sum);
-            from_user.markModified('holds.pfr');
+            from_user.holds[coin.toLowerCase()] -= parseFloat(sum);
+            from_user.markModified('holds.'+coin.toLowerCase());
             await from_user.save();
             return true;
         case 'eth':
@@ -74,13 +75,14 @@ async function sendCoins(deal, from_id, to_id, sum, coin) { // todo: error handl
             await from_user.save();
             return true;
     }
-}
-function checkDispute(decisions) {
+};
+
+const checkDispute = decisions => {
     if (decisions.length < 3) {
         return null;
     }
-    var prev = null;
-    var count = 0;
+    let prev = null;
+    let count = 0;
     for (let i = decisions.length - 1; i >= 0; i--) {
         if (decisions[i].decision === 'rejected') {
             continue;
@@ -98,9 +100,109 @@ function checkDispute(decisions) {
             return null;
         }
     }
+};
+
+function checkNotifications (deal, user) {
+    return new Promise((resolve, reject) => {
+        Notification
+            .find({
+                user: user,
+                deal: deal,
+                type: 'message'
+            })
+            .remove()
+            .then(notifications => {
+                return Notification
+                    .aggregate([
+                        {
+                            $match: {
+                                $and: [
+                                    {type: 'message'},
+                                    {user: mongoose.Types.ObjectId(user)}
+                                ]
+                            }
+                        },
+                        {
+                            $group: {
+                                _id: '$deal',
+                                notifications: {
+                                    $sum: 1
+                                },
+                                created_at: {
+                                    $max: '$created_at'
+                                }
+                            }
+                        },
+                        {
+                            $lookup: {
+                                from: 'deals',
+                                localField: '_id',
+                                foreignField: '_id',
+                                as: 'deal'
+                            }
+                        },
+                        {
+                            $unwind: '$deal'
+                        },
+                        {
+                            $project: {
+                                _id: 0,
+                                created_at: 1,
+                                deal: 1,
+                                notifications: 1,
+                                type: 'message'
+                            }
+                        }
+                    ])
+            .then(notifications => {
+                return Notification
+                    .update({user: user, deal: deal, viewed: false}, {$set: {viewed: true}}, {multi: true})
+                    .then(_notifications => {
+                        return Notification
+                            .find({
+                                $and: [
+                                    {
+                                        type: {
+                                            $ne: 'message'
+                                        }
+                                    },
+                                    {
+                                        user: user
+                                    }
+                                ]
+                            })
+                            .populate('sender', 'username')
+                            .populate({path: 'deal', populate: [{path: 'exchange', select: ['tradeType']}]});
+                    })
+                    .then(_notifications => {
+                        for (let i = 0; i < notifications.length; i++) {
+                            _notifications.push(notifications[i]);
+                        }
+                        
+                        _notifications.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                        resolve(_notifications);
+                    })
+                    .catch(err => {
+                        reject(err);
+                    });
+                });
+            })
+            .catch(err => {
+                reject(err);
+            })
+    });
 }
 
-module.exports = function(server, app) {
+function checkUserInRoom (clients, room) {
+    for (let client of clients) {
+        if (room[client]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+module.exports = (server, app) => {
     const io = require('socket.io')(server);
 
     const clients = {};
@@ -109,7 +211,7 @@ module.exports = function(server, app) {
     
     io.on('connection', socketioJwt.authorize({
         secret: config.secret,
-    })).on('authenticated', function(client) {
+    })).on('authenticated', client => {
         client.emit('authorized');
 
         if (!clients[client.decoded_token._id]) {
@@ -119,22 +221,22 @@ module.exports = function(server, app) {
 
         User
             .findById(client.decoded_token._id)
-            .then(function (doc) {
+            .then(doc => {
                 if (doc) {
                     doc.online.status = true;
                     doc.online.lastConnect = new Date();
                     return doc.save();
                 }
-            }).then().catch(function (err) {console.log('Online status error:', err)});
+            }).then().catch(err => {console.log('Online status error:', err)});
 
         // attachments in chats
         require('./socket/uploads')(client);
-        
-        client.on('join_chat', function (data) {
+
+        client.on('join_chat',  data => {
             Deal.findOne({dId: data.deal_id}).populate({path: 'messages', populate: [{path: 'sender', select: ['-password', '-wallet']}, {path: 'attachments'}]})
                 .populate({path: 'seller', select: ['-password', '-wallet']})
                 .populate({path: 'buyer', select: ['-password', '-wallet']})
-                .then(function (deal) {
+                .then (deal => {
                     if (!deal) {
                         return;
                     }
@@ -142,7 +244,7 @@ module.exports = function(server, app) {
                     if (role) {
                         if (role === 'escrow') {
                             let escIndex = 0;
-                            deal.escrows.forEach(function (esc, index) {
+                            deal.escrows.forEach((esc, index) => {
                                 if (esc.escrow.toString() === client.decoded_token._id.toString()) {
                                     escIndex = index;
                                 }
@@ -153,19 +255,20 @@ module.exports = function(server, app) {
                             client.emit('initMessages', {
                                 deal: tmp,
                                 messages: deal.messages,
+                                notifications: notifications
                             });
 
                             //need to set 'join_at' value to escrow
                             deal.escrows[escIndex].join_at = new Date();
-                            deal.save().then().catch(function(err){console.log(err)});
+                            deal.save().then().catch(err => {console.log(err)});
                         } else {
-                            if (deal.status == 'completed'){
-                                Review.find({deal: deal._id, author: client.decoded_token._id}).then(function (doc){
+                            if (deal.status === 'completed'){
+                                Review.find({deal: deal._id, author: client.decoded_token._id}).then(doc => {
                                     let can_review = false;
                                     if (!doc.length){
                                         can_review = true;
                                     }
-
+                                        
                                     client.emit('initMessages', {
                                         deal: deal,
                                         messages: deal.messages,
@@ -182,22 +285,33 @@ module.exports = function(server, app) {
                             }
                         }
                         client.join(deal._id.toString());
+                        return deal;
                     }
-                }).catch(function (err) {
+                })
+                .then(deal => {
+                    checkNotifications(deal._id, client.decoded_token._id).then(notifications => {
+                        client.emit('notifications', notifications);
+                    });
+                })
+                .catch(err => {
                     console.log(err);
                 });
         });
 
-        client.on('leave_chat', function (data) {
-            client.leave(data.deal_id);
+
+        client.on('leave_chat', data => {
+            Deal.findOne({dId: data.deal_id})
+                .then(deal => {
+                    client.leave(deal._id);
+                });
         });
 
-        client.on('message', function(data) {
+        client.on('message', data => {
             Deal.findOne({dId: data.deal_id})
                 .populate({path: 'seller', select: ['-password', '-wallet']})
                 .populate({path: 'buyer', select: ['-password', '-wallet']})
-                .then(function (deal) {
-                    return new Promise(function (resolve, reject) {
+                .then(deal => {
+                    return new Promise((resolve, reject) => {
                         if (!deal) {
                             reject({});
                         }
@@ -212,13 +326,13 @@ module.exports = function(server, app) {
                                 text: data.text,
                                 deal: deal._id,
                                 type: data.type,
-                                attachments: data.attachments.map(function (item) {return item._id})
+                                attachments: data.attachments.map(item => item._id)
                             };
-                            new Message(message).save(function (err, message) {
+                            new Message(message).save((err, message) => {
                                 if (err) {
                                     reject(err);
                                 }
-                                Attachment.update({_id: {$in: data.attachments.map(function (item) {return item._id})}}, {$set: {message: message._id}}, function () {
+                                Attachment.update({_id: {$in: data.attachments.map(item => item._id)}}, {$set: {message: message._id}}, () => {
                                     resolve({role: role, deal: deal, message: message});
                                 });
                             });
@@ -229,51 +343,68 @@ module.exports = function(server, app) {
                     });
 
                 })
-                .then(function (data) {
-                    const role = data.role;
-                    const deal = data.deal;
-                    const sender = role === 'buyer' ? deal.buyer._id : deal.seller._id;
-                    const user = role === 'seller' ? deal.buyer._id : deal.seller._id;
-                    
-                    const notification = {
-                        sender: sender,
-                        user: user,
-                        deal: deal._id,
-                        type: 'message',
-                        text: data.message.text,
-                    };
+                .then(data => {
+                    return new Promise ((resolve, reject) => {
+                        const role = data.role;
+                        const deal = data.deal;
+                        const sender = role === 'buyer' ? deal.buyer._id : deal.seller._id;
+                        const user = role === 'seller' ? deal.buyer._id : deal.seller._id;
 
-                    data.deal.messages.push(data.message._id);
-                    data.deal.save();
 
-                    return new Notification(notification).save();
-                })
-                .then(function (notification) {
-                    io.in(notification.deal.toString()).emit('message', data);
-
-                    Notification.findById(notification._id)
-                        .populate('deal')
-                        .then(notification => {
-                            const clients = io.clients[notification.user];
-                            if (clients) {
-                                for (let client of clients) {
-                                    io.to(client).emit('notification', notification);
-                                    notification.viewed = true;
+                        data.deal.messages.push(data.message._id);
+                        data.deal
+                            .save()
+                            .then(deal => {
+                                if (!checkUserInRoom(clients[user], io.sockets.adapter.rooms[data.deal._id].sockets)) {
+                                    const notification = {
+                                        sender: sender,
+                                        user: user,
+                                        deal: deal._id,
+                                        type: 'message',
+                                        text: data.message.text,
+                                    };
+        
+                                    new Notification(notification)
+                                        .save()
+                                        .then(notification => {
+                                            resolve({deal: data.deal, notification: notification})
+                                        });
+                                } else {
+                                    resolve({deal: data.deal});
                                 }
-                            }
-                        });
+                            });
+                    })
                 })
-                .catch(function (err) {
+                .then(_data => {
+                    let deal_id = _data.deal ? _data.deal._id : _data.notification.deal;
+                    io.in(deal_id.toString()).emit('message', data);
+
+                    if (_data.notification) {
+                        Notification
+                            .findById(_data.notification._id)
+                            .populate('deal')
+                            .populate('sender', 'username')
+                            .then(notification => {
+                                const clients = io.clients[notification.user];
+                                if (clients) {
+                                    for (let client of clients) {
+                                        io.to(client).emit('notification', notification);
+                                    }
+                                }
+                            });
+                    }
+                })
+                .catch(err => {
                     console.log(err);
                 });
         });
 
-        client.on('accept_deal_condition', function (data) {
+        client.on('accept_deal_condition', data => {
             Deal.findOne({dId: data.deal_id})
                 .populate({path: 'seller', select: ['-password', '-wallet']})
                 .populate({path: 'buyer', select: ['-password', '-wallet']})
-                .then(function (deal) {
-                    return new Promise(function (resolve, reject) {
+                .then(deal => {
+                    return new Promise((resolve, reject) => {
                         if (!deal) {
                             reject({});
                         }
@@ -304,7 +435,7 @@ module.exports = function(server, app) {
                                 deal.status = 'accepted';
                             }
                             if (deal.status === 'new') {
-                                new Message(message).save(function (err, message) {
+                                new Message(message).save((err, message) => {
                                     if (err) {
                                         reject(err);
                                     }
@@ -318,9 +449,9 @@ module.exports = function(server, app) {
                                     type: message.type,
                                     text: 'Terms, conditions and sum of deal were accepted by both parties. Trade sum is transferred to a deposit until the end of the trade.',
                                 });
-                                Message.insertMany(messages).then(function (messages) {
+                                Message.insertMany(messages).then(messages => {
                                     resolve({deal: deal, messages: messages, role: role});
-                                }, function (err) {
+                                }, err => {
                                     reject(err);
                                 });
                             }
@@ -329,16 +460,19 @@ module.exports = function(server, app) {
                         }
                     });
                 })
-                .then(function (data){
-                    return new Promise(function(resolve, reject){
-                        if (data.role && data.role == 'buyer'){
-                            User.findById(client.decoded_token._id).populate('wallet').then(async function (user) {
+                .then(data => {
+                    return new Promise((resolve, reject) => {
+                        if (data.role && data.role === 'buyer'){
+                            User.findById(client.decoded_token._id).populate('wallet').then(async user => {
                                 let balance = 0;
-                                switch (data.deal.coin.toLowerCase()) {
-                                    case 'pfr':
-                                        const contract = new web3.eth.Contract(require('./abi/Token.json'), require('./config/crypto').pfr_address);
+                                if (!config_crypto.hasOwnProperty(data.deal.coin.toLowerCase())) {
+                                    reject({success: false, message: 'Wrong coin'});
+                                }
+                                switch (config_crypto[data.deal.coin.toLowerCase()].type) {
+                                    case 'erc20':
+                                        const contract = new web3.eth.Contract(require('./abi/'+data.deal.coin.toLowerCase()+'/Token.json'), config_crypto[data.deal.coin.toLowerCase()].address);
                                         balance = await contract.methods.balanceOf(user.wallet.address).call();
-                                        if (balance - user.holds.pfr * Math.pow(10, 8) < data.deal.sum * Math.pow(10, 8)) {
+                                        if (balance - user.holds[data.deal.coin.toLowerCase()] * Math.pow(10, config_crypto[data.deal.coin.toLowerCase()].decimals) < data.deal.sum * Math.pow(10, config_crypto[data.deal.coin.toLowerCase()].decimals)) {
                                             client.emit('NotEnoughMoney');
                                             reject({});
                                         }
@@ -357,10 +491,10 @@ module.exports = function(server, app) {
                                 }
                                 return user.save();
                             })
-                            .then(function (user){
+                            .then(user => {
                                 resolve(data);
                             })
-                            .catch(function (err){
+                            .catch(err => {
                                 reject(err);
                             });
                         } else {
@@ -368,30 +502,56 @@ module.exports = function(server, app) {
                         }
                     });
                 })
-                .then(function (data) {
+                .then(data => {
                     if (data.message) {
                         data.deal.messages.push(data.message._id);
                     } else if (data.messages) {
-                        data.messages.forEach(function (item) {
+                        data.messages.forEach(item => {
                             data.deal.messages.push(item);
                         });
                     }
                     return data.deal.save();
                 })
-                .then(function (deal) {
+                .then(deal => {
                     io.in(deal._id.toString()).emit('dealConditionsAccepted', data);
+
+                    let user = deal.buyer._id.toString() == client.decoded_token._id.toString() ? deal.seller._id : deal.buyer._id;
+
+                    const notification = {
+                        sender: client.decoded_token._id,
+                        user: user,
+                        deal: deal._id,
+                        type: 'dealConditionsAccepted',
+                        text: 'conditions accepted',
+                    };
+
+                    return new Notification(notification).save();
                 })
-                .catch(function (err) {
+                .then(notification => {
+                    Notification
+                        .findById(notification._id)
+                        .populate('deal')
+                        .populate('sender', 'username')
+                        .then(notification => {
+                            const clients = io.clients[notification.user];
+                            if (clients) {
+                                for (let client of clients) {
+                                    io.to(client).emit('notification', notification);
+                                }
+                            }
+                        });
+                })
+                .catch(err => {
                     console.log(err);
                 });
         });
 
-        client.on('set_deal_sum', function (data) {
+        client.on('set_deal_sum', data => {
             Deal.findOne({dId: data.deal_id})
                 .populate({path: 'seller', select: ['-password', '-wallet']})
                 .populate({path: 'buyer', select: ['-password', '-wallet']})
-                .then(function (deal) {
-                    return new Promise(function (resolve, reject) {
+                .then(deal => {
+                    return new Promise((resolve, reject) => {
                         if (!deal) {
                             reject({});
                         }
@@ -422,7 +582,7 @@ module.exports = function(server, app) {
                                     break;
                             }
                             deal.sum = data.sum;
-                            new Message(message).save(function (err, message) {
+                            new Message(message).save((err, message) => {
                                 if (err) {
                                     reject(err);
                                 }
@@ -433,24 +593,50 @@ module.exports = function(server, app) {
                         }
                     });
                 })
-                .then(function (data) {
+                .then(data => {
                     data.deal.messages.push(data.message._id);
                     return data.deal.save();
                 })
-                .then(function (deal) {
+                .then(deal => {
                     io.in(deal._id.toString()).emit('changeDealSum', data);
+
+                    let user = deal.buyer._id.toString() == client.decoded_token._id.toString() ? deal.seller._id : deal.buyer._id;
+
+                    const notification = {
+                        sender: client.decoded_token._id,
+                        user: user,
+                        deal: deal._id,
+                        type: 'changeDealSum',
+                        text: 'New sum:' + deal.sum,
+                    };
+
+                    return new Notification(notification).save();
                 })
-                .catch(function (err) {
+                .then(notification => {
+                    Notification
+                        .findById(notification._id)
+                        .populate('deal')
+                        .populate('sender', 'username')
+                        .then(notification => {
+                            const clients = io.clients[notification.user];
+                            if (clients) {
+                                for (let client of clients) {
+                                    io.to(client).emit('notification', notification);
+                                }
+                            }
+                        });
+                })
+                .catch(err => {
                     console.log(err);
                 });
         });
 
-        client.on('set_deal_condition', function (data) {
+        client.on('set_deal_condition', data => {
             Deal.findOne({dId: data.deal_id})
                 .populate({path: 'seller', select: ['-password', '-wallet']})
                 .populate({path: 'buyer', select: ['-password', '-wallet']})
-                .then(function (deal) {
-                    return new Promise(function (resolve, reject) {
+                .then(deal => {
+                    return new Promise((resolve, reject) => {
                         if (!deal) {
                             reject({});
                         }
@@ -479,7 +665,7 @@ module.exports = function(server, app) {
                                     deal.acceptedBySeller = false;
                                     break;
                             }
-                            new Message(message).save(function (err, message) {
+                            new Message(message).save((err, message) => {
                                 if (err) {
                                     reject(err);
                                 }
@@ -490,24 +676,50 @@ module.exports = function(server, app) {
                         }
                     });
                 })
-                .then(function (data) {
+                .then(data => {
                     data.deal.messages.push(data.message._id);
                     return data.deal.save();
                 })
-                .then(function (deal) {
+                .then(deal => {
                     io.in(deal._id.toString()).emit('changeDealConditions', data);
+
+                    let user = deal.buyer._id.toString() == client.decoded_token._id.toString() ? deal.seller._id : deal.buyer._id;
+
+                    const notification = {
+                        sender: client.decoded_token._id,
+                        user: user,
+                        deal: deal._id,
+                        type: 'changeDealConditions',
+                        text: data.conditions,
+                    };
+
+                    return new Notification(notification).save();
                 })
-                .catch(function (err) {
+                .then(notification => {
+                    Notification
+                        .findById(notification._id)
+                        .populate('deal')
+                        .populate('sender', 'username')
+                        .then(notification => {
+                            const clients = io.clients[notification.user];
+                            if (clients) {
+                                for (let client of clients) {
+                                    io.to(client).emit('notification', notification);
+                                }
+                            }
+                        });
+                })
+                .catch(err => {
                     console.log(err);
                 });
         });
 
-        client.on('accept_deal', function (data) {
+        client.on('accept_deal', data => {
             Deal.findOne({dId: data.deal_id})
                 .populate({path: 'seller', select: ['-password', '-wallet']})
                 .populate({path: 'buyer', select: ['-password', '-wallet']})
-                .then(function (deal) {
-                    return new Promise(async function (resolve, reject) {
+                .then(deal => {
+                    return new Promise(async (resolve, reject) => {
                         if (!deal) {
                             reject({});
                         }
@@ -528,7 +740,7 @@ module.exports = function(server, app) {
                                 type: data.type
                             };
                             deal.status = 'completed';
-                            new Message(message).save(function (err, message) {
+                            new Message(message).save((err, message) => {
                                 if (err) {
                                     reject(err);
                                 }
@@ -540,26 +752,52 @@ module.exports = function(server, app) {
                         }
                     });
                 })
-                .then(function (data) {
+                .then(data => {
                     data.deal.messages.push(data.message._id);
                     return data.deal.save();
                 })
-                .then(function (deal) {
+                .then(deal => {
                     io.in(deal._id.toString()).emit('dealCompleted', data);
+
+                    let user = deal.buyer._id.toString() == client.decoded_token._id.toString() ? deal.seller._id : deal.buyer._id;
+
+                    const notification = {
+                        sender: client.decoded_token._id,
+                        user: user,
+                        deal: deal._id,
+                        type: 'dealCompleted',
+                        text: 'Deal completed',
+                    };
+
+                    return new Notification(notification).save();
                 })
-                .catch(function (err) {
+                .then(notification => {
+                    Notification
+                        .findById(notification._id)
+                        .populate('deal')
+                        .populate('sender', 'username')
+                        .then(notification => {
+                            const clients = io.clients[notification.user];
+                            if (clients) {
+                                for (let client of clients) {
+                                    io.to(client).emit('notification', notification);
+                                }
+                            }
+                        });
+                })
+                .catch(err => {
                     client.emit('errorOccured');
                     console.log(err);
                 });
         });
 
         // start dispute    
-        client.on('call_escrow', function (data) {
+        client.on('call_escrow', data => {
             Deal.findOne({dId: data.deal_id})
                 .populate({path: 'seller', select: ['-password', '-wallet']})
                 .populate({path: 'buyer', select: ['-password', '-wallet']})
-                .then(function (deal) {
-                    return new Promise(function (resolve, reject) {
+                .then(deal => {
+                    return new Promise((resolve, reject) => {
                         if (!deal) {
                             reject({});
                         }
@@ -579,7 +817,7 @@ module.exports = function(server, app) {
                                 type: data.type
                             };
                             deal.status = 'dispute';
-                            new Message(message).save(function (err, message) {
+                            new Message(message).save((err, message) => {
                                 if (err) {
                                     reject(err);
                                 }
@@ -591,17 +829,17 @@ module.exports = function(server, app) {
                         }
                     });
                 })
-                .then(function (data) {
-                    return new Promise(function (resolve, reject) {
-                        findEscrows(data.deal).then(function (escrows) {
+                .then(data => {
+                    return new Promise((resolve, reject) => {
+                        findEscrows(data.deal).then(escrows => {
                             data.escrows = escrows;
                             resolve(data);
-                        }, function (err) {
+                        }, err => {
                             reject(err);
                         })
                     });
                 })
-                .then(function (data) {
+                .then(data => {
                     data.deal.messages.push(data.message._id);
                     if (data.escrows.length > 0) {
                         let random = Math.floor(Math.random() * data.escrows.length);
@@ -609,20 +847,20 @@ module.exports = function(server, app) {
                     }
                     return data.deal.save();
                 })
-                .then(function (deal) {
+                .then(deal => {
                     io.in(deal._id.toString()).emit('disputeOpened', data);
                 })
-                .catch(function (err) {
+                .catch(err => {
                     console.log(err);
                 });
         });
 
-        client.on('choose_dispute_side', function (data) {
+        client.on('choose_dispute_side', data => {
             Deal.findOne({dId: data.deal_id})
                 .populate({path: 'seller', select: ['-password', '-wallet']})
                 .populate({path: 'buyer', select: ['-password', '-wallet']})
-                .then(function (deal) {
-                    return new Promise(async function (resolve, reject) {
+                .then(deal => {
+                    return new Promise(async (resolve, reject) => {
                         if (!deal) {
                             reject({});
                         }
@@ -652,7 +890,7 @@ module.exports = function(server, app) {
                                     deal: deal._id,
                                     type: 'system'
                                 };
-                                new Message(message).save(function (err, message) {
+                                new Message(message).save((err, message) => {
                                     if (err) {
                                         reject(err);
                                     }
@@ -666,20 +904,20 @@ module.exports = function(server, app) {
                         }
                     });
                 })
-                .then(function (data) {
-                    return new Promise(function (resolve, reject) {
+                .then(data => {
+                    return new Promise((resolve, reject) => {
                         if (data.message) {
                             resolve(data);
                         }
-                        findEscrows(data.deal).then(function (escrows) {
+                        findEscrows(data.deal).then(escrows => {
                             data.escrows = escrows;
                             resolve(data);
-                        }, function (err) {
+                        }, err => {
                             reject(err);
                         })
                     });
                 })
-                .then(function (data) {
+                .then(data => {
                     if (data.message) {
                         data.deal.messages.push(data.message._id);
                     }
@@ -689,31 +927,31 @@ module.exports = function(server, app) {
                     }
                     return data.deal.save();
                 })
-                .then(function (deal) {
+                .then(deal => {
                     io.in(deal._id.toString()).emit('disputeChanged');
                 })
-                .catch(function (err) {
+                .catch(err => {
                     console.log(err);
                 });
         });
 
-        client.on('logout', function () {
+        client.on('logout', () => {
             const logoutClients = clients[client.decoded_token._id];
             for (let id of logoutClients) {
                 io.to(id).emit('refresh');
             }
         });
 
-        client.on('disconnect', function () {
+        client.on('disconnect', () => {
             delete clients[client.decoded_token._id];
             User
                 .findById(client.decoded_token._id)
-                .then(function (doc) {
+                .then(doc => {
                     if (doc) {
                         doc.online.status = false;
                         return doc.save();
                     }
-                }).then().catch(function (err) {console.log('Online status error:', err)});
+                }).then().catch(err => {console.log('Online status error:', err)});
         });
     });
 
