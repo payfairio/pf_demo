@@ -4,8 +4,8 @@ const path = require('path');
 const config = require('../config/crypto');
 /* GET home page. */
 
-module.exports = function (web3) {
-    router.get('/', function(req, res, next) {
+module.exports = web3 => {
+    router.get('/', (req, res) => {
         return res.sendFile(path.join(__dirname, '../views', 'index.html'));
     });
 

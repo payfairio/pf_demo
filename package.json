@@ -42,9 +42,12 @@
     "vue-axios": "^2.0.2",
     "vue-config": "^1.0.0",
     "vue-cookie": "^1.1.4",
+    "vue-events": "^3.1.0",
     "vue-moment": "^2.1.0",
+    "vue-parallaxy": "^1.0.4",
     "vue-router": "^2.8.1",
     "vue-socket.io": "^2.1.1",
+    "vue-spinner": "^1.0.3",
     "vue-sweetalert": "^0.1.18",
     "vue2-breadcrumbs": "^2.0.0",
     "web3": "^1.0.0-beta.26"

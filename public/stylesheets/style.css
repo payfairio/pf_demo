@@ -117,6 +117,7 @@ ul.footer-menu a {
 .bg-gray{
   background-color: #ececed;
   box-shadow: 0 4px 15px 1px rgba(172, 172, 172, 0.75);
+  z-index: 50;
 }
 .navbar-brand img {
   height: 35px;
@@ -242,41 +243,74 @@ li.nav-item {
   font-size: 2.5rem;
   margin-bottom: 20px;
 }
+.loader-wrap {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  z-index: 999999;
+  top: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0,0,0,0.5);
+}
 div.rating label, .review span{
   background: url(../images/rating-star.png);
 }
 .review span{
-    float: left;
-    width: 20px;
-    height: 20px;    
-    background-size: contain;
-    background-repeat: no-repeat;
+  float: left;
+  width: 20px;
+  height: 20px;    
+  background-size: contain;
+  background-repeat: no-repeat;
 }
 .review p{
-    clear:both;
+  clear:both;
 }
 .review div{
-    float: left;
-    margin-left: 5px;
+  float: left;
+  margin-left: 5px;
 }
-#sec-1{
-  background: url(../images/about/sec-1-bg.png) no-repeat 100% 0;
-  background-size: 52.5%;
-  padding-top: 62px;
+.bg-right-top{
+  position: relative;
+  background: linear-gradient(90deg, #ffffff00 calc(100% - 231px), #20c69b 0%) 0px 392px no-repeat / 100% 100%, url(../images/about/sec-1-bg.png) no-repeat right top / 724px auto;
+  position: relative;
 }
 #sec-2{
-  background: url(../images/about/sec-2-right-bg.png) no-repeat 100% 0,
-              url(../images/about/sec-2-left-bg.png) no-repeat -80px 4px;
-  background-size: 100%;
-  height: 1057px;
+  background: url(../images/about/left-side-bg.png) no-repeat left bottom;
+  background-size: auto 450px;
+  z-index: 500;
+  position: relative;
+  padding-bottom: 385px;
+}
+.phone-icon{
+  background: url(../images/about/phone-icon.png) no-repeat 0 0;
+}
+.how-it-works-img {
+  background:url(../images/about/scheme.png) no-repeat 35% 50%;
 }
 /**
 * Media query
 */
+@media (max-width: 767px){
+  .how-it-works-img{
+    background-position: left center;
+  }
+}
 @media (min-width: 768px) {
   .navbar-nav > li .btn-link {
     padding-top: 15px;
     padding-bottom: 15px;
   }
 }
-
+@media(min-width: 768px) and (max-width: 991px){
+  .bg-right-top{
+    background: linear-gradient(90deg, #ffffff00 calc(100% - 126px), #20c69b 0%) 0px 297px no-repeat / 100% 100%, url(/javascripts/sec-1-bg.png?29a7e28…) no-repeat right top / 492px auto;
+  }
+}
+@media (min-width: 1250px){
+  .how-it-works-img {
+    background:url(../images/about/scheme.png) no-repeat 45% 50%;
+  }
+}

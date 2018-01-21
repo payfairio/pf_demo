@@ -13,8 +13,9 @@ import VueSweetAlert from 'vue-sweetalert'
 import VueSocketio from 'vue-socket.io'
 import router from './router'
 import vueConfig from 'vue-config'
+import Parallax from 'vue-parallaxy'
 import App from './App.vue';
-
+import VueEvents from 'vue-events'
 const VueBreadcrumbs = require('vue2-breadcrumbs');
 const VueCookie = require('vue-cookie');
 import config from './config/config';
@@ -46,6 +47,7 @@ Vue.use(require('vue-moment'), {
     moment
 });
 
+Vue.use(VueEvents);
 Vue.use(VueSocketio, config.staticUrl);
 
 Vue.use(require('@websanova/vue-auth'), {

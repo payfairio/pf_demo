@@ -14,9 +14,7 @@ require('../config/passport')(passport);
 const jwt = require('jsonwebtoken');
 
 
-router.get('/:id', passport.authenticate('jwt', {
-    session: false
-}), function (req, res, next) {
+router.get('/:id', passport.authenticate('jwt', {session: false}), (req, res) => {
     Attachment.findById(req.params.id).populate({
             path: 'message',
             populate: {
@@ -34,7 +32,7 @@ router.get('/:id', passport.authenticate('jwt', {
                 ]
             }
         })
-        .then(function (doc) {
+        .then(doc => {
             if (!doc) {
                 return res.status(404).json({
                     error: "File not found"
@@ -44,9 +42,8 @@ router.get('/:id', passport.authenticate('jwt', {
                 return res.status(403).json({error: "Permission denied"});
             }
             return res.sendFile(path.join(__dirname, '../private-docs', doc._id+'_'+doc.name));
-        }, function (err) {
-            return res.status(500).json(err);
-        });
+        })
+        .catch(err => res.status(500).json(err));
 });
 
 

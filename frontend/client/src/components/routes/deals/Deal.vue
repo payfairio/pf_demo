@@ -1,143 +1,145 @@
 <template>
     <div class="deal-window">
-        <h1>{{deal.name}}</h1>
-        <div class="deal-info">
-            Status: {{deal.status}} <br>
-            Sum: <b>{{deal.sum}}{{deal.coin.toUpperCase()}}</b> <button class="btn btn-sm btn-primary" v-if="deal.status === 'new'" @click="changeSumClick">change</button>
-        </div>
-        <hr>
-        <b-row>
-            <b-col md="3">
-                <div class="profile-card">
-                    You: {{$auth.user().username}}<br>
-                    Role: {{myRole}}<br>
-                    <img :src="$auth.user().profileImg">
-                    <!-- <div class="rating">
-                        <span v-for="i in 5">
-                            <div class="fill" :style="'width:' + (Math.floor(parseFloat($auth.user().rating.value)) > i ? 100 : (Math.floor(parseFloat($auth.user().rating.value)) == i ? (parseFloat($auth.user().rating.value) % i).toFixed(2) * 100 : 0)) + '%'"></div>
-                        </span>
-                    </div> -->
-                </div>
-                <hr>
-                <div class="deal-actions">
-                    <div class="form-group" v-if="deal.status === 'new'">
-                        <button v-if="!conditionsAcceptedByMe" class="btn btn-success" @click="acceptConditionsAndSum">Accept conditions and sum</button>
-                        <p v-if="conditionsAcceptedByMe">You are already accepted conditions and sum. If your counterparty change them then you will have to accept them again for deal start.</p>
+        <div class="container">
+            <h1>{{deal.name}}</h1>
+            <div class="deal-info">
+                Status: {{deal.status}} <br>
+                Sum: <b>{{deal.sum}}{{deal.coin.toUpperCase()}}</b> <button class="btn btn-sm btn-primary" v-if="deal.status === 'new'" @click="changeSumClick">change</button>
+            </div>
+            <hr>
+            <b-row>
+                <b-col md="3">
+                    <div class="profile-card">
+                        You: {{$auth.user().username}}<br>
+                        Role: {{myRole}}<br>
+                        <img :src="$auth.user().profileImg">
+                        <!-- <div class="rating">
+                            <span v-for="i in 5">
+                                <div class="fill" :style="'width:' + (Math.floor(parseFloat($auth.user().rating.value)) > i ? 100 : (Math.floor(parseFloat($auth.user().rating.value)) == i ? (parseFloat($auth.user().rating.value) % i).toFixed(2) * 100 : 0)) + '%'"></div>
+                            </span>
+                        </div> -->
                     </div>
+                    <hr>
+                    <div class="deal-actions">
+                        <div class="form-group" v-if="deal.status === 'new'">
+                            <button v-if="!conditionsAcceptedByMe" class="btn btn-success" @click="acceptConditionsAndSum">Accept conditions and sum</button>
+                            <p v-if="conditionsAcceptedByMe">You are already accepted conditions and sum. If your counterparty change them then you will have to accept them again for deal start.</p>
+                        </div>
 
-                    <div class="form-group" v-if="deal.status === 'accepted'">
-                        <button v-if="myRole === 'buyer'" class="btn btn-success" @click="acceptDeal">Accept deal</button>
-                        <button class="btn btn-danger" @click="openDispute">Call escrow</button>
-                    </div>
+                        <div class="form-group" v-if="deal.status === 'accepted'">
+                            <button v-if="myRole === 'buyer'" class="btn btn-success" @click="acceptDeal">Accept deal</button>
+                            <button class="btn btn-danger" @click="openDispute">Call escrow</button>
+                        </div>
 
-                    <div class="form-group" v-if="deal.status === 'completed'">
-                        <p>Deal was complete. Money was transferred.</p>
-                    </div>
+                        <div class="form-group" v-if="deal.status === 'completed'">
+                            <p>Deal was complete. Money was transferred.</p>
+                        </div>
 
-                    <div class="form-group" v-if="deal.status === 'dispute'">
-                        <p>Deal is being verified by escrows. Please wait.</p>
-                        <hr>
-                        <ul>
-                            <li v-for="(decision, index) in deal.escrows">escrow {{index + 1}}: {{decision.decision ? decision.decision : 'pending'}}</li>
-                        </ul>
-                    </div>
-                </div>
-            </b-col>
-            <b-col md="6">
-                <div class="chat-frame">
-                    <div class="messages-box" ref="messages-box">
-                        <ul class="chat">
-                            <li v-for="message in messages">
-                                <div v-if="message.type === 'message'" :class="message.sender._id == $auth.user()._id ? 'msj macro' : 'msj-rta macro'">
-                                    <div :class="message.sender._id == $auth.user()._id ? 'text text-l' : 'text text-r'">
-                                        <p class="msg-sender">{{message.sender._id == $auth.user()._id ? 'You' : message.sender.username}}</p>
-                                        <p class="msg-text">{{message.text}}</p>
-                                        <div v-for="attachment in message.attachments" v-if="isType(attachment.name) === 'png' || isType(attachment.name) === 'jpeg' || isType(attachment.name) === 'gif' || isType(attachment.name) === 'bmp'"><img class="img-deal" :src="$config.backendUrl+'/attachments/'+attachment._id"></div>
-                                        <div v-for="attachment in message.attachments"><a target="_blank" :href="$config.backendUrl+'/attachments/'+attachment._id">{{attachment.name}}</a></div>
-                                        <p class="msg-time">
-                                            <small v-if="isToday(message.created_at)">Today, {{message.created_at | moment("HH:mm:ss")}}</small>
-                                            <small v-if="!isToday(message.created_at)">{{message.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</small>
-                                        </p>
-                                    </div>
-                                </div>
-                                <div v-if="message.type === 'system'">
-                                    <div :class="'system-msg'">
-                                        <p class="sys-msg-sender">{{message.sender ? (message.sender._id == $auth.user()._id ? 'You' : message.sender.username) : 'PayFair System'}}</p>
-                                        <p class="sys-msg-text">{{message.text}}</p>
-                                        <p class="sys-msg-time">
-                                            <small v-if="isToday(message.created_at)">Today, {{message.created_at | moment("HH:mm:ss")}}</small>
-                                            <small v-if="!isToday(message.created_at)">{{message.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</small>
-                                        </p>
-                                    </div>
-                                </div>
-                            </li>
-                        </ul>
-                    </div>
-                    <b-form @submit="onSubmit" class="message-form" v-if="deal.status !== 'completed'">
-                        <b-input-group>
-                            <b-form-textarea id="message-text" @keydown.native="inputHandler" v-model="form.text" :max-rows="1" style="resize: none;"></b-form-textarea>
-                            <b-input-group-button>
-                                <b-button @click="openUploadDialog"><svg style="width:24px;height:24px" viewBox="0 0 24 24">
-                                    <path fill="#ffffff" d="M16.5,6V17.5A4,4 0 0,1 12.5,21.5A4,4 0 0,1 8.5,17.5V5A2.5,2.5 0 0,1 11,2.5A2.5,2.5 0 0,1 13.5,5V15.5A1,1 0 0,1 12.5,16.5A1,1 0 0,1 11.5,15.5V6H10V15.5A2.5,2.5 0 0,0 12.5,18A2.5,2.5 0 0,0 15,15.5V5A4,4 0 0,0 11,1A4,4 0 0,0 7,5V17.5A5.5,5.5 0 0,0 12.5,23A5.5,5.5 0 0,0 18,17.5V6H16.5Z" />
-                                </svg></b-button>
-                                <input @change="fileChosen" type="file" id="attachment" multiple style="display: none" ref="file-input">
-                                <b-button type="submit" variant="primary">Send</b-button>
-                            </b-input-group-button>
-                        </b-input-group>
-                        <div class="attach-box">
-                            <ul class="attachments-items">
-                                <li v-for="file, index in attachments">{{file.name}} - {{file.progress}}% [x]</li>
+                        <div class="form-group" v-if="deal.status === 'dispute'">
+                            <p>Deal is being verified by escrows. Please wait.</p>
+                            <hr>
+                            <ul>
+                                <li v-for="(decision, index) in deal.escrows">escrow {{index + 1}}: {{decision.decision ? decision.decision : 'pending'}}</li>
                             </ul>
                         </div>
-                    </b-form>
-                </div>
-            </b-col>
-            <b-col md="3">
-                <div class="profile-card">
-                    Counterparty: <router-link v-if="counterparty._id" :to="{name: 'user-by-id', params: {id: counterparty._id}}">{{counterparty.username ? counterparty.username : counterparty.email}}</router-link><br>
-                    Role: {{counterPartyRole}}<br>
-                    <img :src="counterparty.profileImg">
-                    <!-- <div class="rating">
-                        <span v-for="i in 5">
-                            <div class="fill" :style="'width:' + (Math.floor(parseFloat(counterparty.rating.value)) > i ? 100 : (Math.floor(parseFloat(counterparty.rating.value)) == i ? (Math.floor(parseFloat(counterparty.rating.value)) % i).toFixed(2) * 100 : 0)) + '%'"></div>
-                        </span>
-                    </div> -->
-                </div>
-            </b-col>
-        </b-row>
-        <hr>
-        <b-row class="buy-sel-conditions">
-            <b-col md="6">
-                <div class="" v-if="deal.seller && deal.seller._id === $auth.user()._id">
-                    <h4>Seller conditions</h4>
-                    <p>{{deal.sellerConditions}}</p>
-                    <button v-if="deal.status === 'new' && conditionsEdition === false" class="btn btn-primary" @click="openConditions('seller');changeConditionsClick();">change</button>
-                </div>
-                <div class="" v-if="deal.buyer && deal.buyer._id === $auth.user()._id">
-                    <h4>Buyer conditions</h4>
-                    <p>{{deal.buyerConditions}}</p>
-                    <button v-if="deal.status === 'new' && conditionsEdition === false" class="btn btn-primary" @click="openConditions('buyer');changeConditionsClick();">change</button>
-                </div>
-                <div class="" v-if="((deal.seller && deal.seller._id === $auth.user()._id) || (deal.buyer && deal.buyer._id === $auth.user()._id)) && deal.status === 'new' && conditionsEdition === true">
-                    <h4>{{activeCondition.role}} conditions</h4>
-                    <b-form-textarea class="form-modal-conditions" v-model="activeCondition.editedText" :rows="9"></b-form-textarea>
-                    <div slot="modal-footer" class="w-100">
-                        <b-btn v-if="conditionsEdition" size="sm" class="float-right" @click="submitConditions" variant="success">Save</b-btn>
-                        <b-btn v-if="conditionsEdition" size="sm" class="float-right" @click="cancelConditionsChange">Cancel</b-btn>
                     </div>
-                </div>
-            </b-col>
-            <b-col md="6">
-                <div class="" v-if="deal.seller && deal.seller._id === $auth.user()._id">
-                    <h4>Buyer conditions</h4>
-                    <p>{{deal.buyerConditions}}</p>
-                </div>
-                <div class="" v-if="deal.buyer && deal.buyer._id === $auth.user()._id">
-                    <h4>Seller conditions</h4>
-                   <p>{{deal.sellerConditions}}</p>
-                </div>
-            </b-col>
-        </b-row>
+                </b-col>
+                <b-col md="6">
+                    <div class="chat-frame">
+                        <div class="messages-box" ref="messages-box">
+                            <ul class="chat">
+                                <li v-for="message in messages">
+                                    <div v-if="message.type === 'message'" :class="message.sender._id == $auth.user()._id ? 'msj macro' : 'msj-rta macro'">
+                                        <div :class="message.sender._id == $auth.user()._id ? 'text text-l' : 'text text-r'">
+                                            <p class="msg-sender">{{message.sender._id == $auth.user()._id ? 'You' : message.sender.username}}</p>
+                                            <p class="msg-text">{{message.text}}</p>
+                                            <div v-for="attachment in message.attachments" v-if="isType(attachment.name) === 'png' || isType(attachment.name) === 'jpeg' || isType(attachment.name) === 'gif' || isType(attachment.name) === 'bmp'"><img class="img-deal" :src="$config.backendUrl+'/attachments/'+attachment._id"></div>
+                                            <div v-for="attachment in message.attachments"><a target="_blank" :href="$config.backendUrl+'/attachments/'+attachment._id">{{attachment.name}}</a></div>
+                                            <p class="msg-time">
+                                                <small v-if="isToday(message.created_at)">Today, {{message.created_at | moment("HH:mm:ss")}}</small>
+                                                <small v-if="!isToday(message.created_at)">{{message.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</small>
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div v-if="message.type === 'system'">
+                                        <div :class="'system-msg'">
+                                            <p class="sys-msg-sender">{{message.sender ? (message.sender._id == $auth.user()._id ? 'You' : message.sender.username) : 'PayFair System'}}</p>
+                                            <p class="sys-msg-text">{{message.text}}</p>
+                                            <p class="sys-msg-time">
+                                                <small v-if="isToday(message.created_at)">Today, {{message.created_at | moment("HH:mm:ss")}}</small>
+                                                <small v-if="!isToday(message.created_at)">{{message.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</small>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                        <b-form @submit="onSubmit" class="message-form" v-if="deal.status !== 'completed'">
+                            <b-input-group>
+                                <b-form-textarea id="message-text" @keydown.native="inputHandler" v-model="form.text" :max-rows="1" style="resize: none;"></b-form-textarea>
+                                <b-input-group-button>
+                                    <b-button @click="openUploadDialog"><svg style="width:24px;height:24px" viewBox="0 0 24 24">
+                                        <path fill="#ffffff" d="M16.5,6V17.5A4,4 0 0,1 12.5,21.5A4,4 0 0,1 8.5,17.5V5A2.5,2.5 0 0,1 11,2.5A2.5,2.5 0 0,1 13.5,5V15.5A1,1 0 0,1 12.5,16.5A1,1 0 0,1 11.5,15.5V6H10V15.5A2.5,2.5 0 0,0 12.5,18A2.5,2.5 0 0,0 15,15.5V5A4,4 0 0,0 11,1A4,4 0 0,0 7,5V17.5A5.5,5.5 0 0,0 12.5,23A5.5,5.5 0 0,0 18,17.5V6H16.5Z" />
+                                    </svg></b-button>
+                                    <input @change="fileChosen" type="file" id="attachment" multiple style="display: none" ref="file-input">
+                                    <b-button type="submit" variant="primary">Send</b-button>
+                                </b-input-group-button>
+                            </b-input-group>
+                            <div class="attach-box">
+                                <ul class="attachments-items">
+                                    <li v-for="file, index in attachments">{{file.name}} - {{file.progress}}% [x]</li>
+                                </ul>
+                            </div>
+                        </b-form>
+                    </div>
+                </b-col>
+                <b-col md="3">
+                    <div class="profile-card">
+                        Counterparty: <router-link v-if="counterparty._id" :to="{name: 'user-by-id', params: {id: counterparty._id}}">{{counterparty.username ? counterparty.username : counterparty.email}}</router-link><br>
+                        Role: {{counterPartyRole}}<br>
+                        <img :src="counterparty.profileImg">
+                        <!-- <div class="rating">
+                            <span v-for="i in 5">
+                                <div class="fill" :style="'width:' + (Math.floor(parseFloat(counterparty.rating.value)) > i ? 100 : (Math.floor(parseFloat(counterparty.rating.value)) == i ? (Math.floor(parseFloat(counterparty.rating.value)) % i).toFixed(2) * 100 : 0)) + '%'"></div>
+                            </span>
+                        </div> -->
+                    </div>
+                </b-col>
+            </b-row>
+            <hr>
+            <b-row class="buy-sel-conditions">
+                <b-col md="6">
+                    <div class="" v-if="deal.seller && deal.seller._id === $auth.user()._id">
+                        <h4>Seller conditions</h4>
+                        <p>{{deal.sellerConditions}}</p>
+                        <button v-if="deal.status === 'new' && conditionsEdition === false" class="btn btn-primary" @click="openConditions('seller');changeConditionsClick();">change</button>
+                    </div>
+                    <div class="" v-if="deal.buyer && deal.buyer._id === $auth.user()._id">
+                        <h4>Buyer conditions</h4>
+                        <p>{{deal.buyerConditions}}</p>
+                        <button v-if="deal.status === 'new' && conditionsEdition === false" class="btn btn-primary" @click="openConditions('buyer');changeConditionsClick();">change</button>
+                    </div>
+                    <div class="" v-if="((deal.seller && deal.seller._id === $auth.user()._id) || (deal.buyer && deal.buyer._id === $auth.user()._id)) && deal.status === 'new' && conditionsEdition === true">
+                        <h4>{{activeCondition.role}} conditions</h4>
+                        <b-form-textarea class="form-modal-conditions" v-model="activeCondition.editedText" :rows="9"></b-form-textarea>
+                        <div slot="modal-footer" class="w-100">
+                            <b-btn v-if="conditionsEdition" size="sm" class="float-right" @click="submitConditions" variant="success">Save</b-btn>
+                            <b-btn v-if="conditionsEdition" size="sm" class="float-right" @click="cancelConditionsChange">Cancel</b-btn>
+                        </div>
+                    </div>
+                </b-col>
+                <b-col md="6">
+                    <div class="" v-if="deal.seller && deal.seller._id === $auth.user()._id">
+                        <h4>Buyer conditions</h4>
+                        <p>{{deal.buyerConditions}}</p>
+                    </div>
+                    <div class="" v-if="deal.buyer && deal.buyer._id === $auth.user()._id">
+                        <h4>Seller conditions</h4>
+                       <p>{{deal.sellerConditions}}</p>
+                    </div>
+                </b-col>
+            </b-row>
+        </div>
         <b-modal v-model="reviewModal" title="Comment your counterparty!" @hide="cancelReview">
             <p>Rate: </p>
             <div class="rating">

@@ -21,20 +21,15 @@ const Notification = require('../db/models/Notification.js');
 
 // todo: set multer dest into memory storage for validate image width and height
 const upload = multer({dest: 'public/profile-pic', fileFilter: (req, file, cb) => {
-    // todo: file filtering function (file type, file size, etc.)
+    // todo: file filtering (file type, file size, etc.)
     cb(null, true);
 }}).single('profileImg');
 
 const validator = require('express-validator');
 
-function hash(text) {
-    return crypto.createHash('sha1')
-        .update(text).digest('base64')
-}
+const hash = text => crypto.createHash('sha1').update(text).digest('base64');
 
-function createAccount (data) {
-    return new Account(data).save();
-}
+const createAccount = data => new Account(data).save();
 
 router.use(validator({
     customValidators: {
@@ -72,14 +67,12 @@ router.use(validator({
 module.exports = web3 => {
 
     router.get('/getinv/:invId',  (req, res) => {
-        User.findById(req.params.invId).select('email type').then(function (doc) {
+        User.findById(req.params.invId).select('email type').then(doc => {
             if (!doc) {
                 return res.status(401).json({success: false, msg: 'Wrong params'});
             }
             return res.json(doc);
-        }).catch(function (err) {
-            return res.status(500).json(err);
-        });
+        }).catch(err => res.status(500).json(err));
     });
 
     router.post('/acceptinv/:invId', (req, res) => {
@@ -139,9 +132,7 @@ module.exports = web3 => {
                     });
                     return res.json({success: true, token: 'JWT ' + token});
                 })
-                .catch(function (err) {
-                    return res.status(500).json({success: false, error: [err], msg: 'DB Error'});
-                });
+                .catch(err => res.status(500).json({success: false, error: [err], msg: 'DB Error'}));
         });
     });
 
@@ -167,7 +158,7 @@ module.exports = web3 => {
         }
         User.findOne({
             email: req.body.email
-        }, function (err, user) {
+        }, (err, user) => {
             if (err) throw err;
 
             if (!user) {
@@ -314,6 +305,7 @@ module.exports = web3 => {
         }
     });
 
+
     router.get('/info', passport.authenticate('jwt', {session: false}), async (req, res) => {
         try {
             const doc = await User.findById(req.user._id).select("-password").populate('wallet');
@@ -329,7 +321,9 @@ module.exports = web3 => {
                 status: doc.status,
                 profileImg: doc.profileImg
             };
-
+            if (doc.status === 'unverified') {
+                user.type = 'unverified-user';
+            }
             if (!user.profileImg) {
                 user.profileImg = config.backendUrl + '/images/default-user-img.png';
             } else {
@@ -446,6 +440,27 @@ module.exports = web3 => {
         });
     });
 
+
+    router.get('/sendVerify', passport.authenticate('jwt', {session: false}), function (req, res) {
+        User
+            .findOne({_id: req.user._id, status: 'unverified'})
+            .then(user => {
+                if (!user) {
+                    throw {
+                        msg: 'User is already verified'
+                    }
+                }
+
+                return user.sendMailVerification();
+            })
+            .then(user => {
+                return res.json({msg: 'Please check email and verify your account.'});
+            })
+            .catch(err => {
+                return res.status(400).json({success: false, error: err});
+            })
+    });
+
     router.get('/verify/:code', (req, res) => {
         if (!req.params.code) {
             return res.status(404).json({success:false, error: {msg:'Empty verify code'}});
@@ -558,7 +573,7 @@ module.exports = web3 => {
         });
     });
 
-    router.get('/notifications', passport.authenticate('jwt', {session: false}), function (req, res) {
+    router.get('/notifications', passport.authenticate('jwt', {session: false}), (req, res) => {
         Notification
             .aggregate([
                 {
@@ -601,7 +616,7 @@ module.exports = web3 => {
                     }
                 }
             ])
-            .then(function (notifications) {
+            .then(notifications => {
                 Notification
                     .find({
                         $and: [
@@ -617,17 +632,15 @@ module.exports = web3 => {
                     })
                     .populate('sender', 'username')
                     .populate({path: 'deal', populate: [{path: 'exchange', select: ['tradeType']}]})
-                    .then(function (_notifications) {
+                    .then(_notifications => {
                         for (let i = 0; i < notifications.length; i++) {
                             _notifications.push(notifications[i]);
                         }
                         
-                        _notifications.sort(function (a, b){
-                            return new Date(b.created_at) - new Date(a.created_at);
-                        });
+                        _notifications.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
                         return res.json(_notifications);
                     })
-                    .catch(function (err) {
+                    .catch(err => {
                         return res.status(400).json({success: false, error: err});
                     })
             });

@@ -1,34 +1,36 @@
 <template>
     <div class="reset">
-        <b-row align-h="center">
-            <b-col sm="12" md="5">
-                <b-card v-if="!code || !email" header="Reset Password"
-                        align="left">
-                    <b-alert variant="danger"
-                             dismissible
-                             :show="errorMsg != ''"
-                             @dismissed="errorMsg=''">
-                        {{errorMsg}}
-                    </b-alert>
-                    <b-form @submit="sendEmail">
-                        <b-form-group id="emailInputGroup" label="Email address:" label-for="email" :state="isValid('email')" :feedback="errorMessage('email')">
-                            <b-form-input id="email" type="text" v-model="form.email" :state="isValid('email')"></b-form-input>
-                        </b-form-group>
-                        <b-button type="submit" variant="primary">Reset</b-button>
-                    </b-form>
-                </b-card>
+        <div class="container">
+            <b-row align-h="center">
+                <b-col sm="12" md="5">
+                    <b-card v-if="!code || !email" header="Reset Password"
+                            align="left">
+                        <b-alert variant="danger"
+                                 dismissible
+                                 :show="errorMsg != ''"
+                                 @dismissed="errorMsg=''">
+                            {{errorMsg}}
+                        </b-alert>
+                        <b-form @submit="sendEmail">
+                            <b-form-group id="emailInputGroup" label="Email address:" label-for="email" :state="isValid('email')" :feedback="errorMessage('email')">
+                                <b-form-input id="email" type="text" v-model="form.email" :state="isValid('email')"></b-form-input>
+                            </b-form-group>
+                            <b-button type="submit" variant="primary">Reset</b-button>
+                        </b-form>
+                    </b-card>
 
-                <b-card v-else :header="'Reset Password for ' + email "
-                        align="left">
-                    <b-form @submit="resetPassword">
-                        <b-form-group id="passwordInputGroup" label="Password:" label-for="password" :state="isValid('password')" :feedback="errorMessage('email')">
-                            <b-form-input id="password" type="password" v-model="form.password" :state="isValid('password')"></b-form-input>
-                        </b-form-group>
-                        <b-button type="submit" variant="primary">Reset</b-button>
-                    </b-form>
-                </b-card>
-            </b-col>
-        </b-row>
+                    <b-card v-else :header="'Reset Password for ' + email "
+                            align="left">
+                        <b-form @submit="resetPassword">
+                            <b-form-group id="passwordInputGroup" label="Password:" label-for="password" :state="isValid('password')" :feedback="errorMessage('email')">
+                                <b-form-input id="password" type="password" v-model="form.password" :state="isValid('password')"></b-form-input>
+                            </b-form-group>
+                            <b-button type="submit" variant="primary">Reset</b-button>
+                        </b-form>
+                    </b-card>
+                </b-col>
+            </b-row>
+        </div>
     </div>
 </template>
 <script>

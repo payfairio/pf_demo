@@ -26,9 +26,7 @@ const statuses = [
 /**
  * To generate list of suggestions
  */
-router.get('/', passport.authenticate('jwt', {
-    session: false
-}), function (req, res, next) {
+router.get('/', passport.authenticate('jwt', {session: false}), (req, res) => {
     let {offset, limit, order, sortBy} = req.query;
     order = order === 'true' ? -1 : 1;
 
@@ -56,9 +54,7 @@ router.get('/', passport.authenticate('jwt', {
 /**
  * To generate simple suggestion
  */
-router.get('/suggestion/:id', passport.authenticate('jwt', {
-        session: false
-    }), function (req, res, next) {
+router.get('/suggestion/:id', passport.authenticate('jwt', {session: false}), (req, res) => {
         if (req.user.type !== 'trust') {
             return res.status(403).json({
                 error: "Forbidden"
@@ -67,7 +63,7 @@ router.get('/suggestion/:id', passport.authenticate('jwt', {
         Suggestions.findOne({
                 _id: req.params.id
             }).populate('author', ['-password', '-wallet'])
-            .then(function (doc) {
+            .then(doc => {
                 if (!doc) {
                     return res.status(404).json({
                         error: "Suggestion not found"
@@ -75,7 +71,7 @@ router.get('/suggestion/:id', passport.authenticate('jwt', {
                 }
                 can_vote = !(doc.like.indexOf(req.user._id) != -1 || doc.dislike.indexOf(req.user._id) != -1);
                 return res.json({suggestion: doc, can_vote: can_vote});
-            }, function (err) {
+            }).catch(err => {
                 return res.status(500).json(err);
             });
 });
@@ -83,9 +79,7 @@ router.get('/suggestion/:id', passport.authenticate('jwt', {
 /**
  * To create suggestion
  */
-router.post('/create', passport.authenticate('jwt', {
-        session: false
-    }), function (req, res, next) {
+router.post('/create', passport.authenticate('jwt', {session: false}), (req, res) => {
         if (req.user.type !== 'trust') {
             return res.status(403).json({
                 error: "Forbidden"
@@ -103,7 +97,7 @@ router.post('/create', passport.authenticate('jwt', {
                 }
             }
         });
-        req.getValidationResult().then(function (result) {
+        req.getValidationResult().then(result => {
             if (result.array().length > 0) {
                 return res.status(400).json({
                     success: false,
@@ -114,7 +108,7 @@ router.post('/create', passport.authenticate('jwt', {
 
             Suggestions.find({
                 status: statuses[0]
-            }).then(function (docs) {
+            }).then(docs => {
                 if (docs.length >= max_suggestion_per_user){
                     throw {e_code: 400, msg: "You can have only " + max_suggestion_per_user + " active suggestions"};
                 }
@@ -125,9 +119,9 @@ router.post('/create', passport.authenticate('jwt', {
                     author: req.user._id
                 }
                 return new Suggestions(data).save();
-            }).then(function (result) {
+            }).then(result => {
                 return res.json({success: true, suggestion: result});
-            }).catch(function (err) {
+            }).catch(err => {
                 if (err.e_code){
                     return res.status(err.e_code).json({success: false, error: err.msg});
                 }
@@ -139,22 +133,20 @@ router.post('/create', passport.authenticate('jwt', {
 /**
  * To vote for suggestion
  */
-router.post('/suggestion/:id/vote', passport.authenticate('jwt', {
-        session: false
-    }), function (req, res, next) {
+router.post('/suggestion/:id/vote', passport.authenticate('jwt', {session: false}), (req, res) => {
         if (req.user.type !== 'trust') {
             return res.status(403).json({
                 error: "Forbidden"
             });
         }
         Suggestions.findOne({_id: req.params.id}).populate('author', ['-password', '-wallet'])
-            .then(function (doc){
+            .then(doc => {
                 if (!doc) {
                     return res.status(404).json({
                         error: "Suggestion not found"
                     });
                 }
-                if (doc.like.indexOf(req.user._id) != -1 || doc.dislike.indexOf(req.user._id) != -1){
+                if (doc.like.indexOf(req.user._id) !== -1 || doc.dislike.indexOf(req.user._id) !== -1){
                     return res.status(404).json({
                         error: "You are already voted"
                     });
@@ -166,17 +158,17 @@ router.post('/suggestion/:id/vote', passport.authenticate('jwt', {
                     doc.dislike.push(req.user._id);
                 }
 
-                if (doc.like.length === need_likes_to_change_status && doc.status == statuses[0]){
+                if (doc.like.length === need_likes_to_change_status && doc.status == statuses[0]) {
                     doc.status = statuses[1];
                 }
 
-                if (doc.dislike.length === need_dislikes_to_change_status && doc.status == statuses[0]){
+                if (doc.dislike.length === need_dislikes_to_change_status && doc.status == statuses[0]) {
                     doc.status = statuses[3];
                 }
 
                 doc.save();
                 return res.json({suggestion: doc, can_vote: false});
-            }).catch(function (err) {
+            }).catch(err => {
                 return res.status(500).json({success: false, error: err});
             });
 });

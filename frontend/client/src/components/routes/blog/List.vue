@@ -1,19 +1,21 @@
 <template>
     <div class="blog-list">
-        <h1>Blog</h1>
-        <div v-if="!loading">
-            <b-row v-for="item in blogItems" class="blog-item" :key="item.id">
-                <b-col>
-                    <img :src="$config.staticUrl+item.image">
-                </b-col>
-                <b-col sm="10">
-                    <h4><router-link :to="{name: 'blog-post', params: {url: item.url}}">{{item.name}}</router-link></h4>
-                    {{item.introtext}}
-                </b-col>
-            </b-row>
+        <div class="container">
+            <h1>Blog</h1>
+            <div v-if="!loading">
+                <b-row v-for="item in blogItems" class="blog-item" :key="item.id">
+                    <b-col>
+                        <img :src="$config.staticUrl+item.image">
+                    </b-col>
+                    <b-col sm="10">
+                        <h4><router-link :to="{name: 'blog-post', params: {url: item.url}}">{{item.name}}</router-link></h4>
+                        {{item.introtext}}
+                    </b-col>
+                </b-row>
+            </div>
+            <div v-if="loading">Loading...</div>
+            <b-pagination-nav size="md" :linkGen="linkGenerator" :number-of-pages="totalPages" :value="currentPage"></b-pagination-nav>
         </div>
-        <div v-if="loading">Loading...</div>
-        <b-pagination-nav size="md" :linkGen="linkGenerator" :number-of-pages="totalPages" :value="currentPage"></b-pagination-nav>
     </div>
 </template>
 <script>

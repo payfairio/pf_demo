@@ -139,7 +139,7 @@ router.post('/edit/:id', passport.authenticate('jwt', { session: false}), (req, 
 
 router.get('/:id', (req, res) => {
     Exchange.findOne({eId: req.params.id}).populate('owner', ['-password', '-wallet'])
-        .then(function (doc) {
+        .then(doc => {
             return new Promise((resolve, reject) => {
                 if (!doc) {
                     resolve({error: "Exchange not found"});
@@ -160,7 +160,7 @@ router.get('/:id', (req, res) => {
         });
 });
 
-router.post('/create', passport.authenticate('jwt', { session: false}), (req, res) => {
+router.post('/create', passport.authenticate('jwt', {session: false}), (req, res) => {
     if (req.user.type !== 'client') {
         return res.status(403).json({error: "Forbidden"});
     }
@@ -212,7 +212,8 @@ router.post('/create', passport.authenticate('jwt', { session: false}), (req, re
             paymentTypeDetail: req.body.paymentTypeDetail,
             currency: req.body.currency,
             rate: req.body.rate,
-            conditions: req.body.conditions
+            conditions: req.body.conditions,
+            limits: req.body.limits
         };
         new Exchange(ex).save()
             .then(result => res.json({success: true, exchange: result}))

@@ -19,10 +19,8 @@ router.use(validator({
 
     }
 }));
-module.exports = function (web3) {
-    router.get('/', passport.authenticate('jwt', {
-        session: false
-    }), function (req, res, next) {
+module.exports = web3 => {
+    router.get('/', passport.authenticate('jwt', {session: false}), (req, res) => {
         let status_filter = req.query.status == 0 ? {$or: [{status: 'new'}, {status: 'accepted'}, {status: 'dispute'}]} : {status: 'completed'};
         let {
             offset,
@@ -47,88 +45,142 @@ module.exports = function (web3) {
                 status_filter
             ]
         }).then(total => {
-            Deal.aggregate([{
-                $match: {
-                    $and: [
-                        {
-                            $or: [
-                                {
-                                    'buyer': req.user._id
+                Deal.aggregate([{
+                    $match: {
+                        $and: [
+                            {
+                                $or: [
+                                    {
+                                        'buyer': req.user._id
+                                    },
+                                    {
+                                        'seller': req.user._id
+                                    }
+                                ]
+                            },
+                            status_filter
+                        ]
+                    }
+                }, {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'seller',
+                        foreignField: '_id',
+                        as: 'seller'
+                    }
+                }, {
+                    $unwind: '$seller'
+                }, {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'buyer',
+                        foreignField: '_id',
+                        as: 'buyer'
+                    }
+                }, {
+                    $unwind: '$buyer'
+                }, {
+                    $lookup: {
+                        from: 'messages',
+                        localField: 'messages',
+                        foreignField: '_id',
+                        as: 'messages'
+                    }
+                }, {
+                    $addFields: {
+                        last_message: {
+                            $cond: {
+                                if: {
+                                    $eq: [{$size: '$messages'}, 0]
                                 },
-                                {
-                                    'seller': req.user._id
-                                }
-                            ]
-                        },
-                        status_filter
-                    ]
-                }
-            }, {
-                $project: {
-                    dId: true,
-                    name: true,
-                    created_at: true,
-                    seller: true,
-                    buyer: true,
-                    status: true,
-                    coin: true,
-                }
-            }, {
-                $lookup: {
-                    from: 'users',
-                    localField: 'seller',
-                    foreignField: '_id',
-                    as: 'seller'
-                }
-            }, {
-                $unwind: '$seller'
-            }, {
-                $lookup: {
-                    from: 'users',
-                    localField: 'buyer',
-                    foreignField: '_id',
-                    as: 'buyer'
-                }
-            }, {
-                $unwind: '$buyer'
-            }, {
-                $addFields: {
-                    role: {
-                        $cond: {
-                            if: {
-                                $eq: ['$seller.email', req.user.email]
-                            },
-                            then: 'seller',
-                            else: 'buyer'
-                        }
-                    },
-                    counterparty: {
-                        $cond: {
-                            if: {
-                                $eq: ['$seller.email', req.user.email]
-                            },
-                            then: '$buyer.email',
-                            else: '$seller.email'
-                        }
-                    },
-                    counterparty_id: {
-                        $cond: {
-                            if: {
-                                $eq: ['$seller.email', req.user.email]
-                            },
-                            then: '$buyer._id',
-                            else: '$seller._id'
+                                then: null,
+                                else: {$arrayElemAt: [ "$messages", -1 ]}
+                            }
+                            
                         }
                     }
-                },
-            }, {
-                $sort: {
-                    [sortBy]: order
-                }
-            }, {
-                $skip: +offset
-            },
-                {
+                }, {
+                    $lookup: {
+                        from: 'users',
+                        localField: 'last_message.sender',
+                        foreignField: '_id',
+                        as: 'last_message.sender'
+                    }
+                }, {
+                    $project: {
+                        dId: true,
+                        name: true,
+                        created_at: true,
+                        seller: true,
+                        buyer: true,
+                        status: true,
+                        coin: true,
+                        'last_message.text': true,
+                        'last_message.sender': '$last_message.sender.username',
+                        'last_message.attachments': true,
+                        'last_message.created_at': true,
+                        'last_message.type': true,
+                        new_messages: {
+                            $filter: {
+                                input: '$messages',
+                                as: 'id',
+                                cond: {
+                                    $eq: [
+                                        {$indexOfArray: ['$$id.viewed', req.user._id]},
+                                        -1
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }, {
+                    $project: {
+                        'seller.password': false,
+                        'seller.verifyCode': false,
+                        'buyer.password': false,
+                        'buyer.verifyCode': false,
+
+                    }
+                }, {
+                    $addFields: {
+                        new_messages: {
+                            $size: '$new_messages'
+                        },
+                        role: {
+                            $cond: {
+                                if: {
+                                    $eq: ['$seller.email', req.user.email]
+                                },
+                                then: 'seller',
+                                else: 'buyer'
+                            }
+                        },
+                        counterparty: {
+                            $cond: {
+                                if: {
+                                    $eq: ['$seller.email', req.user.email]
+                                },
+                                then: '$buyer.email',
+                                else: '$seller.email'
+                            }
+                        },
+                        counterparty_id: {
+                            $cond: {
+                                if: {
+                                    $eq: ['$seller.email', req.user.email]
+                                },
+                                then: '$buyer._id',
+                                else: '$seller._id'
+                            }
+                        }
+                    },
+                }, {
+                    $sort: {
+                        [sortBy]: order
+                    }
+                }, {
+                    $skip: +offset
+                }, {
                     $limit: +limit
                 }
             ]).then(docs => {
@@ -142,7 +194,7 @@ module.exports = function (web3) {
 
     router.get('/dispute', passport.authenticate('jwt', {
         session: false
-    }), function (req, res, next) {
+    }), (req, res) => {
         if (req.user.type !== 'escrow') {
             return res.status(403).json({
                 error: "Forbidden"
@@ -157,10 +209,10 @@ module.exports = function (web3) {
                 status_filter
             ]
         })
-            .then(function (docs) {
-                let deals = docs.map(function (deal) {
+            .then(docs => {
+                let deals = docs.map(deal => {
                     let escIndex = 0;
-                    deal.escrows.forEach(function (esc, index) {
+                    deal.escrows.forEach((esc, index) => {
                         if (esc.escrow.toString() === req.user._id.toString()) {
                             escIndex = index;
                         }
@@ -171,7 +223,7 @@ module.exports = function (web3) {
                     delete tmp.escrows;
                     return tmp;
                 });
-                deals.sort(function (a, b) {
+                deals.sort((a, b) => {
                     if (a.called_at < b.called_at) {
                         return -1;
                     }
@@ -181,18 +233,18 @@ module.exports = function (web3) {
                     return 0;
                 });
                 return res.json(deals);
-            }).catch(function (err) {
+            }).catch(err => {
             return res.json(err);
         });
     });
 
     router.get('/deal/:id', passport.authenticate('jwt', {
         session: false
-    }), function (req, res, next) {
+    }), (req, res) =>  {
         Deal.findOne({
             dId: req.params.id
         }).populate('seller', ['-password', '-wallet']).populate('buyer', ['-password', '-wallet']).populate('messages')
-            .then(function (doc) {
+            .then(doc => {
                 if (!doc) {
                     return res.status(404).json({
                         error: "Deal not found"
@@ -204,14 +256,14 @@ module.exports = function (web3) {
                     });
                 }
                 return res.json(doc);
-            }, function (err) {
+            }, err => {
                 return res.status(500).json(err);
             });
     });
 
     router.post('/create', passport.authenticate('jwt', {
         session: false
-    }), function (req, res, next) {
+    }), (req, res) => {
         if (req.user.type !== 'client') {
             return res.status(403).json({
                 error: "Forbidden"
@@ -252,7 +304,7 @@ module.exports = function (web3) {
                 }
             },
         });
-        req.getValidationResult().then(function (result) {
+        req.getValidationResult().then(result => {
             if (result.array().length > 0) {
                 return res.status(400).json({
                     success: false,
@@ -263,15 +315,15 @@ module.exports = function (web3) {
 
             User.findOne({
                 email: req.body.counterparty
-            }).then(function (doc) {
-                return new Promise(function (resolve, reject) {
+            }).then(doc => {
+                return new Promise((resolve, reject) => {
                     if (!doc) { // create user with status 'invited'
                         new User({
                             _id: new mongoose.Types.ObjectId(),
                             email: req.body.counterparty,
                             type: 'client',
                             status: 'invited'
-                        }).save(function (err, user) {
+                        }).save((err, user) => {
                             if (err) {
                                 reject(err);
                             }
@@ -281,22 +333,22 @@ module.exports = function (web3) {
                         resolve(doc);
                     }
                 });
-            }).then(function (user) {
-                return new Promise(function (resolve, reject) {
+            }).then(user => {
+                return new Promise((resolve, reject) => {
                     if (user.status === 'invited') {
                         user.sendMailInviteNotification({
                             name: req.body.name,
                             email: req.user.email
-                        }).then(function (mailData) {
+                        }).then(mailData => {
                             resolve(user);
-                        }, function (err) {
+                        }).catch(err => {
                             reject(err);
                         });
                     } else {
                         resolve(user);
                     }
                 });
-            }).then(function (user) {
+            }).then(user => {
                 let data = {
                     _id: new mongoose.Types.ObjectId(),
                     name: req.body.name,
@@ -313,7 +365,7 @@ module.exports = function (web3) {
                     data.buyerConditions = req.body.conditions;
                 }
                 return new Deal(data).save();
-            }).then(function (result) {
+            }).then(result => {
                 const notification = {
                     sender: req.user._id,
                     user: req.body.role === 'seller' ? result.buyer : result.seller,
@@ -323,7 +375,7 @@ module.exports = function (web3) {
                 };
 
                 return new Notification(notification).save();
-            }).then(function (notification) {
+            }).then(notification => {
                 Notification.findById(notification._id)
                     .populate('deal')
                     .populate('sender', 'username')
@@ -348,7 +400,7 @@ module.exports = function (web3) {
                         });
                     });
 
-            }).catch(function (err) {
+            }).catch(err => {
                 return res.status(500).json({
                     success: false,
                     error: err
@@ -360,7 +412,7 @@ module.exports = function (web3) {
 
     router.post('/exchange', passport.authenticate('jwt', {
         session: false
-    }), function (req, res, next) {
+    }), (req, res) => {
         if (req.user.type !== 'client') {
             return res.status(403).json({
                 error: "Forbidden"
@@ -378,7 +430,7 @@ module.exports = function (web3) {
             },
         });
 
-        req.getValidationResult().then(function (result) {
+        req.getValidationResult().then(result => {
             if (result.array().length > 0) {
                 return res.status(400).json({
                     success: false,
@@ -391,7 +443,7 @@ module.exports = function (web3) {
 
             Exchange.findOne({
                 _id: req.body.exchange
-            }).populate('owner', ['-password', '-wallet']).then(function (exchange) {
+            }).populate('owner', ['-password', '-wallet']).then(exchange => {
                 let deal = {
                     _id: new mongoose.Types.ObjectId(),
                     name: 'Ex#' + exchange.eId + '. ' + exchange.tradeType + ' ' + exchange.coin + ' for ' + exchange.currency,
@@ -413,7 +465,7 @@ module.exports = function (web3) {
                     deal.sellerConditions = exchange.conditions+" \n\n1"+exchange.coin+" = "+exchange.rate+exchange.currency;
                 }
                 return new Deal(deal).save();
-            }).then(function(deal){
+            }).then(deal => {
                 const notification = {
                     sender: req.user._id,
                     user: owner,
@@ -422,15 +474,15 @@ module.exports = function (web3) {
                     text: deal.name,
                 };
 
-                return new Notification(notification).save().then(function (notification) {
+                return new Notification(notification).save().then(notification => {
                     return {deal: deal, notification: notification}
                 });
-            }).then(function (data) {
+            }).then(data => {
                 Notification
                     .findById(data.notification._id)
                     .populate({path: 'deal', populate: [{path: 'exchange', select: ['tradeType']}]})
                     .populate('sender', 'username')
-                    .then(function (notification) {
+                    .then(notification => {
                         const io = req.app.io;
                         const clients = io.clients[data.notification.user._id];
 
@@ -439,9 +491,9 @@ module.exports = function (web3) {
                                 io.to(client).emit('notification', notification);
                             }
                         }
-                    })
+                    });
                 return res.json({success: true, deal: data.deal});
-            }).catch(function (err){
+            }).catch(err => {
                 console.log('/deals/exchange error:', err);
             });
         });

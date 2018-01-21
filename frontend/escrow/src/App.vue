@@ -50,7 +50,7 @@
 
                 </b-collapse>
             </b-navbar>
-            <div class="container" id="app-content-container">
+            <div :class="'container'+($route.name === 'about' ? ' container-full': '')" id="app-content-container">
                 <div v-if="$auth.ready() && (socketReady || !$auth.check())">
                      <b-alert variant="info"
                         dismissible
@@ -314,5 +314,40 @@
     .currencies{
         width: 250px;
         margin-bottom: 10px;
+    }
+
+    /*temporary*/
+    .container-about {
+        max-width: 100%!important;
+        padding-top: 0 !important;
+        padding-right: 0;
+        padding-left: 0;
+    }
+
+    .ab-container{
+        padding-right: 15px;
+        padding-left: 15px;
+        margin-right: auto;
+        margin-left: auto;
+    }
+    @media (min-width: 576px){
+        .ab-container {
+            max-width: 540px;
+        }
+    }
+    @media (min-width: 768px){
+        .ab-container {
+            max-width: 720px;
+        }
+    }
+    @media (min-width: 992px){
+        .ab-container {
+            max-width: 960px;
+        }
+    }
+    @media (min-width: 1200px){
+        .ab-container {
+            max-width: 1140px;
+        }
     }
 </style>

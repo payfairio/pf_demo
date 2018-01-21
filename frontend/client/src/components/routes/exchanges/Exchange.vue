@@ -1,50 +1,52 @@
 <template>
     <div id="exchange">
-        <b-row>
-            <b-col sm="12" md="7">
-                <b-card :header="'Exchange #' + id">
-                    <div class="info">
-                        <p><b>Owner:</b> {{owner.username}}</p>
-                        <p><b>Coin:</b> {{coin}}</p>
-                        <p><b>Currency:</b> {{currency}}</p>
-                        <p><b>Payment:</b> {{paymentType}}{{paymentTypeDetail ? ' (' + paymentTypeDetail + ')' : ''}}</p>
-                        <p><b>Rate:</b> {{rate}}</p>
-                        <p><b>Created at:</b> {{created_at}}</p>
-                        <p><b>Status:</b> {{status}}</p>
-                        <p><b>Conditions:</b> <br>{{conditions}}</p>
-                    </div>
-                    <b-form-group v-if="owner.username != $auth.user().username" id="sumInputGroup" label="Input sum:" label-for="sum" :state="isValid('sum')" :feedback="errorMessage('sum')">
-                        <b-form-input id="sum" step="any" v-model="sum" :state="isValid('sum')"></b-form-input>
-                    </b-form-group>
-                    <div v-if="$auth.check()">
-                        <b-button disabled v-if="owner.username == $auth.user().username || status == 'closed'">{{tradeType == 'buy' ? 'sell' : 'buy'}}</b-button>
-                        <b-button v-if="owner.username != $auth.user().username && status != 'closed'" variant="primary" @click="acceptExchange">{{tradeType == 'buy' ? 'sell' : 'buy'}}</b-button>
-                    </div>
-                    <div v-if="!$auth.check()">
-                        Please sign in for {{tradeType}} coins: <router-link :to="{name: 'login'}" class="btn btn-success">Login</router-link>
-                    </div>
-                </b-card>
-            </b-col>
-            <b-col sm="12" md="5">
-                <b-card :header="owner.username + ' reviews'">
-                    <h5><b>Total Rating: </b> {{reviews.length > 0 ? totalRating : 'no reviews'}}</h5>
-                    <hr>
-                    <div v-for="review in reviews" class="review">
-                        <p>
-                            <b>By:</b> <router-link :to="{name: 'user-by-id', params: {id: review.author._id}}">{{review.author.username}}</router-link><br>
-                            <!-- <b>Rating:</b> {{review.rating}}<br>
-                            <b>Comment:</b><br> -->
-                        </p>
-                        <p class="float-left">Rating:</p>
-                        <div v-for="i in review.rating">
-                            <span></span>
+        <div class="container">
+            <b-row>
+                <b-col sm="12" md="7">
+                    <b-card :header="'Exchange #' + id">
+                        <div class="info">
+                            <p><b>Owner:</b> {{owner.username}}</p>
+                            <p><b>Coin:</b> {{coin}}</p>
+                            <p><b>Currency:</b> {{currency}}</p>
+                            <p><b>Payment:</b> {{paymentType}}{{paymentTypeDetail ? ' (' + paymentTypeDetail + ')' : ''}}</p>
+                            <p><b>Rate:</b> {{rate}}</p>
+                            <p><b>Created at:</b> {{created_at}}</p>
+                            <p><b>Status:</b> {{status}}</p>
+                            <p><b>Conditions:</b> <br>{{conditions}}</p>
                         </div>
-                        <p>{{review.comment}}</p>
+                        <b-form-group v-if="owner.username != $auth.user().username" id="sumInputGroup" label="Input sum:" label-for="sum" :state="isValid('sum')" :feedback="errorMessage('sum')">
+                            <b-form-input id="sum" step="any" v-model="sum" :state="isValid('sum')"></b-form-input>
+                        </b-form-group>
+                        <div v-if="$auth.check()">
+                            <b-button disabled v-if="owner.username == $auth.user().username || status == 'closed'">{{tradeType == 'buy' ? 'sell' : 'buy'}}</b-button>
+                            <b-button v-if="owner.username != $auth.user().username && status != 'closed'" variant="primary" @click="acceptExchange">{{tradeType == 'buy' ? 'sell' : 'buy'}}</b-button>
+                        </div>
+                        <div v-if="!$auth.check()">
+                            Please sign in for {{tradeType}} coins: <router-link :to="{name: 'login'}" class="btn btn-success">Login</router-link>
+                        </div>
+                    </b-card>
+                </b-col>
+                <b-col sm="12" md="5">
+                    <b-card :header="owner.username + ' reviews'">
+                        <h5><b>Total Rating: </b> {{reviews.length > 0 ? totalRating : 'no reviews'}}</h5>
                         <hr>
-                    </div>
-                </b-card>
-            </b-col>
-        </b-row>
+                        <div v-for="review in reviews" class="review">
+                            <p>
+                                <b>By:</b> <router-link :to="{name: 'user-by-id', params: {id: review.author._id}}">{{review.author.username}}</router-link><br>
+                                <!-- <b>Rating:</b> {{review.rating}}<br>
+                                <b>Comment:</b><br> -->
+                            </p>
+                            <p class="float-left">Rating:</p>
+                            <div v-for="i in review.rating">
+                                <span></span>
+                            </div>
+                            <p>{{review.comment}}</p>
+                            <hr>
+                        </div>
+                    </b-card>
+                </b-col>
+            </b-row>
+        </div>
     </div>
 </template>
 <script>

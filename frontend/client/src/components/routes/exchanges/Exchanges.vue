@@ -1,62 +1,67 @@
 <template>
     <div class="exchanges-list">
-        <div v-if="!$auth.check()" class="welcome">
-            <b-row align-h="center">
-                <b-col sm="12">
-                    <div class="wel-inner text-center">
-                        <h3>PayFair</h3>
-                        <p>Decentralised Escrow and P2P Crypto-exchange on the Ethereum blockchain</p>
-                        <router-link :to="{name: 'register'}" class="btn btn-success">Join Now!</router-link>
-                    </div>
-                </b-col>
-            </b-row>
+        <div class="container-fluid">
+                <div v-if="!$auth.check()" class="welcome">
+                    <b-row align-h="center">
+                        <b-col sm="12">
+                            <div class="wel-inner text-center">
+                                <h3>PayFair</h3>
+                                <p>Decentralised Escrow and P2P Crypto-exchange on the Ethereum blockchain</p>
+                                <router-link :to="{name: 'register'}" class="btn btn-success">Join Now!</router-link>
+                            </div>
+                        </b-col>
+                    </b-row>
+                </div>
         </div>
-        <b-card no-body>
-            <b-card-header>
-                <div class="choose-coins">
-                    <ul>
-                        <li v-for="coin in coins"><router-link :to="{name: 'exchanges', query: {coin: coin, tradeType: tradeType, currency: currency}}" :class="!$route.query.coin && coin === 'PFR' ? 'router-link-exact-active' : ''">{{coin}}</router-link></li>
-                    </ul>
-                </div>
-                <b-row class="choose-trade-params">
-                    <b-col md="8" class="choose-trade-type">
+        <div class="container-fluid">
+            <b-card no-body>
+                <b-card-header>
+                    <div class="choose-coins">
                         <ul>
-                            <li><router-link :to="{name: 'exchanges', query: {coin: coin, tradeType: 'sell', currency: currency}}" :class="!$route.query.tradeType ? 'router-link-exact-active' : ''">Sell {{coin.toUpperCase()}}</router-link></li>
-                            <li><router-link :to="{name: 'exchanges', query: {coin: coin, tradeType: 'buy', currency: currency}}">Buy {{coin.toUpperCase()}}</router-link></li>
+                            <li v-for="coin in coins"><router-link :to="{name: 'exchanges', query: {coin: coin, tradeType: tradeType, currency: currency}}" :class="!$route.query.coin && coin === 'PFR' ? 'router-link-exact-active' : ''">{{coin}}</router-link></li>
                         </ul>
-                    </b-col>
-                    <b-col md="2">
-                        <b-select @input="selectCurrency" :options="currencies" :value="currency"></b-select>
-                    </b-col>
-                    <b-col md="2">
-                        <b-select :options="paymentVariants" v-model="paymentType"></b-select>
-                    </b-col>
-                </b-row>
-            </b-card-header>
-            <b-card-body>
-                <div class="table-responsive">
-                    <b-table striped hover class="centered-rows-table"
-                             :items="getExchanges"
-                             :fields="fields"
-                             :current-page="currentPage"
-                             :per-page="perPage"
-                             sort-by="rate"
-                             :sort-desc="true"
-                             ref="tradesTable"
-                             :show-empty="true"
-                    >
-                        <template slot="owner" slot-scope="row">{{$auth.user().username == row.value.username ? "You" : (row.value.username + '[' + (row.value.online && row.value.online.status ? 'online' : 'offline') + ']')}}</template>
-                        <!-- <template slot="tradeType" slot-scope="row">{{row.value}}</template> -->
-                        <template slot="coin" slot-scope="row">{{row.value}}</template>
-                        <template slot="paymentType" slot-scope="row">{{row.value}}{{row.item.paymentTypeDetail ? ': ' + row.item.paymentTypeDetail : '' }}</template>
-                        <template slot="rate" slot-scope="row">{{row.value}} {{row.item.currency}} / {{row.item.coin}}</template>
-                        <template slot="created_at" slot-scope="row">{{row.value | date}}</template>
-                        <template slot="actions" slot-scope="row"><router-link :to="{name: 'exchange', params: {id: row.item.eId}}" class="btn btn-primary">{{tradeType}} coins</router-link></template>
-                    </b-table>
-                </div>
-                <b-pagination :total-rows="totalRows" :per-page="perPage" v-model="currentPage"></b-pagination>
-            </b-card-body>
-        </b-card>
+                    </div>
+                    <b-row class="choose-trade-params">
+                        <b-col md="8" class="choose-trade-type">
+                            <ul>
+                                <li><router-link :to="{name: 'exchanges', query: {coin: coin, tradeType: 'sell', currency: currency}}" :class="!$route.query.tradeType ? 'router-link-exact-active' : ''">Sell {{coin.toUpperCase()}}</router-link></li>
+                                <li><router-link :to="{name: 'exchanges', query: {coin: coin, tradeType: 'buy', currency: currency}}">Buy {{coin.toUpperCase()}}</router-link></li>
+                            </ul>
+                        </b-col>
+                        <b-col md="2">
+                            <b-select @input="selectCurrency" :options="currencies" :value="currency"></b-select>
+                        </b-col>
+                        <b-col md="2">
+                            <b-select :options="paymentVariants" v-model="paymentType"></b-select>
+                        </b-col>
+                    </b-row>
+                </b-card-header>
+                <b-card-body>
+                    <div class="table-responsive">
+                        <b-table striped hover class="centered-rows-table"
+                                 :items="getExchanges"
+                                 :fields="fields"
+                                 :current-page="currentPage"
+                                 :per-page="perPage"
+                                 sort-by="rate"
+                                 :sort-desc="true"
+                                 ref="tradesTable"
+                                 :show-empty="true"
+                        >
+                            <template slot="owner" slot-scope="row">{{$auth.user().username == row.value.username ? "You" : (row.value.username + '[' + (row.value.online && row.value.online.status ? 'online' : 'offline') + ']')}}</template>
+                            <!-- <template slot="tradeType" slot-scope="row">{{row.value}}</template> -->
+                            <template slot="coin" slot-scope="row">{{row.value}}</template>
+                            <template slot="paymentType" slot-scope="row">{{row.value}}{{row.item.paymentTypeDetail ? ': ' + row.item.paymentTypeDetail : '' }}</template>
+                            <template slot="rate" slot-scope="row">{{row.value}} {{row.item.currency}} / {{row.item.coin}}</template>
+                            <template slot="limits" slot-scope="row">{{row.value && row.value.min ? row.value.min : ''}} - {{row.value && row.value.max ? row.value.max : ''}}</template>
+                            <template slot="created_at" slot-scope="row">{{row.value | date}}</template>
+                            <template slot="actions" slot-scope="row"><router-link :to="{name: 'exchange', params: {id: row.item.eId}}" class="btn btn-primary">{{tradeType}} coins</router-link></template>
+                        </b-table>
+                    </div>
+                    <b-pagination :total-rows="totalRows" :per-page="perPage" v-model="currentPage"></b-pagination>
+                </b-card-body>
+            </b-card>
+        </div>
     </div>
 </template>
 <script>
@@ -100,6 +105,7 @@
                     coin: {label: 'Coin', sortable: true},
                     paymentType: {label: 'Payment type', sortable: true},
                     rate: {label: 'Rate(fiat to coins)', sortable: true},
+                    limits: {label: 'Limits', sortable: false},
                     created_at: {label: 'Created at', sortable: true},
                     actions: {label: 'Actions'}
                 }

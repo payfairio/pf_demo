@@ -1,53 +1,55 @@
 <template>
     <div class="wallet">
-        <b-card v-if="false" header="History" id="history">
+        <div class="container">
+            <b-card v-if="false" header="History" id="history">
 
-            <b-table striped hover
-                     :items="getHistory"
-                     :fields="historyFields"
-                     :current-page="currentPage"
-                     :per-page="perPage"
-                     sort-by="created_at"
-                     :sort-desc="true"
-            >
-                <template slot="created_at" slot-scope="row">{{row.value | date}}</template>
-                <template slot="from" slot-scope="row">{{row.value}}</template>
-                <template slot="comment" slot-scope="row">{{row.value}}</template>
-                <template slot="amount" slot-scope="row">{{row.value}}</template>
+                <b-table striped hover
+                         :items="getHistory"
+                         :fields="historyFields"
+                         :current-page="currentPage"
+                         :per-page="perPage"
+                         sort-by="created_at"
+                         :sort-desc="true"
+                >
+                    <template slot="created_at" slot-scope="row">{{row.value | date}}</template>
+                    <template slot="from" slot-scope="row">{{row.value}}</template>
+                    <template slot="comment" slot-scope="row">{{row.value}}</template>
+                    <template slot="amount" slot-scope="row">{{row.value}}</template>
 
-            </b-table>
+                </b-table>
 
-            <b-pagination :total-rows="totalRows" :per-page="perPage" v-model="currentPage"></b-pagination>
+                <b-pagination :total-rows="totalRows" :per-page="perPage" v-model="currentPage"></b-pagination>
 
-        </b-card>
-        <b-row>
-            <b-col md="4">
-                <b-card header="Your balance" class="currencies">
-                    <div class="currency-header"><span>Currency</span><span class="right"><span>Total</span><span> (hold)</span></span></div>
-                    <div v-for="(count, name) in balance" :class="'currency' + (name == active_currency ? ' active' : '')" @click="changeCurrency(name)">
-                        <span class="left">{{name.toUpperCase()}}</span><span class="right">{{count.total}} ({{count.hold}})</span>
-                    </div>
-                </b-card>
-            </b-col>
-            <b-col md="8">
-                <b-card :header="'Send ' + active_currency.toUpperCase()" class="send">
-                    <b-form @submit="sendSubmit">
-                        <b-form-group id="addressInputGroup" label="Receiving address:" label-for="address" :state="isValid('address')" :feedback="errorMessage('address')">
-                            <b-form-input id="address" type="text" v-model="send_form.address" :state="isValid('address')"></b-form-input>
-                        </b-form-group>
-                        <b-form-group id="amountInputGroup" label="Amount:" label-for="amount" :state="isValid('amount')" :feedback="errorMessage('amount')">
-                            <b-form-input id="amount" type="text" v-model="send_form.amount" :state="isValid('amount')"></b-form-input>
-                        </b-form-group>
-                        <b-button disabled v-if="balance[active_currency] == 0">Send</b-button>
-                        <b-button v-if="balance[active_currency] != 0" type="submit" variant="primary">Send</b-button> <span v-if="sending"><img :src="$config.staticUrl+'/images/loading.gif'"> Transaction pending</span>
-                    </b-form>
-                </b-card>
-                <b-card :header="'Receive ' + active_currency.toUpperCase()" class="send">
-                    You can use this {{active_currency}} address:
-                    <pre>{{address}}</pre>
-                </b-card>
-            </b-col>
-        </b-row>
+            </b-card>
+            <b-row>
+                <b-col md="4">
+                    <b-card header="Your balance" class="currencies">
+                        <div class="currency-header"><span>Currency</span><span class="right"><span>Total</span><span> (hold)</span></span></div>
+                        <div v-for="(count, name) in balance" :class="'currency' + (name == active_currency ? ' active' : '')" @click="changeCurrency(name)">
+                            <span class="left">{{name.toUpperCase()}}</span><span class="right">{{count.total}} ({{count.hold}})</span>
+                        </div>
+                    </b-card>
+                </b-col>
+                <b-col md="8">
+                    <b-card :header="'Send ' + active_currency.toUpperCase()" class="send">
+                        <b-form @submit="sendSubmit">
+                            <b-form-group id="addressInputGroup" label="Receiving address:" label-for="address" :state="isValid('address')" :feedback="errorMessage('address')">
+                                <b-form-input id="address" type="text" v-model="send_form.address" :state="isValid('address')"></b-form-input>
+                            </b-form-group>
+                            <b-form-group id="amountInputGroup" label="Amount:" label-for="amount" :state="isValid('amount')" :feedback="errorMessage('amount')">
+                                <b-form-input id="amount" type="text" v-model="send_form.amount" :state="isValid('amount')"></b-form-input>
+                            </b-form-group>
+                            <b-button disabled v-if="balance[active_currency] == 0">Send</b-button>
+                            <b-button v-if="balance[active_currency] != 0" type="submit" variant="primary">Send</b-button> <span v-if="sending"><img :src="$config.staticUrl+'/images/loading.gif'"> Transaction pending</span>
+                        </b-form>
+                    </b-card>
+                    <b-card :header="'Receive ' + active_currency.toUpperCase()" class="send">
+                        You can use this {{active_currency}} address:
+                        <pre>{{address}}</pre>
+                    </b-card>
+                </b-col>
+            </b-row>
+        </div>
     </div>
 </template>
 <script>

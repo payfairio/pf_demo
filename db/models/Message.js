@@ -26,7 +26,13 @@ const Message = new Schema({
     type: {
         type: String,
         default: 'message' // message, system
-    }
+    },
+    viewed: [
+        {
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        }
+    ]
 }, { usePushEach: true });
 
 module.exports = mongoose.model('Message', Message);

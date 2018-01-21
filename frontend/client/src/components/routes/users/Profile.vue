@@ -1,55 +1,58 @@
 <template>
     <div class="profile">
-        <b-row align-h="center">
-            <b-col sm="12" md="4">
-                <b-card header="Profile"
-                        align="left">
-                    <b-alert variant="danger"
-                             dismissible
-                             :show="errorMsg != ''"
-                             @dismissed="errorMsg=''">
-                        {{errorMsg}}
-                    </b-alert>
-                    <div class="profile-card">
-                        <h2>{{username}}</h2>
+        <div class="container">
+            <b-row align-h="center">
+                <b-col sm="12" md="4">
+                    <b-card align="left">
+                        <b-alert variant="danger"
+                                 dismissible
+                                 :show="errorMsg != ''"
+                                 @dismissed="errorMsg=''">
+                            {{errorMsg}}
+                        </b-alert>
+                        <div class="profile-card">
 
-                        <img :src="$props.id ? profileImg : $auth.user().profileImg">
+                            <img :src="$props.id ? profileImg : $auth.user().profileImg">
+                            <h2>{{username}}</h2>
 
-                        <div class="review no-float">
-                            <span><b>{{averageRating}}</b></span><span></span>
+                            <div class="review no-float">
+                                <span><b>{{averageRating}}</b></span><span></span>
+                            </div>
+
                         </div>
-
+                        <div class="tabs">
+                            <ul>
+                                <li v-on:click="visible=true">Change profile image</li>
+                                <li v-on:click="visible=false">Rating</li>
+                            </ul>
+                        </div>
+                        </b-card>
+                </b-col>
+                <b-col sm="12" md="8" class="card justify-content-center">
+                    <div v-if="visible" class="img-tab">
+                        <b-form v-if="!$props.id || $auth.user()._id == $props.id" @submit="onSubmit" enctype="multipart/form-data">
+                            <b-form-group id="imgInputGroup" label="Change profile image:" label-for="profileImg">
+                                <image-upload v-model="form.profileImg" :init="form.profileImg" :width="256" :height="256" :label="'Загрузить 256 X 256'"></image-upload>
+                            </b-form-group>
+                            <b-button type="submit" variant="primary">Save</b-button>
+                        </b-form>
                     </div>
-                    <b-tabs>
-                        <template slot="tabs">
-                            <b-nav-item>Change profile image</b-nav-item>
-                        </template>
-                        <template slot="tabs">
-                            <b-nav-item>Rating</b-nav-item>
-                        </template>
-                    </b-tabs>
-                </b-card>
-            </b-col>
-            <b-col sm="12" md="8" class="card justify-content-center">
-                    <b-form v-if="!$props.id || $auth.user()._id == $props.id" @submit="onSubmit" enctype="multipart/form-data">
-                        <b-form-group id="imgInputGroup" label="Change profile image:" label-for="profileImg">
-                            <image-upload v-model="form.profileImg" :init="form.profileImg" :width="256" :height="256" :label="'Загрузить 256 X 256'"></image-upload>
-                        </b-form-group>
-                        <b-button type="submit" variant="primary">Save</b-button>
-                    </b-form>
-                    <h3>Reviews:</h3>
-                     <div v-for="review in reviews" class="review">
-                         <p>
-                            <b>By:</b> <router-link :to="{name: 'user-by-id', params: {id: review.author._id}}">{{review.author.username}}</router-link><br>
-                        </p>
-                        <p class="float-left">Rating:</p>
-                        <div v-for="i in review.rating">
-                            <span></span>
-                        </div>
-                       <p>{{review.comment}}</p>
-                     </div>
-            </b-col>
-        </b-row>
+                    <div v-else class="review-tab">
+                        <h3>Reviews:</h3>
+                         <div v-for="review in reviews" class="review">
+                             <p>
+                                <b>By:</b> <router-link :to="{name: 'user-by-id', params: {id: review.author._id}}">{{review.author.username}}</router-link><br>
+                            </p>
+                            <p class="float-left">Rating:</p>
+                            <div v-for="i in review.rating">
+                                <span></span>
+                            </div>
+                           <p>{{review.comment}}</p>
+                         </div>
+                    </div>
+                </b-col>
+            </b-row>
+        </div>
     </div>
 </template>
 <script>
@@ -69,7 +72,8 @@
                 errorMsg: '',
                 reviews: [],
                 username: '',
-                profileImg: ''
+                profileImg: '',
+                visible: true,
             }
         },
         created: function () {
@@ -121,7 +125,6 @@
 
                 if (this.$props.id){
                     this.$http.get('/users/user/' + this.$props.id).then(response => {
-                        console.log(response);
                         vm.reviews = response.data.reviews;
                         vm.username = response.data.user.username;
                         vm.profileImg = response.data.user.profileImg;
@@ -153,15 +156,30 @@
                     review = vm.reviews[i].rating;
                     totalRating = totalRating + review;
                 }
-                //return (totalRating / vm.reviews.length).toFixed(1);
-                return (Math.round(totalRating / vm.reviews.length * 100) / 100);
+                if(Object.keys(vm.reviews).length === 0){
+                    return 0;
+                } else{
+                    return (Math.round(totalRating / vm.reviews.length * 100) / 100);    
+                }
+                
             }
         }
-        //reviews.length - total count of reviews
-        //review.rating - rating of current review
     }
 </script>
 <style scoped>
+    .tabs ul{
+        font-size: 16px;
+        padding-left: 0;
+        list-style-type: none;
+        text-align: center;
+    }
+    .tabs ul li{
+        margin: 15px 0;
+        cursor: pointer;
+    }
+    .tabs ul li:hover{
+        color:#222;
+    }
     .review.no-float span:first-child{
         background: none;
         float:none;

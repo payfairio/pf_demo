@@ -78,7 +78,32 @@
 
                 </b-collapse>
             </b-navbar>
-            <div class="container" id="app-content-container">
+
+            <div v-if="$auth.ready() && (socketReady || !$auth.check()) ">
+                <!-- <b-alert variant="info"
+                        dismissible
+                        :show="showNotification"
+                        @dismissed="showNotification=false">
+                    <router-link :to="{name: 'deal', params: {id: notification.id}}"><span @click="showNotification=false">{{notification.message}}</span></router-link>
+                </b-alert> -->
+
+                <div id="new-notifics">
+                    <div class="notification" v-for="notif in newNotifications" v-bind:key="notif._id" @click="noitfTimer(notif)">
+                        <div class="notification-header">
+                            {{getNotificationTitle(notif)}}
+                            <span class="close" @click="newNotifications.splice(newNotifications.indexOf(notif), 1)">×</span>
+                        </div>
+                        <div class="notification-body">
+                            <template v-for="item in getNotificationMessage(notif)">
+                                {{item.name}}: <router-link v-if="item.link" :to="item.link">{{item.text}}</router-link>{{!item.link ? item.text : ''}}<br>
+                            </template>
+                        </div>
+                    </div>
+                    <div v-if="newNotifications.length > 1" class="hide-notif" @click="newNotifications = []">
+                        Hide All
+                    </div>
+                </div>
+
                 <div v-if="$auth.user().status == 'unverified'">
                     <div class="welcome">
                         <b-row align-h="center">
@@ -86,44 +111,20 @@
                                 <div class="wel-inner text-center">
                                     <h3>Hello, {{$auth.user().username}}</h3>
                                     <p>Please check email and verify your account.</p>
+                                    <b-btn @click="sendVerifyCode" variant="info">Send verification email again</b-btn>
                                 </div>
                             </b-col>
                         </b-row>
                     </div>
                 </div>
-                <div v-if="$auth.ready() && (socketReady || !$auth.check()) && ($auth.user().status == 'active' || !$auth.check())">
-                    <!-- <b-alert variant="info"
-                             dismissible
-                             :show="showNotification"
-                             @dismissed="showNotification=false">
-                        <router-link :to="{name: 'deal', params: {id: notification.id}}"><span @click="showNotification=false">{{notification.message}}</span></router-link>
-                    </b-alert> -->
 
-                    <div id="new-notifics">
-                        <div class="notification" v-for="notif in newNotifications" v-bind:key="notif._id" @click="noitfTimer(notif)">
-                            <div class="notification-header">
-                                {{getNotificationTitle(notif)}}
-                                <span class="close" @click="newNotifications.splice(newNotifications.indexOf(notif), 1)">×</span>
-                            </div>
-                            <div class="notification-body">
-                                <template v-for="item in getNotificationMessage(notif)">
-                                    {{item.name}}: <router-link v-if="item.link" :to="item.link">{{item.text}}</router-link>{{!item.link ? item.text : ''}}<br>
-                                </template>
-                            </div>
-                        </div>
-                        <div v-if="newNotifications.length > 1" class="hide-notif" @click="newNotifications = []">
-                            Hide All
-                        </div>
-                    </div>
-
-                    <router-view></router-view>
-                </div>
+                <router-view></router-view>
+            </div>
 
                 
 
-                <div v-if="!$auth.ready() || (!socketReady && $auth.check())">
-                    Loading ...
-                </div>
+            <div v-if="!$auth.ready() || (!socketReady && $auth.check())">
+                Loading ...
             </div>
         </div>
         <footer class="footer">
@@ -182,14 +183,21 @@
                 </div>
             </div>
         </footer>
+        <div class="loader-wrap" v-if="loading">
+            <pulse-loader :loading="loading" ></pulse-loader>
+        </div>
     </div>
 </template>
 <script>
-
+    import PulseLoader from 'vue-spinner/src/PulseLoader.vue'
     export default {
         name: 'app',
+        components: {
+            PulseLoader
+        },
         data: function () {
             return {
+                loading: false,
                 notification: '',
                 notifications: [],
                 showNotification: false,
@@ -203,6 +211,10 @@
                 },
                 newNotifications: []
             }
+        },
+        mounted() {
+            this.$events.on('loadingStart', eventData => {this.loading = true;});
+            this.$events.on('loadingEnd', eventData => {this.loading = false;});
         },
         sockets: {
             connect: function() {
@@ -272,6 +284,18 @@
             }
         },
         methods: {
+            sendVerifyCode: function () {
+                this.$http
+                    .get('/users/sendVerify')
+                    .then((response) => {
+                        this.$swal('Success', response.data.msg, 'success');
+                    })
+                    .catch((error) => {
+                        if (error.status == 400) {
+                            this.$swal('Error', response.data.msg, 'error');
+                        }
+                    });
+            },
             updateBalance: function () {
                 const balances = this.$auth.user().balances;
                 const holds = this.$auth.user().holds;
@@ -543,6 +567,9 @@
     img {
         max-width: 100%;
     }
+    .container, .container-fluid{
+        margin-top: 40px;
+    }
     .disable-selection {
         -moz-user-select: -moz-none;
         -khtml-user-select: none;
@@ -572,8 +599,8 @@
     .wrap {
         min-height: 100%;
         height: auto;
-        margin: 0 auto -60px;
-        padding: 0 0 60px;
+        margin: 0 auto -160px;
+        padding: 0 0 200px;
     }
     li.nav-item {
         display: flex;
@@ -596,7 +623,7 @@
         border-radius: 100%;
         border: 2px solid #ececec;
         background: #636b6f;
-        width: 256px;
+        width: 210px;
     }
     #notifdown .dropdown-toggle::after{
         content: none;
@@ -615,6 +642,7 @@
         border-top: 1px solid #ddd;
         padding-top: 20px;
         box-shadow: 0 0 20px -5px;
+        clear:both;
     }
     .footer-links {
         text-align: center;
@@ -734,4 +762,5 @@
     .hide-notif:hover {
         box-shadow: 0 0 10px #666;
     }
+
 </style>

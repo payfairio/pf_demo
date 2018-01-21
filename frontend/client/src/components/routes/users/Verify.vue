@@ -11,6 +11,7 @@ export default {
         const vm = this;
         if (vm.code) {
             vm.$http.get('/users/verify/' + vm.code).then(function (response) {
+                vm.$auth.fetch();
                 vm.$router.push(vm.$auth.check() ? {path: '/'} : {name: 'login'});
                 vm.$swal('Success', 'Your email was verified!', 'success');
             }).catch(function (err) {

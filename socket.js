@@ -102,7 +102,7 @@ const checkDispute = decisions => {
     }
 };
 
-function checkNotifications (deal, user) {
+const checkNotifications = (deal, user) => {
     return new Promise((resolve, reject) => {
         Notification
             .find({
@@ -191,16 +191,16 @@ function checkNotifications (deal, user) {
                 reject(err);
             })
     });
-}
+};
 
-function checkUserInRoom (clients, room) {
+const checkUserInRoom = (clients, room) => {
     for (let client of clients) {
         if (room[client]) {
             return true;
         }
     }
     return false;
-}
+};
 
 module.exports = (server, app) => {
     const io = require('socket.io')(server);
@@ -289,6 +289,7 @@ module.exports = (server, app) => {
                     }
                 })
                 .then(deal => {
+                    Message.update({deal: deal._id}, {$addToSet: {viewed: client.decoded_token._id}}, {multi: true}).then();
                     checkNotifications(deal._id, client.decoded_token._id).then(notifications => {
                         client.emit('notifications', notifications);
                     });
@@ -326,7 +327,10 @@ module.exports = (server, app) => {
                                 text: data.text,
                                 deal: deal._id,
                                 type: data.type,
-                                attachments: data.attachments.map(item => item._id)
+                                attachments: data.attachments.map(item => item._id),
+                                viewed: [
+                                    client.decoded_token._id
+                                ]
                             };
                             new Message(message).save((err, message) => {
                                 if (err) {
@@ -349,7 +353,6 @@ module.exports = (server, app) => {
                         const deal = data.deal;
                         const sender = role === 'buyer' ? deal.buyer._id : deal.seller._id;
                         const user = role === 'seller' ? deal.buyer._id : deal.seller._id;
-
 
                         data.deal.messages.push(data.message._id);
                         data.deal

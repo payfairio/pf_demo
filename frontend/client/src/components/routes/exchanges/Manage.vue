@@ -1,8 +1,10 @@
 <template>
     <div :id="'ex-'+id+'-manage'">
-        <b-card :header="'Exchange #' + id">
+    	<div class="container">
+	        <b-card :header="'Exchange #' + id">
 
-        </b-card>
+	        </b-card>
+    	</div>
     </div>
 </template>
 
