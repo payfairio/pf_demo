@@ -1,40 +1,42 @@
 <template>
-    <div class="profile">
-        <b-row align-h="center">
-            <b-col sm="12" md="5">
-                <b-card header="Profile"
-                        align="left">
-                    <b-alert variant="danger"
-                             dismissible
-                             :show="errorMsg != ''"
-                             @dismissed="errorMsg=''">
-                        {{errorMsg}}
-                    </b-alert>
-                    <div class="profile-card">
-                        <h2>{{username}}</h2>
-                        <img :src="profileImg">
-                    </div>
-                    <hr>
-                    <b-form v-if="!$props.id || $auth.user()._id == $props.id" @submit="onSubmit" enctype="multipart/form-data">
-                        <b-form-group id="imgInputGroup" label="Change profile image:" label-for="profileImg">
-                            <image-upload v-model="form.profileImg" :init="form.profileImg" :width="256" :height="256" :label="'Загрузить 256 X 256'"></image-upload>
-                        </b-form-group>
-                        <b-button type="submit" variant="primary">Save</b-button>
-                    </b-form>
-                    <hr>
-                    <h3>Reviews:</h3>
-                    <div v-for="review in reviews" class="review">
-                        <p>
-                            <b>By:</b> <router-link :to="{name: 'user-by-id', params: {id: review.author._id}}">{{review.author.username}}</router-link><br>
-                            <b>Rating:</b> {{review.rating}}<br>
-                            <b>Comment:</b><br>
-                            {{review.comment}}
-                        </p>
+    <div class="container">
+        <div class="profile">
+            <b-row align-h="center">
+                <b-col sm="12" md="5">
+                    <b-card header="Profile"
+                            align="left">
+                        <b-alert variant="danger"
+                                dismissible
+                                :show="errorMsg != ''"
+                                @dismissed="errorMsg=''">
+                            {{errorMsg}}
+                        </b-alert>
+                        <div class="profile-card">
+                            <h2>{{username}}</h2>
+                            <img :src="profileImg">
+                        </div>
                         <hr>
-                    </div>
-                </b-card>
-            </b-col>
-        </b-row>
+                        <b-form v-if="!$props.id || $auth.user()._id == $props.id" @submit="onSubmit" enctype="multipart/form-data">
+                            <b-form-group id="imgInputGroup" label="Change profile image:" label-for="profileImg">
+                                <image-upload v-model="form.profileImg" :init="form.profileImg" :width="256" :height="256" :label="'Загрузить 256 X 256'"></image-upload>
+                            </b-form-group>
+                            <b-button type="submit" variant="primary">Save</b-button>
+                        </b-form>
+                        <hr>
+                        <h3>Reviews:</h3>
+                        <div v-for="review in reviews" class="review">
+                            <p>
+                                <b>By:</b> <router-link :to="{name: 'user-by-id', params: {id: review.author._id}}">{{review.author.username}}</router-link><br>
+                                <b>Rating:</b> {{review.rating}}<br>
+                                <b>Comment:</b><br>
+                                {{review.comment}}
+                            </p>
+                            <hr>
+                        </div>
+                    </b-card>
+                </b-col>
+            </b-row>
+        </div>
     </div>
 </template>
 <script>

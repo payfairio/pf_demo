@@ -176,7 +176,7 @@ module.exports = web3 => {
                     },
                 }, {
                     $sort: {
-                        [sortBy]: order
+                        [sortBy === 'messages' ? 'last_message.created_at' : sortBy]: order
                     }
                 }, {
                     $skip: +offset
@@ -201,7 +201,7 @@ module.exports = web3 => {
             });
         }
 
-        let status_filter = req.query.status == 0 ? {$or: [{status: 'new'}, {status: 'accepted'}, {status: 'dispute'}]} : {status: 'completed'};
+        let status_filter = /*req.query.status == 0 ? */{$or: [{status: 'new'}, {status: 'accepted'}, {status: 'dispute'}]} /*: {status: 'completed'}*/;
 
         Deal.find({
             $and: [

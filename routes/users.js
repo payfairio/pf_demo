@@ -60,6 +60,26 @@ router.use(validator({
                         resolve();
                     })
             });
+        },
+        isAvailable: (email, type) => {
+            return new Promise((resolve, reject) => {
+                User
+                    .findOne({
+                        $and: [
+                            {email: email},
+                            {type: type}
+                        ]
+                    })
+                    .then(doc => {
+                        if (!doc || doc.status === 'invited') {
+                            resolve();
+                        } else {
+                            reject();
+                        }
+                    }, err => {
+                        resolve();
+                    })
+            });
         }
     }
 }));
@@ -157,7 +177,10 @@ module.exports = web3 => {
             return res.status(400).json({success: false, errors: result.mapped(), msg: 'Bad request'});
         }
         User.findOne({
-            email: req.body.email
+            $and: [
+                {email: req.body.email},
+                {type: req.body.type}
+            ]
         }, (err, user) => {
             if (err) throw err;
 
@@ -199,7 +222,7 @@ module.exports = web3 => {
                         errorMessage: 'This username is already taken'
                     }
                 },
-                email: {
+                /*email: {
                     notEmpty: {
                         errorMessage: 'Email is required'
                     },
@@ -209,7 +232,7 @@ module.exports = web3 => {
                     isEmailAvailable: {
                         errorMessage: 'This email is already taken'
                     }
-                },
+                },*/
                 password: {
                     notEmpty: {
                         errorMessage: 'Password is required'
@@ -231,6 +254,13 @@ module.exports = web3 => {
                     }
                 }
             });
+
+            req
+                .checkBody('email')
+                .notEmpty().withMessage('Email is required')
+                .isEmail().withMessage('Invalid email')
+                .isAvailable(req.body.type).withMessage('This email is already taken');
+
             const result = await req.getValidationResult();
             if (result.array().length > 0) {
                 return res.status(400).json({success: false, errors: result.mapped(), msg: 'Bad request'});

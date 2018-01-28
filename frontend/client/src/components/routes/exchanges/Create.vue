@@ -133,6 +133,12 @@
             if (vm.manage) {
                 vm.$http.get('/exchanges/' + this.$props['id']).then(response => {
                     vm.form = response.data.exchange;
+                    if (!vm.form.limits) {
+                        vm.form.limits = {
+                            min: null,
+                            max: null,
+                        };
+                    }
                 }, err => {
                     console.log(err);
                 });

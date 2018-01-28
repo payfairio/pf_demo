@@ -20,6 +20,7 @@
                             </template>
                             <b-dropdown-header>Notifications</b-dropdown-header>
                             <div class="notif-body">
+                                <b-dropdown-header v-if="!notifications.length">You don't have notifications</b-dropdown-header>
                                 <template
                                     v-for="notification in notifications"
                                 >
@@ -106,15 +107,17 @@
 
                 <div v-if="$auth.user().status == 'unverified'">
                     <div class="welcome">
-                        <b-row align-h="center">
-                            <b-col sm="12">
-                                <div class="wel-inner text-center">
-                                    <h3>Hello, {{$auth.user().username}}</h3>
-                                    <p>Please check email and verify your account.</p>
-                                    <b-btn @click="sendVerifyCode" variant="info">Send verification email again</b-btn>
-                                </div>
-                            </b-col>
-                        </b-row>
+                        <div class="container-fluid">
+                            <b-row align-h="center">
+                                <b-col sm="12">
+                                    <div class="wel-inner text-center">
+                                        <h3>Hello, {{$auth.user().username}}</h3>
+                                        <p>Please check email and verify your account.</p>
+                                        <b-btn @click="sendVerifyCode" variant="info">Send verification email again</b-btn>
+                                    </div>
+                                </b-col>
+                            </b-row>
+                        </div>
                     </div>
                 </div>
 
@@ -236,22 +239,11 @@
                 location.reload();
             },
             notification: function (data) {
-                // if (data.type === 'deal') {
-                //     this.notification = {
-                //         message: `New deal: ${data.text}`,
-                //         id: data.deal.dId
-                //     };
-                // } else if (data.type === 'message') {
-                //     this.notification = {
-                //         message: `New message: ${data.text}`,
-                //         id: data.deal.dId
-                //     };
-                // }
                 let flag = true;
-                if (data.type == 'message') {
+                if (data.type === 'message') {
                     data.notifications = 1;
                     for (let notif of this.notifications) {
-                        if (notif.deal._id ==  data.deal._id) {
+                        if (notif.deal._id ==  data.deal._id && notif.type === data.type) {
                             notif.notifications++;
                             this.uncheckedNotifications--;
                             flag = false;
@@ -623,7 +615,7 @@
         border-radius: 100%;
         border: 2px solid #ececec;
         background: #636b6f;
-        width: 210px;
+        width: 180px;
     }
     #notifdown .dropdown-toggle::after{
         content: none;

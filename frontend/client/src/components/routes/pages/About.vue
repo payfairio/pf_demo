@@ -6,7 +6,7 @@
                 <section id="sec-1">
                     <div class="container">
                         <b-col sm="8" lg="5" class="text-minheight">
-                            <h1>About PayFair</h1>
+                            <h1 class="pf-raleway">About <span>PAY</span>FAIR</h1>
                             <p>PAYFAIR is a decentralized Escrow platform which ensures the paramount security of all Cryptocurrency transactions made between two parties. It's enabled with PAYFAIR tokens (PFR), which is an ERC-20 token based on the Ethereum blockchain. We provide extremely low fees for all transactions in a safe, private and decentralized environment.</p>
                             <p>PFR tokens are an essential part of the ecosystem. Tokens create Trust nodes to ensure a safe environment for the transaction to take place.</p>
                             <p>Low fees are charged for ensuring that the transaction is safe and private.</p>
@@ -21,7 +21,7 @@
                 <section id="sec-2">
                     <div class="container">
                         <b-col sm="12">
-                            <h2>How it works</h2>
+                            <h2 class="pf-raleway">How it works</h2>
                             <p>The self regulating system consists of independent Escrow nodes and Trust nodes (owners of PFR tokens). The heart of the Payfair ecosystem is the PFR token. It ensures that trades between users of Payfair are insured with their PFR tokens at stake. A percentage of the fee from the trade will go into a collection which is distributed to all Trust nodes (PFR holders) monthly.</p>
                             <p>You can become an owner of the PFR token by investing in Payfair</p>
                             <div class="how-it-works-img"></div>
@@ -33,7 +33,7 @@
         </div>
         <section id="sec-3">
             <div class="container">
-                <h2>Roadmap</h2>
+                <h2 class="pf-raleway">Roadmap</h2>
                 <div class="rm-tooltip top">
                    <div class="item">
                         <div class="icon">
@@ -54,7 +54,7 @@
                             <img :src="$config.staticUrl+'/images/about/tooltips/mobileapp.png'">
                         </div>
                         <h4>Q2 2018</h4>
-                        <p>application <br> launch</p>
+                        <p>Mobile application <br> launch</p>
                    </div>
                 </div>
                 <div class="roadmap">
@@ -70,7 +70,7 @@
                    </div>
                    <div class="item">
                         <h4>Q1 2018</h4>
-                        <p>beta testing- Full <br> platform rolout</p>
+                        <p>beta testing- Full <br> platform rollout</p>
                         <div class="icon">
                             <img :src="$config.staticUrl+'/images/about/tooltips/betatest.png'">
                         </div>
@@ -87,7 +87,7 @@
         </section>
         <section id="sec-3" class="mobile">
             <div class="container">
-                <h2>Roadmap</h2>
+                <h2 class="pf-raleway">Roadmap</h2>
                 <div class="rm-tooltip top">
                    <div class="item">
                         <div class="icon">
@@ -108,7 +108,7 @@
                             <img :src="$config.staticUrl+'/images/about/tooltips/mobile/mobileapp.png'">
                         </div>
                         <h4>Q2 2018</h4>
-                        <p>application <br> launch</p>
+                        <p>Mobile application <br> launch</p>
                    </div>
                 </div>
                 <div class="roadmap">
@@ -127,7 +127,7 @@
                             <img :src="$config.staticUrl+'/images/about/tooltips/mobile/betatest.png'">
                         </div>
                         <h4>Q1 2018</h4>
-                        <p>beta testing- Full <br> platform rolout</p>
+                        <p>beta testing- Full <br> platform rollout</p>
                    </div>
                    <div class="item">
                         <div class="icon">
@@ -136,6 +136,91 @@
                         <h4>Q3-Q4 2018</h4>
                         <p>integration of <br> further applications</p>
                    </div>
+                </div>
+            </div>
+        </section>
+        <section id="sec-4">
+            <div class="container">
+                <h5 class="text-center pf-raleway">About <span>PAY</span>FAIR</h5>
+                <div class="about-wrap">
+                    <div class="about-top">
+                        <b-row>
+                            <b-col sm="8" md="9">
+                                <div class="play-video text-right" v-b-modal.vidModal>
+                                    <img :src="$config.staticUrl+ '/images/about/play-hover.png'" class="wel-icon pl-hov">
+                                    <img :src="$config.staticUrl+ '/images/about/play-icon.png'" class="wel-icon pl-icon">
+                                    <img :src="$config.staticUrl+ '/images/about/play-vid.png'" alt="Play">
+                                </div>
+                                <b-modal id="vidModal" hide-footer size="lg" ref="vidModal" @hide="pauseVid">
+                                    <youtube :video-id="videoId" ref="youtube" width="100%"></youtube>
+                                </b-modal>
+                            </b-col>
+                            <b-col sm="4" md="3">
+                                <div class="tabs">
+                                    <ul>
+                                        <li class="share">
+                                            <social-sharing url="payfair.io/about"
+                                                        title="About PayFair"
+                                                        description="PAYFAIR is a decentralised Escrow platform."
+                                                        quote="PAYFAIR is a decentralised Escrow platform."
+                                                        hashtags="payfair,pf"
+                                                        twitter-user="payfairio"
+                                                        inline-template>
+                                            <b-dropdown variant="link">
+                                                <template slot="button-content" no-caret>
+                                                    <span class="btn-link-custom">Share</span>
+                                                </template>
+                                                <b-dropdown-item>
+                                                    <network network="facebook">
+                                                        <i class="fa fa-facebook"></i> Facebook
+                                                </network>
+                                                </b-dropdown-item>
+                                                <b-dropdown-item>
+                                                    <network network="googleplus">
+                                                        <i class="fa fa-google-plus"></i> Google +
+                                                    </network>
+                                                </b-dropdown-item>
+                                                <b-dropdown-item>
+                                                    <network network="linkedin">
+                                                        <i class="fa fa-linkedin"></i> LinkedIn
+                                                    </network>
+                                                </b-dropdown-item>
+                                                <b-dropdown-item>
+                                                    <network network="reddit">
+                                                        <i class="fa fa-reddit"></i> Reddit
+                                                    </network>
+                                                </b-dropdown-item>
+                                                <b-dropdown-item>
+                                                    <network network="telegram">
+                                                        <i class="fa fa-telegram"></i> Telegram
+                                                    </network>
+                                                </b-dropdown-item>
+                                                <b-dropdown-item>
+                                                    <network network="twitter">
+                                                        <i class="fa fa-twitter"></i> Twitter
+                                                    </network>
+                                                </b-dropdown-item>
+                                                <b-dropdown-item>
+                                                  <network network="vk">
+                                                    <i class="fa fa-vk"></i> VKontakte
+                                                  </network>
+                                                </b-dropdown-item>
+                                            </b-dropdown>
+                                            </social-sharing>
+                                        </li>
+                                        <li class="w-paper"><a href="https://payfair.io/whitepapers/full_PF.pdf" target="_blank">White paper</a></li>
+                                        <li v-b-modal.vidModalRu>Video in Russian</li>
+                                    </ul>
+                                    <b-modal id="vidModalRu" hide-footer size="lg" ref="vidModalRu" @hide="pauseVid">
+                                        <youtube :video-id="videoIdRu" ref="youtubeRu" width="100%"></youtube>
+                                    </b-modal>
+                                </div>
+                            </b-col>
+                        </b-row>
+                    </div>
+                    <div class="about-bottom">
+                        <p>PAYFAIR is a decentralised Escrow platform which ensures the paramount security of all Cryptocurrency transactions made between two parties. It's enabled with PAYFAIR tokens (PFR), which is an ERC-20 token based on the Ethereum blockchain. We provide extremely low fees for all transactions in a safe, private and decentralised environment.</p>
+                    </div>
                 </div>
             </div>
         </section>
@@ -151,15 +236,41 @@
         },
         data: function () {
             return {
-               
+               videoId: '82dv-QSRD-0',
+               videoIdRu: 'X1u90FCOsiU',
             };
         },
+        methods: {
+            pauseVid() {
+                this.player.pauseVideo();
+                this.playerRu.pauseVideo();
+            }
+        },
+        computed: {
+            player () {
+                return this.$refs.youtube.player;
+            },
+            playerRu () {
+                return this.$refs.youtubeRu.player;
+            }
+        }
     }
 </script>
 
 <style scoped>
     .page-about{
         position: relative;
+    }
+    .pf-raleway{
+        font-family: 'Raleway';
+        margin-top: 0;
+        color:#181818;
+        text-align: left;
+        font-size: 3rem;
+        font-weight: 700;
+    }
+    .pf-raleway span{
+        font-weight: 300;
     }
     .testpar{
         position: absolute;
@@ -222,13 +333,6 @@
         color:#000;
         line-height: 22px;
         margin-bottom: 20px;
-    }
-    .container h1, .container h2{
-        margin-top: 0;
-        color:#181818;
-        text-align: left;
-        font-size: 3rem;
-        font-weight: 600;
     }
     #sec-1{
         padding-top: 62px;
@@ -320,6 +424,118 @@
     }
     #sec-3.mobile{
         display: none;
+    }
+    #sec-4 .about-wrap{
+        position: relative;
+    }
+    #sec-4 h5{
+        margin-bottom: 30px;
+    }
+    #sec-4 .about-wrap:before{
+        content: '';
+        position: absolute;
+        right: 0;
+        top:0;
+        width:785px;
+        height:100%;
+        z-index: 0;
+        background: rgb(36,247,212);
+        background: -moz-linear-gradient(top, rgba(36, 247, 212, 0.7) 0%, rgba(19, 210, 161, 0.7) 50%, rgba(4, 179, 119, 0.7) 100%);
+        background: -webkit-linear-gradient(top, rgba(36, 247, 212, 0.7) 0%, rgba(19, 210, 161, 0.7) 50%, rgba(4, 179, 119, 0.7) 100%);
+        background: linear-gradient(to top, rgba(36, 247, 212, 0.7) 0%,rgba(19, 210, 161, 0.7) 50%, rgba(4, 179, 119, 0.7) 100%);
+        filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#24f7d4', endColorstr='#04b377',GradientType=0 );
+    }
+    #sec-4 .play-video{
+        cursor: pointer;
+        position: relative;
+    }
+    #sec-4 .pl-icon{
+        top: 41%;
+        left: 3%;
+    }
+    #sec-4 .pl-hov, #sec-4 .play-video:hover .pl-icon{
+        display: none;
+    }
+    #sec-4 .play-video:hover{
+        cursor: pointer;
+    }
+    #sec-4 .play-video:hover .pl-hov{
+        display: block;
+        width: 20%;
+        top: 32%;
+        left: -3%;
+    }
+    #sec-4 .play-video .wel-icon {
+        position: absolute;
+        left: 0%;
+        right: 0;
+        margin: auto;
+        top: 39%;
+    }
+    #sec-4 .tabs{
+        margin-top: 140px;
+    }
+    #sec-4 .tabs ul{
+        list-style-type: none;
+        padding-left: 0;
+    }
+    #sec-4 .tabs li{
+        position: relative;
+        margin-bottom: 79px;
+        padding-left: 50px;
+    }
+    #sec-4 .tabs a{
+        color:#fff;
+        font-size: 20px;
+    }
+    .btn-link-custom{
+        color:#fff!important;
+        font-size: 20px;
+    }
+    .btn-link{
+        color:#fff!important;
+    }
+    #sec-4 .tabs button{
+        color:#fff!important;
+        font-size: 20px!important;
+    }
+    #sec-4 .dropdown-toggle::after{
+        border:none;
+    }
+    #sec-4 .tabs .share:before{
+        width: 30px;
+        height: 30px;
+        background-position: 0 0;
+        margin-top: 5px;
+    }
+    #sec-4 .tabs .w-paper:before{
+        width: 30px;
+        height: 33px;
+        background-position: 0 -101px;
+    }
+    #sec-4 .tabs li:last-child{
+        border-bottom: 4px solid #fff;
+        margin-right: 54px;
+        color:#fff;
+        font-size: 20px;
+        cursor: pointer;
+    }
+    #sec-4 .tabs li:last-child:before{
+        content: 'RU';
+        font-size: 26px;
+        background: none;
+        color: #fff;
+        margin-top: -5px;
+    }
+    #sec-4 .about-bottom{
+        position: relative;
+        width: 785px;
+        margin-left: auto;
+        margin-right: 0;
+        padding: 0 30px 20px;
+    }
+    #sec-4 .about-bottom p{
+        font-size: 21px;
     }
     @media (max-width: 767px){
         .testpar{
@@ -413,6 +629,18 @@
         .bg-right-top{
             height: initial;
         }
+        #sec-4 .about-bottom{
+            width: initial;
+        }
+        #sec-4 .play-video .wel-icon{
+            width: 10%;
+        }
+        #sec-4 .tabs{
+            margin-top: 20px;
+        }
+        #sec-4 .tabs li{
+            margin-bottom: 45px;
+        }
     }
     @media (min-width: 768px) and (max-width: 991px){
         .bg-right-mid{
@@ -493,7 +721,41 @@
         #sec-3 .rm-tooltip .item .icon{
             margin-bottom: 27px;
         }
-
+        #sec-4 .play-video:hover .pl-hov{
+            top: 32%;
+        }
+        #sec-4 .play-video .wel-icon{
+            width: 9%;
+            top:39%;
+        }
+        #sec-4 .tabs{
+            margin-top: 30px;
+        }
+        #sec-4 .tabs a{
+            font-size: 18px;
+        }
+        #sec-4 .tabs li{
+            margin-bottom: 50px;
+            padding-left: 30px;
+        }
+        #sec-4 .tabs .share:before{
+            width: 15px;
+            height: 20px;
+            background-position: 0 0;
+            margin-top: 9px;
+        }
+        #sec-4 .tabs .w-paper:before {
+            width: 21px;
+            height: 21px;
+            background-position: 0 -71px;
+        }
+        #sec-4 .tabs li:last-child{
+            font-size: 18px;
+        }
+        #sec-4 .tabs li:last-child:before{
+            font-size: 15px;
+            margin-top: 12px;
+        }
     }
     @media (min-width: 992px) and (max-width: 1199px){
         .container h1, .container h2{
@@ -541,6 +803,32 @@
         }
         .how-it-works-img{
             height: 200px;
+        }
+        #sec-4 .play-video .wel-icon{
+            width: 9%;
+            top:40%;
+        }
+        #sec-4 .play-video:hover .pl-hov {
+            top: 32%;
+        }
+        #sec-4 .tabs{
+            margin-top: 65px;
+        }
+        #sec-4 .tabs .share:before{
+            width: 25px;
+            height: 25px;
+        }
+        #sec-4 .tabs .w-paper:before{
+            width: 25px;
+            height: 25px;
+            background-position: 0 -85px;
+        }
+        #sec-4 .tabs li{
+            padding-left:45px;
+        }
+        #sec-4 .tabs li:last-child:before{
+            font-size: 22px;
+            margin-top: 12px;
         }
     }
     @media (min-width: 1200px) and (max-width: 1390px){

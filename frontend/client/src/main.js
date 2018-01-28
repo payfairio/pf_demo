@@ -17,11 +17,15 @@ import Parallax from 'vue-parallaxy'
 import App from './App.vue';
 import VueEvents from 'vue-events'
 const VueBreadcrumbs = require('vue2-breadcrumbs');
+const SocialSharing = require('vue-social-sharing');
+import VueYoutube from 'vue-youtube';
 const VueCookie = require('vue-cookie');
 import config from './config/config';
 Vue.use(vueConfig, config);
 Vue.use(VueCookie);
 Vue.use(VueBreadcrumbs);
+Vue.use(VueYoutube);
+Vue.use(SocialSharing);
 
 Vue.router = router;
 

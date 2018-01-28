@@ -1,17 +1,31 @@
 <template>
     <div class="exchanges-list">
-        <div class="container-fluid">
-                <div v-if="!$auth.check()" class="welcome">
-                    <b-row align-h="center">
-                        <b-col sm="12">
-                            <div class="wel-inner text-center">
-                                <h3>PayFair</h3>
-                                <p>Decentralised Escrow and P2P Crypto-exchange on the Ethereum blockchain</p>
-                                <router-link :to="{name: 'register'}" class="btn btn-success">Join Now!</router-link>
-                            </div>
-                        </b-col>
-                    </b-row>
+        <div class="container-fluid no-margin-top">
+            <b-row align-h="center">
+                <div v-if="!$auth.check()" class="welcome" id="wel-top">
+                    <div class="container">
+                        <b-row class="align-items-center">
+                            <b-col sm="12" md="7" lg="7">
+                                <h1 class="pf-raleway"><span>Pay</span>fair</h1>
+                                <p>PAYFAIR is a decentralized Escrow platform and p2p exchange which ensures the paramount security of all cryptocurrency transactions made between two parties.<br>
+                                We provide low fees for all transactions in a safe, private and decentralized environment.</p>
+                                <router-link :to="{name: 'register'}" class="wel-btn btn-join">Join now!</router-link>
+                                <router-link :to="{name: 'about'}" class="wel-btn btn-about">About us</router-link>
+                            </b-col>
+                            <b-col sm="12" md="5" lg="5">
+                                <div class="play-video text-right" v-b-modal.vidModal>
+                                    <img :src="$config.staticUrl+ '/images/welcome-play-hover.png'" class="wel-icon pl-hov">
+                                    <img :src="$config.staticUrl+ '/images/welcome-play-icon.png'" class="wel-icon pl-icon">
+                                    <img :src="$config.staticUrl+ '/images/welcome-video.png'" alt="Play">
+                                </div>
+                                <b-modal id="vidModal" hide-footer size="lg" ref="vidModal" @hide="pauseVid">
+                                    <youtube :video-id="videoId" ref="youtube" width="100%"></youtube>
+                                </b-modal>
+                            </b-col>
+                        </b-row>
+                    </div>
                 </div>
+            </b-row>
         </div>
         <div class="container-fluid">
             <b-card no-body>
@@ -51,7 +65,7 @@
                             <template slot="owner" slot-scope="row">{{$auth.user().username == row.value.username ? "You" : (row.value.username + '[' + (row.value.online && row.value.online.status ? 'online' : 'offline') + ']')}}</template>
                             <!-- <template slot="tradeType" slot-scope="row">{{row.value}}</template> -->
                             <template slot="coin" slot-scope="row">{{row.value}}</template>
-                            <template slot="paymentType" slot-scope="row">{{row.value}}{{row.item.paymentTypeDetail ? ': ' + row.item.paymentTypeDetail : '' }}</template>
+                            <template slot="paymentType" slot-scope="row">{{row.value}}{{row.item.paymentTypeDetail ? ':' + $options.filters.truncate(row.item.paymentTypeDetail) : ''}}</template>
                             <template slot="rate" slot-scope="row">{{row.value}} {{row.item.currency}} / {{row.item.coin}}</template>
                             <template slot="limits" slot-scope="row">{{row.value && row.value.min ? row.value.min : ''}} - {{row.value && row.value.max ? row.value.max : ''}}</template>
                             <template slot="created_at" slot-scope="row">{{row.value | date}}</template>
@@ -84,6 +98,7 @@
                 totalRows: 0,
                 currencies: ['USD', 'RUB'],
                 paymentType: null,
+                videoId: '82dv-QSRD-0',
                 paymentVariants: [
                     {
                         text: 'All payment methods',
@@ -131,10 +146,21 @@
             selectCurrency: function (val) {
                 this.$router.push({name: 'exchanges', query: {coin: this.coin, tradeType: this.tradeType, currency: val}});
             },
+            pauseVid() {
+                this.player.pauseVideo();
+            }
         },
         filters: {
             date: function (value) {
                 return (new Date(value)).toLocaleString();
+            },
+            truncate: function (text) {
+                var clamp = '...';
+                var textLength = 45;
+                var node = document.createElement('div');
+                node.innerHTML = text;
+                var content = node.textContent;
+                return content.length > textLength ? content.slice(0, textLength) + clamp : content;
             }
         },
         computed: {
@@ -156,6 +182,9 @@
                 }
                 return 'USD';
             },
+            player () {
+                return this.$refs.youtube.player;
+            }
         },
         watch: {
             '$route.query': function () {
@@ -170,17 +199,67 @@
 </script>
 <style scoped>
     .welcome {
-        margin-bottom: 40px;
+      box-shadow: 0 5px 15px -5px;
     }
-    .wel-inner {
-        background: #fff;
-        padding: 20px;
-        border: 1px solid #dedede;
-        border-radius: 4px;
+    .welcome .pf-raleway{
+        font-family: 'Raleway';
+        text-transform: uppercase;
+        font-size: 40px;
+        color:#2b9285;
+        font-weight: 700;
+        font-size: 60px;
+        text-align: left;
     }
-    .wel-inner > h3 {
-        font-size: 2.5rem;
-        margin-bottom: 20px;
+    .welcome .pf-raleway span{
+        font-weight: 400;
+        color:#000;
+    }
+    #wel-top p{
+        color:#000;
+        font-family:'MuseoSans';
+        font-size: 23px;
+        margin-top: 24px;
+        line-height: 29px;
+        margin-bottom: 55px;
+        width: 90%;
+    }
+    #wel-top .wel-btn{
+        border: 4px solid #2b9285;
+        font-weight: 600;
+        font-size: 24px;
+        padding: 10px 20px;
+        color: #fdfff8;
+    }
+    #wel-top .play-video{
+        position: relative;
+    }
+    #wel-top .wel-icon {
+        position: absolute;
+        left: 0%;
+        right: 0;
+        margin: auto;
+        top: 30%;
+    }
+    #wel-top .pl-icon{
+        top: 41%;
+        left: 3%;
+    }
+    #wel-top .wel-icon.pl-hov, #wel-top .play-video:hover .pl-icon{
+        display: none;
+    }
+    #wel-top .play-video:hover{
+        cursor: pointer;
+    }
+    #wel-top .play-video:hover .pl-hov{
+        display: block;
+        width: 26%;
+    }
+    #wel-top .btn-about{
+        background-color: #2b9285;
+        margin-left: 30px;
+    }
+    #vidModal .modal-body > *{
+        width: 100%!important;
     }
     .choose-coins {
         border-bottom: 1px solid rgba(0, 0, 0, 0.125);
@@ -258,5 +337,54 @@
         border-left: 1px solid #e1e1e1;
         border-top: 1px solid #e1e1e1;
         border-right: 1px solid #e1e1e1;
+    }
+    .container-fluid.no-margin-top {
+        margin-top: 0;
+    }
+    @media(max-width: 767px){
+        #wel-top.welcome{
+            display: inherit;
+            height: inherit;
+            padding-bottom: 40px;
+        }
+        #wel-top .wel-btn{
+            font-size: 14px;
+        }
+        #wel-top p{
+            margin-top: 50px;
+        }
+        #wel-top .play-video{
+            margin-top: 40px;
+        }
+    }
+    @media(min-width: 992px) and (max-width: 1199px){
+        #wel-top .pl-icon{
+            width: 10%;
+            top: 41%!important;
+            left: 2%!important;
+        }
+        #wel-top .wel-icon{
+            left: 0;
+            top: 30%;
+        }
+        #wel-top .wel-btn{
+            padding: 10px 20px;
+        }
+    }
+    @media (max-width: 1199px){
+        #wel-top .wel-btn{
+            padding: 10px 20px;
+        }
+    }
+    @media(max-width: 991px){
+        #wel-top .pl-icon{
+            width: 10%;
+            top: 41%;
+            left: 2%;
+        }
+        #wel-top .play-video:hover .pl-hov{
+            width: 25%;
+            left:0;
+        }
     }
 </style>

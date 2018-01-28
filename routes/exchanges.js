@@ -39,7 +39,11 @@ router.get('/list', async (req, res) => {
         order = order === 'true' ? -1 : 1;
         let conditions = {status: 'active'};
         if (type) {
-            conditions.tradeType = type;
+            if (type === 'sell') {
+                conditions.tradeType = 'buy';
+            } else {
+                conditions.tradeType = 'sell';
+            }
         }
         if (coin) {
             conditions.coin = coin.toUpperCase();

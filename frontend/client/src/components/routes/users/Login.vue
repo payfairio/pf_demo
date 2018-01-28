@@ -46,6 +46,7 @@
                 e.preventDefault();
                 vm.$events.emit('loadingStart');
                 vm.errorMsg = '';
+                this.form.type = 'client';
                 this.$auth.login({
                     data: this.form,
                     success: response => {

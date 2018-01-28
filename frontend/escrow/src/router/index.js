@@ -6,12 +6,16 @@ import Register from '@/components/routes/users/Register'
 import Profile from '@/components/routes/users/Profile'
 import Wallet from '@/components/routes/users/Wallet'
 
+import Verify from '@/components/routes/users/Verify'
+import ResetPassword from '@/components/routes/users/Forgot'
+
 import EscrowList from '@/components/routes/escrow/EscrowList'
 import EscrowDeal from '@/components/routes/escrow/EscrowDeal'
 
 Vue.use(Router);
 
 export default new Router({
+    mode: 'history',
     routes: [
         // escrow section
         {
@@ -83,6 +87,23 @@ export default new Router({
                 auth: true
             },
             component: Wallet
-        }
+        },
+        {
+            path: '/verify/:code',
+            name: 'verify',
+            component: Verify,
+            props: true
+        },
+        {
+            path: '/resetPassword',
+            name: 'resetPassword',
+            component: ResetPassword
+        },
+        {
+            path: '/reset/:code',
+            name: 'resetPasswordCode',
+            component: ResetPassword,
+            props: true
+        },
     ]
 })

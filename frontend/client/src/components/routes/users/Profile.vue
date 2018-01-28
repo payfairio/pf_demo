@@ -22,8 +22,8 @@
                         </div>
                         <div class="tabs">
                             <ul>
-                                <li v-on:click="visible=true">Change profile image</li>
-                                <li v-on:click="visible=false">Rating</li>
+                                <li @click="tab = 1, visible=true" :class="{active : tab === 1}">Change profile image</li>
+                                <li @click="tab = 2, visible=false" :class="{active : tab === 2}">Rating</li>                                
                             </ul>
                         </div>
                         </b-card>
@@ -32,7 +32,7 @@
                     <div v-if="visible" class="img-tab">
                         <b-form v-if="!$props.id || $auth.user()._id == $props.id" @submit="onSubmit" enctype="multipart/form-data">
                             <b-form-group id="imgInputGroup" label="Change profile image:" label-for="profileImg">
-                                <image-upload v-model="form.profileImg" :init="form.profileImg" :width="256" :height="256" :label="'Загрузить 256 X 256'"></image-upload>
+                                <image-upload v-model="form.profileImg" :init="form.profileImg" :width="256" :height="256" :label="'Download 256 X 256'"></image-upload>
                             </b-form-group>
                             <b-button type="submit" variant="primary">Save</b-button>
                         </b-form>
@@ -43,11 +43,11 @@
                              <p>
                                 <b>By:</b> <router-link :to="{name: 'user-by-id', params: {id: review.author._id}}">{{review.author.username}}</router-link><br>
                             </p>
-                            <p class="float-left">Rating:</p>
+                            <p class="float-left"><b>Rating</b>:</p>
                             <div v-for="i in review.rating">
                                 <span></span>
                             </div>
-                           <p>{{review.comment}}</p>
+                           <p><b>Review:</b>{{review.comment}}</p>
                          </div>
                     </div>
                 </b-col>
@@ -74,6 +74,7 @@
                 username: '',
                 profileImg: '',
                 visible: true,
+                tab: 1
             }
         },
         created: function () {
@@ -167,18 +168,43 @@
     }
 </script>
 <style scoped>
+    .card{
+        color:#212121;
+    }
+    .profile-card img{
+        box-shadow: 0px 0px 10px 0px #969696;
+    }
+    .profile-card h2{
+        font-weight: -700;
+        font-size: 30px;
+    }
     .tabs ul{
         font-size: 16px;
         padding-left: 0;
         list-style-type: none;
         text-align: center;
+        margin: 0 30px;
     }
     .tabs ul li{
         margin: 15px 0;
         cursor: pointer;
+        padding: 10px;
+        color:#010101;
+        transition: .3s;
+        font-size: 16px;
+    }
+    .tabs ul li.active{
+        background-color: #49e1cd;
+        color:#000;
+    }
+    .tabs ul li.active:hover{
+        background-color: #49e1cd;
     }
     .tabs ul li:hover{
-        color:#222;
+        background-color: #49e1cda6;
+    }
+    .img-tab{
+        text-align: center;
     }
     .review.no-float span:first-child{
         background: none;
@@ -188,5 +214,12 @@
         float: none;
         display: inline-block;
         vertical-align: top;
+    }
+    .review-tab .review{
+        padding-top: 15px;
+        border-bottom: 1px solid #f1f1f1;
+    }
+    .review-tab .review:last-child{
+        border-bottom: none;
     }
 </style>

@@ -86,7 +86,7 @@
                     created_at: {label: 'Created at', sortable: true},
                     status: {label: 'Status'},
                     coin: {label: 'Currency'},
-                    messages: {label: 'Last message'}
+                    messages: {label: 'Last message', sortable: true}
                 },
                 fieldsCompleted: {
                     name: {label: 'Deal name', sortable: true},

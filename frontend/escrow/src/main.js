@@ -1,6 +1,7 @@
 // styles
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-vue/dist/bootstrap-vue.css'
+import '../../../public/stylesheets/font-awesome.min.css'
 import '../../../public/stylesheets/style.css'
 
 // main part
@@ -12,12 +13,16 @@ import VueSweetAlert from 'vue-sweetalert'
 import VueSocketio from 'vue-socket.io'
 import router from './router'
 import vueConfig from 'vue-config'
+import Parallax from 'vue-parallaxy'
 import App from './App.vue';
+import VueEvents from 'vue-events'
+const VueBreadcrumbs = require('vue2-breadcrumbs');
 
 const VueCookie = require('vue-cookie');
 import config from './config/config';
 Vue.use(vueConfig, config);
 Vue.use(VueCookie);
+Vue.use(VueBreadcrumbs);
 
 Vue.router = router;
 
@@ -43,7 +48,8 @@ Vue.use(require('vue-moment'), {
     moment
 });
 
-Vue.use(VueSocketio, config.backendUrl);
+Vue.use(VueEvents);
+Vue.use(VueSocketio, config.staticUrl);
 
 Vue.use(require('@websanova/vue-auth'), {
     auth: require('./auth/authDriver.js'),

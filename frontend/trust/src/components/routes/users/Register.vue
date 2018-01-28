@@ -1,28 +1,30 @@
 <template>
-    <div class="register">
-        <b-row align-h="center">
-            <b-col sm="12" md="5">
-                <b-card header="Register"
-                        align="left">
-                    <p v-if="invite">Please choose username and password</p>
-                    <b-form @submit="onSubmit">
-                        <b-form-group id="usernameInputGroup" label="Username:" label-for="username" :state="isValid('username')" :feedback="errorMessage('username')">
-                            <b-form-input id="username" type="text" v-model="form.username" :state="isValid('username')"></b-form-input>
-                        </b-form-group>
-                        <b-form-group v-if="!invite" id="emailInputGroup" label="Email address:" label-for="email" :state="isValid('email')" :feedback="errorMessage('email')">
-                            <b-form-input id="email" type="text" v-model="form.email" :state="isValid('email')"></b-form-input>
-                        </b-form-group>
-                        <b-form-group id="passwordInputGroup" label="Password:" label-for="password" :state="isValid('password')" :feedback="errorMessage('password')">
-                            <b-form-input id="password" type="password" v-model="form.password" :state="isValid('password')"></b-form-input>
-                        </b-form-group>
-                        <!-- <b-form-group v-if="!invite" id="typeInputGroup" label="Account type:" label-for="type" :state="isValid('type')" :feedback="errorMessage('type')">
-                            <b-form-select id="type" v-model="form.type" :options="typeVariants" :state="isValid('type')"></b-form-select>
-                        </b-form-group> -->
-                        <b-button type="submit" variant="primary">Register</b-button>
-                    </b-form>
-                </b-card>
-            </b-col>
-        </b-row>
+    <div class="container">
+        <div class="register">
+            <b-row align-h="center">
+                <b-col sm="12" md="5">
+                    <b-card header="Register"
+                            align="left">
+                        <p v-if="invite">Please choose username and password</p>
+                        <b-form @submit="onSubmit">
+                            <b-form-group id="usernameInputGroup" label="Username:" label-for="username" :state="isValid('username')" :feedback="errorMessage('username')">
+                                <b-form-input id="username" type="text" v-model="form.username" :state="isValid('username')"></b-form-input>
+                            </b-form-group>
+                            <b-form-group v-if="!invite" id="emailInputGroup" label="Email address:" label-for="email" :state="isValid('email')" :feedback="errorMessage('email')">
+                                <b-form-input id="email" type="text" v-model="form.email" :state="isValid('email')"></b-form-input>
+                            </b-form-group>
+                            <b-form-group id="passwordInputGroup" label="Password:" label-for="password" :state="isValid('password')" :feedback="errorMessage('password')">
+                                <b-form-input id="password" type="password" v-model="form.password" :state="isValid('password')"></b-form-input>
+                            </b-form-group>
+                            <!-- <b-form-group v-if="!invite" id="typeInputGroup" label="Account type:" label-for="type" :state="isValid('type')" :feedback="errorMessage('type')">
+                                <b-form-select id="type" v-model="form.type" :options="typeVariants" :state="isValid('type')"></b-form-select>
+                            </b-form-group> -->
+                            <b-button type="submit" variant="primary">Register</b-button>
+                        </b-form>
+                    </b-card>
+                </b-col>
+            </b-row>
+        </div>
     </div>
 </template>
 <script>

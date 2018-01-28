@@ -1,88 +1,90 @@
 <template>
-    <div class="deal-window">
-        <h1>{{deal.name}}</h1>
-        <div class="deal-info">
-            Status: {{deal.status}} <br>
-            Sum: <b>{{deal.sum}}ETH</b>
-        </div>
-        <hr>
-        <b-row>
-            <b-col md="3">
-                <div class="profile-card" v-if="deal.seller">
-                    Seller: {{deal.seller.username}}<br>
-                    <img :src="deal.seller.profileImg">
-                </div>
-                <hr>
-                <div class="deal-actions">
-                    <div class="form-group"><button @click="openConditions('seller')" class="btn btn-default">Seller conditions</button></div>
-                    <div class="form-group"><button @click="openConditions('buyer')" class="btn btn-default">Buyer conditions</button></div>
-
-                    <div class="form-group" v-if="deal.status === 'completed'">
-                        <p>Deal was complete. Money was transferred.</p>
-                        <div>
-                            Your decision: {{deal.decision}}
-                        </div>
-                    </div>
-
-                    <div class="form-group" v-if="deal.status === 'dispute'">
-                        <p>Deal is being verified by escrows.</p>
-                        <div v-if="deal.decision === 'pending'">
-                            <p>Choose who are right</p>
-                            <div class="form-group">
-                                <button class="btn btn-primary" @click="sendDecision('seller')">Seller's side</button>
-                                <button class="btn btn-primary" @click="sendDecision('buyer')">Buyer's side</button>
-                            </div>
-                            <div><button class="btn btn-danger" @click="sendDecision('rejected')">Reject (skip)</button></div>
-                        </div>
-                        <div v-if="deal.decision !== 'pending'">
-                            Your decision: {{deal.decision}}
-                        </div>
-                    </div>
-                </div>
-            </b-col>
-            <b-col md="6">
-                <div class="chat-frame">
-                    <ul class="chat" ref="messages-box">
-                        <li v-for="message in messages">
-                            <div v-if="message.type === 'message'" :class="message.sender._id == deal.seller._id ? 'msj macro' : 'msj-rta macro'">
-                                <div :class="message.sender._id == deal.seller._id ? 'text text-l' : 'text text-r'">
-                                    <p class="msg-sender">{{message.sender.username}}</p>
-                                    <p class="msg-text">{{message.text}}</p>
-                                    <p class="msg-time">
-                                        <small v-if="isToday(message.created_at)">Today, {{message.created_at | moment("HH:mm:ss")}}</small>
-                                        <small v-if="!isToday(message.created_at)">{{message.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</small>
-                                    </p>
-                                </div>
-                            </div>
-                            <div v-if="message.type === 'system'">
-                                <div :class="'system-msg'">
-                                    <p class="sys-msg-sender">{{message.sender ? message.sender.username : 'PayFair System'}}</p>
-                                    <p class="sys-msg-text">{{message.text}}</p>
-                                    <p class="sys-msg-time">
-                                        <small v-if="isToday(message.created_at)">Today, {{message.created_at | moment("HH:mm:ss")}}</small>
-                                        <small v-if="!isToday(message.created_at)">{{message.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</small>
-                                    </p>
-                                </div>
-                            </div>
-                        </li>
-                    </ul>
-                </div>
-            </b-col>
-            <b-col md="3">
-                <div class="profile-card" v-if="deal.buyer">
-                    Buyer: {{deal.buyer.username}}<br>
-                    <img :src="deal.buyer.profileImg">
-                </div>
-            </b-col>
-        </b-row>
-
-        <!-- Modal Conditions Component -->
-        <b-modal v-model="conditionsModal" :title="activeCondition.role+' conditions'">
-            <p>{{activeCondition.text}}</p>
-
-            <div slot="modal-footer" class="w-100">
+    <div class="container">
+        <div class="deal-window">
+            <h1>{{deal.name}}</h1>
+            <div class="deal-info">
+                Status: {{deal.status}} <br>
+                Sum: <b>{{deal.sum}}ETH</b>
             </div>
-        </b-modal>
+            <hr>
+            <b-row>
+                <b-col md="3">
+                    <div class="profile-card" v-if="deal.seller">
+                        Seller: {{deal.seller.username}}<br>
+                        <img :src="deal.seller.profileImg">
+                    </div>
+                    <hr>
+                    <div class="deal-actions">
+                        <div class="form-group"><button @click="openConditions('seller')" class="btn btn-default">Seller conditions</button></div>
+                        <div class="form-group"><button @click="openConditions('buyer')" class="btn btn-default">Buyer conditions</button></div>
+
+                        <div class="form-group" v-if="deal.status === 'completed'">
+                            <p>Deal was complete. Money was transferred.</p>
+                            <div>
+                                Your decision: {{deal.decision}}
+                            </div>
+                        </div>
+
+                        <div class="form-group" v-if="deal.status === 'dispute'">
+                            <p>Deal is being verified by escrows.</p>
+                            <div v-if="deal.decision === 'pending'">
+                                <p>Choose who are right</p>
+                                <div class="form-group">
+                                    <button class="btn btn-primary" @click="sendDecision('seller')">Seller's side</button>
+                                    <button class="btn btn-primary" @click="sendDecision('buyer')">Buyer's side</button>
+                                </div>
+                                <div><button class="btn btn-danger" @click="sendDecision('rejected')">Reject (skip)</button></div>
+                            </div>
+                            <div v-if="deal.decision !== 'pending'">
+                                Your decision: {{deal.decision}}
+                            </div>
+                        </div>
+                    </div>
+                </b-col>
+                <b-col md="6">
+                    <div class="chat-frame">
+                        <ul class="chat" ref="messages-box">
+                            <li v-for="message in messages">
+                                <div v-if="message.type === 'message'" :class="message.sender._id == deal.seller._id ? 'msj macro' : 'msj-rta macro'">
+                                    <div :class="message.sender._id == deal.seller._id ? 'text text-l' : 'text text-r'">
+                                        <p class="msg-sender">{{message.sender.username}}</p>
+                                        <p class="msg-text">{{message.text}}</p>
+                                        <p class="msg-time">
+                                            <small v-if="isToday(message.created_at)">Today, {{message.created_at | moment("HH:mm:ss")}}</small>
+                                            <small v-if="!isToday(message.created_at)">{{message.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</small>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div v-if="message.type === 'system'">
+                                    <div :class="'system-msg'">
+                                        <p class="sys-msg-sender">{{message.sender ? message.sender.username : 'PayFair System'}}</p>
+                                        <p class="sys-msg-text">{{message.text}}</p>
+                                        <p class="sys-msg-time">
+                                            <small v-if="isToday(message.created_at)">Today, {{message.created_at | moment("HH:mm:ss")}}</small>
+                                            <small v-if="!isToday(message.created_at)">{{message.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</small>
+                                        </p>
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </b-col>
+                <b-col md="3">
+                    <div class="profile-card" v-if="deal.buyer">
+                        Buyer: {{deal.buyer.username}}<br>
+                        <img :src="deal.buyer.profileImg">
+                    </div>
+                </b-col>
+            </b-row>
+
+            <!-- Modal Conditions Component -->
+            <b-modal v-model="conditionsModal" :title="activeCondition.role+' conditions'">
+                <p>{{activeCondition.text}}</p>
+
+                <div slot="modal-footer" class="w-100">
+                </div>
+            </b-modal>
+        </div>
     </div>
 </template>
 <script>
@@ -192,6 +194,13 @@
                 return new Date().toLocaleDateString() === date.toLocaleDateString();
             }
         },
+        watch: {
+            id: function (val, oldVal) {
+                // reset data
+                this.$socket.emit('leave_chat', {deal_id: oldVal});
+                this.$socket.emit('join_chat', {deal_id: val});
+            }
+        }
     }
 </script>
 <style scoped>

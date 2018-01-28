@@ -1,7 +1,7 @@
 <template>
     <div id="app">
         <div class="wrap">
-            <div class="demo-topbar">This is just demo on ropsten testnet. Don't use this app for real trades. <a href="https://ropsten.etherscan.io">etherscan for ropsten</a></div>
+            <div class="demo-topbar">This is just a demo on the ropsten testnet. Please do not use this app for real trades. <a href="https://ropsten.etherscan.io">etherscan for ropsten</a></div>
             <b-navbar toggleable="md" type="dark" variant="gray">
                 <b-navbar-brand :to="'/'"><img :src="$config.staticUrl+'/images/pfr_logo.svg'" alt="PayFair"></b-navbar-brand>
 
@@ -50,7 +50,7 @@
 
                 </b-collapse>
             </b-navbar>
-            <div class="container" id="app-content-container">
+            <div>
                 <div v-if="$auth.ready() && (socketReady || !$auth.check())">
                      <b-alert variant="info"
                         dismissible
@@ -60,66 +60,34 @@
                     </b-alert>
                     <router-view></router-view>
                 </div>
-                <div v-if="!$auth.ready() || (!socketReady && $auth.check())">
+                <div class="container" v-if="!$auth.ready() || (!socketReady && $auth.check())">
                     Loading ...
                 </div>
             </div>
         </div>
         <footer class="footer">
             <div class="container">
-                <div class="coinmarket_inner">
-                    <div class="coinmarketcap-currency-widget" data-currency="payfair" data-base="ETH" data-secondary="USD" data-ticker="true" data-rank="true" data-marketcap="true" data-volume="true" data-stats="USD" data-statsticker="false"></div>
-                </div>
-                <hr>
-                <div class="firstscreen_market">
-                    <h4 class="text-center">You can buy/sell PFR token here:</h4>
-                    <div class="bir-list">
-                        <a href="https://etherdelta.com/#PFR-ETH" target="_blank" class="bir_item item-1"><img :src="$config.staticUrl+'/images/bir/ether_delta.jpg'" alt=""></a>
-                        <a href="https://idex.market/eth/pfr" target="_blank" class="bir_item item-2"><img :src="$config.staticUrl+'/images/bir/idex.jpg'" alt=""></a>
-                        <a href="https://stocks.exchange/trade/PFR/BTC" target="_blank" class="bir_item item-3"><img :src="$config.staticUrl+'/images/bir/stocks_exchange.jpg'" alt=""></a>
-                    </div>
-                </div>
-                <hr>
-                <div class="row footer-row">
-                    <b-col sm="12" md="3">
-                        <a href="/">PayFair</a>
-                    </b-col>
-                    <b-col sm="12" md="3">
-                        <ul class="footer-menu">
-                            <li><b>Buy PFR</b></li>
-                            <li><a href="https://etherdelta.com/#PFR-ETH" target="_blank">EtherDelta</a></li>
-                            <li><a href="https://idex.market/eth/pfr" target="_blank">IDEX</a></li>
-                            <li><a href="https://stocks.exchange/trade/PFR/BTC" target="_blank">Stocks Exchange</a></li>
-                        </ul>
-                    </b-col>
-                    <b-col sm="12" md="3">
-                        <ul class="footer-menu">
-                            <li><b>About us</b></li>
-                            <li><a href="https://payfair.io/whitepapers/full_PF.pdf">White Paper</a></li>
-                            <li><a href="https://payfair.io/#team">Team</a></li>
-                            <li><a href="https://payfair.io/ru/blog">Blog</a></li>
-                            <li><a href="https://payfair.io/ru/about">About</a></li>
-                        </ul>
-                    </b-col>
-                    <b-col sm="12" md="3">
-                        <ul class="footer-menu">
-                            <li><b>Follow us</b></li>
-                            <li><a href="https://t.me/payfair">Telegram</a></li>
-                            <li><a href="https://twitter.com/payfairio">Twitter</a></li>
-                            <li><a href="https://www.facebook.com/Payfairio/">Facebook</a></li>
-                            <li><a href="https://vk.com/iopayfair">VK</a></li>
-                        </ul>
-                    </b-col>
+                <div class="footer-dashboard-links">
+                    <ul>
+                        <li><a target="_blank" href="https://payfair.io">Client-node dashboard</a></li>
+                        <li><a target="_blank" href="https://escrow.payfair.io">Escrow-node dashboard</a></li>
+                    </ul>
                 </div>
             </div>
         </footer>
+        <div class="loader-wrap" v-if="loading || (!$auth.ready() || (!socketReady && $auth.check()))">
+            <pulse-loader :loading="loading" ></pulse-loader>
+        </div>
     </div>
 </template>
 
 <script>
-
+    import PulseLoader from 'vue-spinner/src/PulseLoader.vue'
     export default {
         name: 'app',
+        components: {
+            PulseLoader
+        },
         data: function () {
             return {
                 notification: '',
@@ -133,6 +101,10 @@
                     eth: {total: 0, hold: 0}
                 }
             }
+        },
+        mounted() {
+            this.$events.on('loadingStart', eventData => {this.loading = true;});
+            this.$events.on('loadingEnd', eventData => {this.loading = false;});
         },
         sockets: {
             connect: function() {
@@ -223,6 +195,12 @@
     }
 </script>
 <style>
+    .container, .container-fluid {
+        margin-top: 40px;
+    }
+    .footer .container {
+        margin-top: 0;
+    }
     html, body {
         height: 100%;
     }
@@ -258,8 +236,8 @@
     .wrap {
         min-height: 100%;
         height: auto;
-        margin: 0 auto -60px;
-        padding: 0 0 60px;
+        margin: 0 auto -63px;
+        padding: 0 0 63px;
     }
     li.nav-item {
         display: flex;
@@ -287,10 +265,22 @@
         width: 256px;
     }
 
+    .footer-dashboard-links ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        text-align: center;
+    }
+    .footer-dashboard-links ul li {
+        margin: 0 15px;
+        display: inline-block;
+    }
+
     .footer {
         background-color: #f5f5f5;
         border-top: 1px solid #ddd;
         padding-top: 20px;
+        padding-bottom: 20px;
     }
     .footer-links {
         text-align: center;

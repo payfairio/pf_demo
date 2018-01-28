@@ -109,12 +109,12 @@
             <hr>
             <b-row class="buy-sel-conditions">
                 <b-col md="6">
-                    <div class="" v-if="deal.seller && deal.seller._id === $auth.user()._id">
+                    <div class="" v-if="deal.seller && deal.seller._id === $auth.user()._id && conditionsEdition === false">
                         <h4>Seller conditions</h4>
                         <p>{{deal.sellerConditions}}</p>
                         <button v-if="deal.status === 'new' && conditionsEdition === false" class="btn btn-primary" @click="openConditions('seller');changeConditionsClick();">change</button>
                     </div>
-                    <div class="" v-if="deal.buyer && deal.buyer._id === $auth.user()._id">
+                    <div class="" v-if="deal.buyer && deal.buyer._id === $auth.user()._id && conditionsEdition === false">
                         <h4>Buyer conditions</h4>
                         <p>{{deal.buyerConditions}}</p>
                         <button v-if="deal.status === 'new' && conditionsEdition === false" class="btn btn-primary" @click="openConditions('buyer');changeConditionsClick();">change</button>

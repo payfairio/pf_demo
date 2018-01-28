@@ -1,25 +1,27 @@
 <template>
-    <div class="suggestion-window">
-        <b-row>
-            <b-col md="8" sm="12">
-                <b-card :header="suggestion.name">
-                    <p class="card-text">
-                        {{suggestion.text}}
-                    </p>
-                </b-card>
-            </b-col>
-            <b-col md="4" sm="12">
-                <b-card header="About">
-                    <p class="card-text">
-                        <b>Author:</b> {{suggestion.author.username}} [{{suggestion.author.online.status ? 'online' : 'offline'}}]<br>
-                        <b>Created at:</b> {{suggestion.created_at | date}}<br>
-                        <b>Likes: </b>{{suggestion.like.length}} <a v-if="suggestion.can_vote" href="#" v-on:click="like">[vote]</a><br>
-                        <b>Dislikes: </b>{{suggestion.dislike.length}} <a v-if="suggestion.can_vote" href="#" v-on:click="dislike">[vote]</a><br>
-                        <b>Status: </b> {{suggestion.status}}
-                    </p>
-                </b-card>
-            </b-col>
-        </b-row>
+    <div class="container">
+        <div class="suggestion-window">
+            <b-row>
+                <b-col md="8" sm="12">
+                    <b-card :header="suggestion.name">
+                        <p class="card-text">
+                            {{suggestion.text}}
+                        </p>
+                    </b-card>
+                </b-col>
+                <b-col md="4" sm="12">
+                    <b-card header="About">
+                        <p class="card-text">
+                            <b>Author:</b> {{suggestion.author.username}} [{{suggestion.author.online.status ? 'online' : 'offline'}}]<br>
+                            <b>Created at:</b> {{suggestion.created_at | date}}<br>
+                            <b>Likes: </b>{{suggestion.like.length}} <a v-if="suggestion.can_vote" href="#" v-on:click="like">[vote]</a><br>
+                            <b>Dislikes: </b>{{suggestion.dislike.length}} <a v-if="suggestion.can_vote" href="#" v-on:click="dislike">[vote]</a><br>
+                            <b>Status: </b> {{suggestion.status}}
+                        </p>
+                    </b-card>
+                </b-col>
+            </b-row>
+        </div>
     </div>
 </template>
 <script>
@@ -33,7 +35,9 @@
             return {
                 suggestion: {
                     name: '',
-                    author: '',
+                    author: {
+                        online: {}
+                    },
                     created_at: '',
                     text: '',
                     rating: 0,

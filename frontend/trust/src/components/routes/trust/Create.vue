@@ -1,33 +1,35 @@
 <template>
-    <div class="suggestions-create">
-        <b-row align-h="center">
-            <b-col sm="12" md="8">
-                <b-card header="Create new suggestion"
-                        footer-bg-variant="warning"
-                        :footer="'You can have only <b>' + max_suggestion + '</b> active ssuggestions'"
-                        align="left">
-                    <b-alert variant="danger"
-                             dismissible
-                             :show="errorMsg != ''"
-                             @dismissed="errorMsg=''">
-                        {{errorMsg}}
-                    </b-alert>
-                    <b-form @submit="onSubmit">
-                        <b-row>
-                            <b-col sm="12">
-                                <b-form-group id="nameInputGroup" label="Suggestion name:" label-for="name" :state="isValid('name')" :feedback="errorMessage('name')">
-                                    <b-form-input id="name" type="text" v-model="form.name" :state="isValid('name')"></b-form-input>
-                                </b-form-group>
-                                <b-form-group id="textInputGroup" label="Suggestion text:" label-for="text" :state="isValid('text')" :feedback="errorMessage('text')">
-                                    <b-form-textarea id="text" v-model="form.text" :rows="6" :state="isValid('text')"></b-form-textarea>
-                                </b-form-group>
-                            </b-col>
-                        </b-row>
-                        <b-button type="submit" variant="primary">Create</b-button>
-                    </b-form>
-                </b-card>
-            </b-col>
-        </b-row>
+    <div class="container">
+        <div class="suggestions-create">
+            <b-row align-h="center">
+                <b-col sm="12" md="8">
+                    <b-card header="Create new suggestion"
+                            footer-bg-variant="warning"
+                            :footer="'You can have only <b>' + max_suggestion + '</b> active ssuggestions'"
+                            align="left">
+                        <b-alert variant="danger"
+                                dismissible
+                                :show="errorMsg != ''"
+                                @dismissed="errorMsg=''">
+                            {{errorMsg}}
+                        </b-alert>
+                        <b-form @submit="onSubmit">
+                            <b-row>
+                                <b-col sm="12">
+                                    <b-form-group id="nameInputGroup" label="Suggestion name:" label-for="name" :state="isValid('name')" :feedback="errorMessage('name')">
+                                        <b-form-input id="name" type="text" v-model="form.name" :state="isValid('name')"></b-form-input>
+                                    </b-form-group>
+                                    <b-form-group id="textInputGroup" label="Suggestion text:" label-for="text" :state="isValid('text')" :feedback="errorMessage('text')">
+                                        <b-form-textarea id="text" v-model="form.text" :rows="6" :state="isValid('text')"></b-form-textarea>
+                                    </b-form-group>
+                                </b-col>
+                            </b-row>
+                            <b-button type="submit" variant="primary">Create</b-button>
+                        </b-form>
+                    </b-card>
+                </b-col>
+            </b-row>
+        </div>
     </div>
 </template>
 <script>

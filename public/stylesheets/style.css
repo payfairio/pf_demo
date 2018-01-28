@@ -1,4 +1,3 @@
-
 body {
   font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
   font-size: 14px;
@@ -6,7 +5,18 @@ body {
   color: #636b6f;
   background-color: #f5f8fa;
 }
-
+@font-face{
+  font-family: 'Raleway';
+  src: url('../fonts/Raleway-Regular.ttf');
+  font-style: normal;
+  font-weight: 400;
+}
+@font-face{
+  font-family: 'Raleway';
+  src: url('../fonts/Raleway-Bold.ttf');
+  font-style: normal;
+  font-weight: 700;
+}
 @font-face {
   font-family: 'MuseoSans';
   src: url('../fonts/MuseoSansLight.ttf');
@@ -125,9 +135,6 @@ ul.footer-menu a {
 a.nav-link{
   color:#333;
 }
-.welcome {
-  box-shadow: 0 0 20px -5px;
-}
 .navbar-dark .navbar-nav .nav-link {
   color: #555;
 }
@@ -203,7 +210,8 @@ li.nav-item {
   margin-left: 15px;
 }
 .exchanges-list .card-header:focus, .exchanges-list .card-header-tabs:focus,
-.deals-list .card-header:focus, .deals-list .card-header-tabs:focus{
+.deals-list .card-header:focus, .deals-list .card-header-tabs:focus,
+.suggestions-list .card-header:focus, .suggestions-list .card-header:focus{
   color:#333;
   border-bottom: 2px solid #49e1cd;
 }
@@ -211,7 +219,8 @@ li.nav-item {
   border: none;
 }
 .exchanges-list .card-header a.active, .exchanges-list .card-header a:hover,
-.deals-list .card-header a.active, .deals-list .card-header a:hover{
+.deals-list .card-header a.active, .deals-list .card-header a:hover,
+.suggestions-list .card-header a.active, .suggestions-list .card-header a:hover{
   border-color: #49e1cd;
   border-bottom: 2px solid #49e1cd;
   border-left: 1px solid #eee;
@@ -219,19 +228,27 @@ li.nav-item {
   border-right: 1px solid #eee;
 }
 .exchanges-list table,
-.deals-list table{
+.deals-list table,
+.suggestions-list table{
   background-color: #fff;
   color:#333;
   box-shadow: 0 0 20px -5px;
 }
 .exchanges-list table thead tr,
-.deals-list table thead tr{
+.deals-list table thead tr,
+.suggestions-list table thead tr{
   background-color: #49e1cd;
   color: #fff;
 }
 
-.welcome {
-  margin-bottom: 40px;
+#wel-top.welcome {
+  background: url(../images/welcome-bg.jpg) no-repeat;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background-size: cover;
+  padding: 55px 0;
 }
 .wel-inner {
   background: #fff;
@@ -272,6 +289,9 @@ div.rating label, .review span{
   float: left;
   margin-left: 5px;
 }
+.img-tab label span{
+  font-size: 1.75rem;
+}
 .bg-right-top{
   position: relative;
   background: linear-gradient(90deg, #ffffff00 calc(100% - 231px), #20c69b 0%) 0px 392px no-repeat / 100% 100%, url(../images/about/sec-1-bg.png) no-repeat right top / 724px auto;
@@ -289,6 +309,30 @@ div.rating label, .review span{
 }
 .how-it-works-img {
   background:url(../images/about/scheme.png) no-repeat 35% 50%;
+}
+#sec-4{
+  background: url(../images/about/video-bg.jpg) no-repeat left bottom;
+  padding: 19px 0 50px;
+  background-size: cover;
+  clear: both;
+  margin: 40px 0;
+}
+#sec-4 .tabs li:before{
+  content: '';
+  position: absolute;
+  background: url(../images/about/about-tabs-sprite.png) no-repeat;
+  background-size: cover;
+  left: 0;
+}
+#sec-4 .share .btn-link{
+  color:#fff;
+  font-size: 20px;
+}
+#sec-4 .share .dropdown-toggle::after{
+  border:none;
+}
+#sec-4 .share .btn-link-custom:hover{
+
 }
 /**
 * Media query

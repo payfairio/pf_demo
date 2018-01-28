@@ -59,7 +59,7 @@
                 }).catch(error => {
                     return [];
                 });
-            }
+            },
         },
         filters: {
             date: function (value) {

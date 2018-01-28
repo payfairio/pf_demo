@@ -6,12 +6,12 @@
                 <input type="file" @change="onFileChange"> <span class="error">{{error}}</span>
             </div>
             <div v-else>
-                <button @click="removeImage">Удалить</button>
+                <button @click="removeImage">Remove</button>
                 <img :src="image" v-on:load="getSize" :height="'100px'">
                 <div v-if="needCrop" class="crop-overlay" @mouseup="disableSelection" @mouseleave="disableSelection" @mousemove="updateRec">
                     <div class="crop-modal">
-                        <button v-on:click="cancelCrop" class="btn btn-warning">Отменить</button>
-                        <button v-on:click="clip" class="btn btn-primary">Обрезать</button>
+                        <button v-on:click="cancelCrop" class="btn btn-warning">Cancel</button>
+                        <button v-on:click="clip" class="btn btn-primary">Clip</button>
                         <hr>
                         <div class="crop-wrap">
                             <div class="image-for-crop">
@@ -339,8 +339,9 @@
     }
     .image-uploader {
         padding: 0 15px;
-        margin: 10px 0;
-        float: left;
+        margin: 10px auto;
+        display: inline-block;
+        
     }
     .block-grid {
         padding: 10px;

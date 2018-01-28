@@ -1,15 +1,18 @@
 <template>
-    <div class="deals-list">
-        <b-table striped hover
-                 :items="getDeals"
-                 :fields="fields"
-        >
-            <template slot="name" slot-scope="row"><router-link :to="{name: 'dispute', params: {id: row.item.dId}}">{{row.value}}</router-link></template>
-            <template slot="decision" slot-scope="row">{{row.value}}</template>
-            <template slot="called_at" slot-scope="row">{{row.value}}</template>
-            <template slot="created_at" slot-scope="row">{{row.value}}</template>
+    <div class="container-fluid">
+        <div class="deals-list">
+            <b-table striped hover
+                    :items="getDeals"
+                    :fields="fields"
+                    ref="deals"
+            >
+                <template slot="name" slot-scope="row"><router-link :to="{name: 'dispute', params: {id: row.item.dId}}">{{row.value}}</router-link></template>
+                <template slot="decision" slot-scope="row">{{row.value}}</template>
+                <template slot="called_at" slot-scope="row">{{new Date(row.value).toLocaleString()}}</template>
+                <template slot="created_at" slot-scope="row">{{new Date(row.value).toLocaleString()}}</template>
 
-        </b-table>
+            </b-table>
+        </div>
     </div>
 </template>
 <script>
@@ -24,6 +27,11 @@
                     created_at: {label: 'Created at', sortable: true},
                     //actions: {label: 'Actions'}
                 },
+            }
+        },
+        sockets: {
+            notification: function (data) {
+                this.$refs.deals.refresh();
             }
         },
         methods: {

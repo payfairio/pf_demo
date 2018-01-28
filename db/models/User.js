@@ -13,7 +13,6 @@ const User = new Schema({
     },
     email : {
         type: String,
-        unique: true,
         required: true
     },
     password : {
@@ -89,6 +88,11 @@ User.methods.sendMailVerification = function () {
     const _user = this;
     return new Promise( (resolve, reject) => {
         const verifyCode = crypto.createHash('md5').update(Date.now+'_'+_user._id).digest("hex");
+        const url = user.type == 'client' 
+            ? config.frontUrl 
+            : user.type == 'escrow'
+                ? config.escrowUrl
+                : config.trustUrl;
         return mailClient.transmissions.send({
             options: {
                 transactional: true
@@ -98,7 +102,7 @@ User.methods.sendMailVerification = function () {
                 subject: 'Please confirm your email address',
                 html: '<html><body>'+
                 '<p>We need to make sure you are human. Please verify your email.</p>' +
-                '<p><a href="' + config.frontUrl + '/verify/' + verifyCode + '">Verify email</a></p>' +
+                '<p><a href="' + url + '/verify/' + verifyCode + '">Verify email</a></p>' +
                 '</body></html>'
             },
             recipients: [
@@ -119,6 +123,11 @@ User.methods.sendMailReset = function () {
     const _user = this;
     return new Promise(function (resolve, reject) {
         let resetCode = crypto.createHash('md5').update(Date.now+'_'+_user._id).digest("hex");
+        const url = user.type == 'client' 
+            ? config.frontUrl 
+            : user.type == 'escrow'
+                ? config.escrowUrl
+                : config.trustUrl;
         return mailClient.transmissions.send({
             options: {
                 transactional: true
@@ -127,7 +136,7 @@ User.methods.sendMailReset = function () {
                 from: 'noreply@mail.payfair.io',
                 subject: 'Reset password',
                 html: '<html><body>'+
-                '<p>Follow by <a href="' + config.frontUrl + '/reset/' + resetCode + '">link</a> for password reset</p>' +
+                '<p>Follow by <a href="' + url + '/reset/' + resetCode + '">link</a> for password reset</p>' +
                 '</body></html>'
             },
             recipients: [
