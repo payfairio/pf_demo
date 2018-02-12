@@ -88,9 +88,9 @@ User.methods.sendMailVerification = function () {
     const _user = this;
     return new Promise( (resolve, reject) => {
         const verifyCode = crypto.createHash('md5').update(Date.now+'_'+_user._id).digest("hex");
-        const url = user.type == 'client' 
+        const url = _user.type === 'client'
             ? config.frontUrl 
-            : user.type == 'escrow'
+            : _user.type === 'escrow'
                 ? config.escrowUrl
                 : config.trustUrl;
         return mailClient.transmissions.send({
@@ -108,12 +108,12 @@ User.methods.sendMailVerification = function () {
             recipients: [
                 {address: _user.email}
             ]
-        }).then(function (res) {
+        }).then(res => {
             _user.verifyCode = verifyCode;
             return _user.save();
-        }).then(function (user) {
+        }).then(user => {
             resolve(user);
-        }).catch(function (err) {
+        }).catch(err => {
             reject(err);
         });
     });
@@ -123,9 +123,9 @@ User.methods.sendMailReset = function () {
     const _user = this;
     return new Promise(function (resolve, reject) {
         let resetCode = crypto.createHash('md5').update(Date.now+'_'+_user._id).digest("hex");
-        const url = user.type == 'client' 
+        const url = _user.type === 'client'
             ? config.frontUrl 
-            : user.type == 'escrow'
+            : _user.type === 'escrow'
                 ? config.escrowUrl
                 : config.trustUrl;
         return mailClient.transmissions.send({

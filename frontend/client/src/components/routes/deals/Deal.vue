@@ -23,7 +23,7 @@
                     <div class="deal-actions">
                         <div class="form-group" v-if="deal.status === 'new'">
                             <button v-if="!conditionsAcceptedByMe" class="btn btn-success" @click="acceptConditionsAndSum">Accept conditions and sum</button>
-                            <p v-if="conditionsAcceptedByMe">You are already accepted conditions and sum. If your counterparty change them then you will have to accept them again for deal start.</p>
+                            <p v-if="conditionsAcceptedByMe">You have already accepted the conditions and sum. If your counterparty changes them, you will have to accept them again for the deal to start.</p>
                         </div>
 
                         <div class="form-group" v-if="deal.status === 'accepted'">
@@ -141,20 +141,21 @@
             </b-row>
         </div>
         <b-modal v-model="reviewModal" title="Comment your counterparty!" @hide="cancelReview">
-            <p>Rate: </p>
-            <div class="rating">
-                <input type="radio" :id="'r_5'" v-model="review.rating" :value="5">
-                <label :for="'r_5'"></label>
-                <input type="radio" :id="'r_4'" v-model="review.rating" :value="4">
-                <label :for="'r_4'"></label>
-                <input type="radio" :id="'r_3'" v-model="review.rating" :value="3">
-                <label :for="'r_3'"></label>
-                <input type="radio" :id="'r_2'" v-model="review.rating" :value="2">
-                <label :for="'r_2'"></label>
-                <input type="radio" :id="'r_1'" v-model="review.rating" :value="1">
-                <label :for="'r_1'"></label>                
-                
-            </div>
+            <b-form-group label="Rate: " label-for="rating" :state="isValid('rating')" :feedback="errorMessage('rating')">
+                <div class="rating">
+                    <input type="radio" :id="'r_5'" v-model="review.rating" :value="5">
+                    <label :for="'r_5'"></label>
+                    <input type="radio" :id="'r_4'" v-model="review.rating" :value="4">
+                    <label :for="'r_4'"></label>
+                    <input type="radio" :id="'r_3'" v-model="review.rating" :value="3">
+                    <label :for="'r_3'"></label>
+                    <input type="radio" :id="'r_2'" v-model="review.rating" :value="2">
+                    <label :for="'r_2'"></label>
+                    <input type="radio" :id="'r_1'" v-model="review.rating" :value="1">
+                    <label :for="'r_1'"></label>                
+                    <span :state="isValid('rating')">{{review.rating}}</span>
+                </div>
+            </b-form-group>
             <b-form-group id="commentInputGroup" label="Your comment:" label-for="comment" :state="isValid('comment')" :feedback="errorMessage('comment')">
                 <b-form-textarea id="comment" v-model="review.comment" :rows="6" :state="isValid('comment')"></b-form-textarea>
             </b-form-group>
@@ -238,7 +239,7 @@
 
                 reviewModal: false,
                 review: {
-                    rating: 5,
+                    rating: 0,
                     comment: ''
                 },
                 errors: ''
@@ -760,5 +761,8 @@
     }
     .buy-sel-conditions .btn-sm{
         margin-top: 5px;
+    }
+    .rating span{
+        display: none;
     }
 </style>

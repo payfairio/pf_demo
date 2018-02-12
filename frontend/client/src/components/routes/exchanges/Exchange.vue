@@ -41,6 +41,8 @@
                                 <span></span>
                             </div>
                             <p>{{review.comment}}</p>
+                            <p v-if="isToday(review.created_at)" class="date">Today, {{review.created_at | moment("HH:mm:ss")}}</p>
+                            <p v-if="!isToday(review.created_at)" class="date">{{review.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</p>
                             <hr>
                         </div>
                     </b-card>
@@ -123,6 +125,10 @@ export default {
         },
         errorMessage: function(key) {
             return this.errors.hasOwnProperty(key) ? this.errors[key].msg : '';
+        },
+        isToday(date) {
+            date = new Date(date);
+            return new Date().toLocaleDateString() === date.toLocaleDateString();
         }
     },
     watch: {
@@ -143,5 +149,8 @@ export default {
 .review div{
     float: left;
     margin-left: 5px;
+}
+.date{
+    font-style: italic;
 }
 </style>

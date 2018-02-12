@@ -24,8 +24,8 @@
                                 <template
                                     v-for="notification in notifications"
                                 >
-                                    <b-dropdown-item v-bind:key="notification._id" @click="$router.push({name: 'deal', params: {id: notification.deal.dId}})">
-                                        <div :class="'title' + (notification.viewed ? '' : ' new')">
+                                    <b-dropdown-item v-if="!notification.viewed" v-bind:key="notification._id" @click="$router.push({name: 'deal', params: {id: notification.deal.dId}})">
+                                        <div  :class="'title' + (notification.viewed ? '' : ' new')">
                                             {{getNotificationTitle(notification)}}
                                             <div class="time">
                                                 <small v-if="isToday(notification.created_at)">Today, {{notification.created_at | moment("HH:mm:ss")}}</small>
@@ -36,6 +36,7 @@
                                             {{getNotificationText(notification)}}
                                         </div>
                                     </b-dropdown-item>
+
                                 </template>
                             </div>
                         </b-nav-item-dropdown>
@@ -98,6 +99,10 @@
                             <template v-for="item in getNotificationMessage(notif)">
                                 {{item.name}}: <router-link v-if="item.link" :to="item.link">{{item.text}}</router-link>{{!item.link ? item.text : ''}}<br>
                             </template>
+                            <div class="time">
+                                <small v-if="isToday(notification.created_at)">{{notification.created_at | moment("MM.D, HH:mm:ss")}}</small>
+                                <small v-else>Today, {{notification.created_at | moment("HH:mm:ss")}}</small>
+                            </div>
                         </div>
                     </div>
                     <div v-if="newNotifications.length > 1" class="hide-notif" @click="newNotifications = []">

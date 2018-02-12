@@ -276,6 +276,15 @@ module.exports = web3 => {
                     errorMessage: 'Role is required'
                 }
             },
+            coin: {
+                notEmpty: {
+                    errorMessage: 'Currency is required'
+                },
+                isIn: {
+                    options: [['PFR', 'ETH', 'OMG']],
+                    errorMessage: 'Wrong currency'
+                }
+            },
             name: {
                 notEmpty: {
                     errorMessage: 'Deal name is required'
@@ -353,7 +362,7 @@ module.exports = web3 => {
                     _id: new mongoose.Types.ObjectId(),
                     name: req.body.name,
                     sum: req.body.sum,
-                    coin: req.body.coin
+                    coin: req.body.coin.toUpperCase()
                 };
                 if (req.body.role === 'seller') {
                     data.seller = req.user._id;
@@ -448,7 +457,7 @@ module.exports = web3 => {
                     _id: new mongoose.Types.ObjectId(),
                     name: 'Ex#' + exchange.eId + '. ' + exchange.tradeType + ' ' + exchange.coin + ' for ' + exchange.currency,
                     sum: req.body.sum,
-                    coin: exchange.coin,
+                    coin: exchange.coin.toUpperCase(),
                     type: 'exchange',
                     exchange: exchange._id
                 };
@@ -497,6 +506,38 @@ module.exports = web3 => {
                 console.log('/deals/exchange error:', err);
             });
         });
+    });
+
+    router.post('/cancel/:id', passport.authenticate('jwt', {
+        session: false
+    }), (req, res) =>  {
+        Deal.findOne({
+            dId: req.params.id
+        }).populate('seller', ['-password', '-wallet']).populate('buyer', ['-password', '-wallet']).populate('messages')
+            .then(doc => {
+                if (!doc) {
+                    return res.status(404).json({
+                        error: "Deal not found"
+                    });
+                }
+                if (doc.seller._id.toString() !== req.user._id && doc.buyer._id.toString() !== req.user._id) {
+                    return res.status(403).json({
+                        error: "Forbidden"
+                    });
+                }
+                if (doc.status !== 'new') {
+                    return res.status(403).json({
+                        error: "You can't cancel this deal"
+                    });
+                }
+                return doc.remove();
+            })
+            .then(doc => {
+                return res.json(doc);
+            })
+            .catch(err => {
+                return res.status(500).json(err);
+            });
     });
     return router;
 };

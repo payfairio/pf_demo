@@ -390,6 +390,15 @@ module.exports = web3 => {
                 notEmpty: {
                     errorMessage: 'Comment is required'
                 }
+            },
+            rating: {
+                notEmpty: {
+                    errorMessage: 'Set the rating value from 1 to 5'
+                },
+                isIn: {
+                    options: [['1', '2', '3', '4', '5']],
+                    errorMessage: 'Set the rating value from 1 to 5'
+                }
             }
         });
         req.getValidationResult().then(result => {

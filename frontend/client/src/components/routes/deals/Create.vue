@@ -55,7 +55,7 @@
                     counterparty: '',
                     conditions: '',
                     sum: 0,
-                    coin: 'pfr'
+                    coin: ''
                 },
                 roleVariants: [
                     {
@@ -67,19 +67,18 @@
                         value: 'seller'
                     },
                 ],
-                coinVariants: [
-                    {
-                        text: 'PFR',
-                        value: 'pfr'
-                    },
-                    {
-                        text: 'ETH',
-                        value: 'eth'
-                    }
-                ],
+                coinVariants: [],
                 errors: {},
                 errorMsg: ''
             }
+        },
+        created: function() {
+            const vm = this;
+            vm.$http.get('/coins').then(response => {
+                vm.coinVariants = response.data;
+            }).catch (err => {
+                console.log(err);
+            })
         },
         methods: {
             onSubmit: function (e) {

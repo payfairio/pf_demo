@@ -22,14 +22,20 @@
                         </div>
                         <div class="tabs">
                             <ul>
-                                <li @click="tab = 1, visible=true" :class="{active : tab === 1}">Change profile image</li>
-                                <li @click="tab = 2, visible=false" :class="{active : tab === 2}">Rating</li>                                
+                                <div v-if="!$props.id">
+                                    <li @click="tab = 1, visible=true" :class="{active : tab === 1}">Change profile image</li>
+                                    <li @click="tab = 2, visible=false" :class="{active : tab === 2}">Rating</li>
+                                </div>
+                                <div v-else>
+                                    <li @click="tab = 1, visible=true" :class="{active : true}">Rating</li>
+                                </div>
+
                             </ul>
                         </div>
                         </b-card>
                 </b-col>
                 <b-col sm="12" md="8" class="card justify-content-center">
-                    <div v-if="visible" class="img-tab">
+                    <div v-if="visible && !$props.id" class="img-tab">
                         <b-form v-if="!$props.id || $auth.user()._id == $props.id" @submit="onSubmit" enctype="multipart/form-data">
                             <b-form-group id="imgInputGroup" label="Change profile image:" label-for="profileImg">
                                 <image-upload v-model="form.profileImg" :init="form.profileImg" :width="256" :height="256" :label="'Download 256 X 256'"></image-upload>
@@ -47,7 +53,11 @@
                             <div v-for="i in review.rating">
                                 <span></span>
                             </div>
+
                            <p><b>Review:</b>{{review.comment}}</p>
+                           <p v-if="isToday(review.created_at)" class="date">Today, {{review.created_at | moment("HH:mm:ss")}}</p>
+                           <p v-if="!isToday(review.created_at)" class="date">{{review.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</p>
+
                          </div>
                     </div>
                 </b-col>
@@ -141,6 +151,10 @@
                         console.log(err);
                     });
                 }
+            },
+            isToday(date) {
+                date = new Date(date);
+                return new Date().toLocaleDateString() === date.toLocaleDateString();
             }
         },
         watch: {
@@ -219,7 +233,10 @@
         padding-top: 15px;
         border-bottom: 1px solid #f1f1f1;
     }
-    .review-tab .review:last-child{
+    .review-tab .review:last-child {
         border-bottom: none;
+    }
+    .date{
+        font-style: italic;
     }
 </style>

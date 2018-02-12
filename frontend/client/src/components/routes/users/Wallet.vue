@@ -46,6 +46,7 @@
                     <b-card :header="'Receive ' + active_currency.toUpperCase()" class="send">
                         You can use this {{active_currency}} address:
                         <pre>{{address}}</pre>
+                        <font color="red"> Please do not send REAL tokens to this address, you will lose them! The address is only for demonstration into the Ropsten network.</font>
                     </b-card>
                 </b-col>
             </b-row>
