@@ -145,17 +145,20 @@ module.exports = (client, io) => {
                     const escrows = await findEscrows(deal);
                     if (escrows.length > 0) {
                         const random = Math.floor(Math.random() * escrows.length);
-                        deal.escrows.push({escrow: escrows[random]._id});
+                        let pichedID = escrows[random]._id;
+                        deal.escrows.push({escrow: pichedID});
+                        console.log('pick escrow _id random: ' + pichedID);
                     }
                     await deal.save();
                     io.in(deal._id.toString()).emit('disputeOpened', data);
 
                     const notification = {
-                        user: deal.escrows[deal.escrows.length - 1],
+                        user: deal.escrows[deal.escrows.length - 1].escrow,
                         deal: deal._id,
                         type: 'dispute',
                         text: "You need to resolve dispute"
                     }
+                    console.log('pick escrow _id in notif: ' + notification.user);
                     createAndSendNotification(notification, io);
                 }
             }

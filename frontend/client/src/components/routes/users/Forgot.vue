@@ -47,7 +47,7 @@
                 }).catch(function (err) {
                     console.log(err.response);
                     if (err.response.data.error.msg) {
-                        vm.errorMsg = err.response.data.error.msg; 
+                        vm.errorMsg = err.response.data.error.msg;
                     }
                 });
             }

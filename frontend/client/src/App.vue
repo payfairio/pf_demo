@@ -13,19 +13,38 @@
                         <b-nav-item v-if="$auth.check()" :to="{name: 'create-exchange'}">Post new trade ad</b-nav-item>
                         <b-nav-item v-if="$auth.check()" :to="{name: 'deals'}">Your deals</b-nav-item>
                     </b-nav>
+
                     <b-nav is-nav-bar class="ml-auto">
-                        <b-nav-item-dropdown v-if="$auth.check()" v-on:click="showNotifications" id="notifdown" class="ntf">
+                        <b-nav-item-dropdown v-if="$auth.check()" @click="showNotifications" @hide="markAllUnreadNotification" id="notifdown" class="ntf">
                             <template slot="button-content">
-                                <span id="notify"><span>{{uncheckedNotifications}}</span></span>
+                                <span id="notify" ><span>{{uncheckedNotifications}}</span></span>
                             </template>
                             <b-dropdown-header>Notifications</b-dropdown-header>
                             <div class="notif-body">
                                 <b-dropdown-header v-if="!notifications.length">You don't have notifications</b-dropdown-header>
-                                <template
-                                    v-for="notification in notifications"
-                                >
-                                    <b-dropdown-item v-if="!notification.viewed" v-bind:key="notification._id" @click="$router.push({name: 'deal', params: {id: notification.deal.dId}})">
-                                        <div  :class="'title' + (notification.viewed ? '' : ' new')">
+
+                                <!--New notifications-->
+                                <template v-for="notification in notifications" v-if="!notification.viewed">
+                                    <b-dropdown-item  v-bind:key="notification._id" @click="$router.push({name: 'deal', params: {id: notification.deal.dId}})">
+                                            <div  :class="'title new'">
+                                            {{getNotificationTitle(notification)}}
+                                            <div class="time">
+                                                <small v-if="isToday(notification.created_at)">Today, {{notification.created_at | moment("HH:mm:ss")}}</small>
+                                                <small v-if="!isToday(notification.created_at)">{{notification.created_at | moment("MM.D, HH:mm:ss")}}</small>
+                                            </div>
+                                        </div>
+                                        <div class="text">
+                                            {{getNotificationText(notification)}}
+                                        </div>
+                                    </b-dropdown-item>
+                                </template>
+
+
+                                <!--Vieved notifications-->
+                                <template v-for="notification in notifications" v-if="notification.viewed">
+
+                                    <b-dropdown-item  v-bind:key="notification._id" @click="$router.push({name: 'deal', params: {id: notification.deal.dId}})">
+                                        <div  :class="'title'">
                                             {{getNotificationTitle(notification)}}
                                             <div class="time">
                                                 <small v-if="isToday(notification.created_at)">Today, {{notification.created_at | moment("HH:mm:ss")}}</small>
@@ -100,8 +119,8 @@
                                 {{item.name}}: <router-link v-if="item.link" :to="item.link">{{item.text}}</router-link>{{!item.link ? item.text : ''}}<br>
                             </template>
                             <div class="time">
-                                <small v-if="isToday(notification.created_at)">{{notification.created_at | moment("MM.D, HH:mm:ss")}}</small>
-                                <small v-else>Today, {{notification.created_at | moment("HH:mm:ss")}}</small>
+                                <small v-if="isToday(notif.created_at)">Today, {{notif.created_at | moment("HH:mm:ss")}}</small>
+                                <small v-if="!isToday(notif.created_at)">{{notif.created_at | moment("MM.D, HH:mm:ss")}}</small>
                             </div>
                         </div>
                     </div>
@@ -146,7 +165,6 @@
                     <div class="bir-list">
                         <a href="https://etherdelta.com/#PFR-ETH" target="_blank" class="bir_item item-1"><img :src="$config.staticUrl + '/images/bir/ether_delta.jpg'" alt=""></a>
                         <a href="https://idex.market/eth/pfr" target="_blank" class="bir_item item-2"><img :src="$config.staticUrl + '/images/bir/idex.jpg'" alt=""></a>
-                        <a href="https://stocks.exchange/trade/PFR/BTC" target="_blank" class="bir_item item-3"><img :src="$config.staticUrl + '/images/bir/stocks_exchange.jpg'" alt=""></a>
                     </div>
                 </b-col>
                 </b-row>
@@ -160,7 +178,6 @@
                             <li><b>Buy PFR</b></li>
                             <li><a href="https://etherdelta.com/#PFR-ETH" target="_blank">EtherDelta</a></li>
                             <li><a href="https://idex.market/eth/pfr" target="_blank">IDEX</a></li>
-                            <li><a href="https://stocks.exchange/trade/PFR/BTC" target="_blank">Stocks Exchange</a></li>
                         </ul>
                     </b-col>
                     <b-col sm="12" md="3">
@@ -342,17 +359,35 @@
                 date = new Date(date);
                 return new Date().toLocaleDateString() === date.toLocaleDateString();
             },
+
+            markAllUnreadNotification: function (){
+
+                const vm = this;
+                this.$http.post('/users/notifications')
+                    .then(
+                        function(response) {
+                        vm.uncheckedNotifications = 0;
+                        vm.notifications.map((n) => n.viewed = true);
+                        console.log(response)
+                    },
+                    function (err) {
+                        console.log(err);
+                    }
+                )
+
+            },
+
             getNotifications: function () {
                 const vm = this;
                 this.$http
                     .get('/users/notifications')
                     .then(function (response) {
-                        vm.notifications = response.data;
-                        vm.uncheckedNotifications = 0;
-                        vm.notifications.map((n) => !n.viewed ? vm.uncheckedNotifications++ : false);
-                    }, function (err) {
-                        console.log(err);
-                    });
+                    vm.notifications = response.data;
+                    vm.uncheckedNotifications = 0;
+                    vm.notifications.map((n) => !n.viewed ? vm.uncheckedNotifications++ : false);
+                }, function (err) {
+                    console.log(err);
+                });
             },
             getNotificationTitle: function (notification) {
                 let titles = {
@@ -363,7 +398,7 @@
                     dealConditionsAccepted: 'Conditions accepted',
                     changeDealSum: 'Deal sum changed',
                     dealCompleted: 'Deal completed'
-                }
+                };
                 return titles[notification.type];
             },
             getNotificationText: function (notification) {
@@ -548,7 +583,7 @@
                             text: notification.sender.username + ' accept deal ' + notification.deal.name
                         }
                     ]
-                }
+                };
                 return messages[notification.type] || [];
             }
         },

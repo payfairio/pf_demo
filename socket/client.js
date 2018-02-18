@@ -232,7 +232,7 @@ module.exports = (client, io) => {
 
                         case 'eth':
                             balance = await web3.eth.getBalance(buyer.wallet.address);
-                            if (balance - web3.utils.toWei(buyer.holds.eth.toString(), 'ether') < web3.utils.toWei(data.deal.sum.toString(), 'ether') ) {
+                            if (balance - web3.utils.toWei(buyer.holds.eth.toString(), 'ether') < web3.utils.toWei(deal.sum.toString(), 'ether') ) {
                                 notEnoughMoney = true;
                             }
                             break;
@@ -416,6 +416,8 @@ module.exports = (client, io) => {
                     type: 'dealCompleted',
                     text: 'Deal completed',
                 };
+
+                io.in(deal._id.toString()).emit('dealCompleted', data);
 
                 createAndSendNotification(notification, io);
             }

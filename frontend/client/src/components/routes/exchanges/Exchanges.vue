@@ -57,7 +57,7 @@
                                  :fields="fields"
                                  :current-page="currentPage"
                                  :per-page="perPage"
-                                 sort-by="rate"
+                                 sort-by="created_at"
                                  :sort-desc="true"
                                  ref="tradesTable"
                                  :show-empty="true"
@@ -69,7 +69,10 @@
                             <template slot="rate" slot-scope="row">{{row.value}} {{row.item.currency}} / {{row.item.coin}}</template>
                             <template slot="limits" slot-scope="row">{{row.value && row.value.min ? row.value.min : ''}} - {{row.value && row.value.max ? row.value.max : ''}}</template>
                             <template slot="created_at" slot-scope="row">{{row.value | date}}</template>
-                            <template slot="actions" slot-scope="row"><router-link :to="{name: 'exchange', params: {id: row.item.eId}}" class="btn btn-primary">{{tradeType}} coins</router-link></template>
+                            <template slot="actions" slot-scope="row">
+                                <router-link v-if="row.item.owner.username != $auth.user().username && row.item.status != 'closed'" :to="{name: 'exchange', params: {id: row.item.eId}}" class="btn btn-primary">{{tradeType}} coins</router-link>
+                                <b-button disabled v-if="row.item.owner.username == $auth.user().username || row.item.status == 'closed'">{{tradeType}} coins</b-button>
+                            </template>
                         </b-table>
                     </div>
                     <b-pagination :total-rows="totalRows" :per-page="perPage" v-model="currentPage"></b-pagination>
@@ -386,5 +389,9 @@
             width: 25%;
             left:0;
         }
+    }
+    .btn-secondary.disabled, .btn-secondary:disabled {
+        background-color: #868e96;
+        border-color: #868e96;
     }
 </style>

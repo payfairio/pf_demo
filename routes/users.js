@@ -335,7 +335,6 @@ module.exports = web3 => {
         }
     });
 
-
     router.get('/info', passport.authenticate('jwt', {session: false}), async (req, res) => {
         try {
             const doc = await User.findById(req.user._id).select("-password").populate('wallet');
@@ -384,6 +383,7 @@ module.exports = web3 => {
             return res.status(500).json(err);
         }
     });
+
     router.post('/user/:id/addReview', passport.authenticate('jwt', {session: false}), (req, res) => {
         req.checkBody({
             comment: {
@@ -446,6 +446,9 @@ module.exports = web3 => {
         });
     });
 
+
+
+
     router.get('/user/:id', passport.authenticate('jwt', {session: false}), (req, res) => {
         User.findOne({
             _id: req.params.id
@@ -454,7 +457,7 @@ module.exports = web3 => {
                 if (!user.profileImg) {
                     user.profileImg = config.backendUrl + '/images/default-user-img.png';
                 } else {
-                    user.profileImg = config.backendUrl + '/profile-pic/' + doc.profileImg;
+                    user.profileImg = config.backendUrl + '/profile-pic/' + user.profileImg;
                 }
                 Review.find({user: user._id}).populate('author', ['-password', '-wallet']).then(reviews => {
                     resolve({user: user, reviews: reviews});
@@ -521,36 +524,36 @@ module.exports = web3 => {
             .catch(err => res.status(400).json({success: false, error: err}));
     });
 
-    router.post('/reset', async (req, res) => {
-        try {
-            req.checkBody({
-                email: {
-                    notEmpty: {
-                        errorMessage: 'Email is required'
-                    },
-                    isEmail: {
-                        errorMessage: 'Invalid email'
+    router.post('/reset', function (req, res) {
+                req.checkBody({
+                    email: {
+                        notEmpty: {
+                            errorMessage: 'Email is required'
+                        },
+                        isEmail: {
+                            errorMessage: 'Invalid email'
+                        }
                     }
+                });
+
+                const result = req.getValidationResult();
+
+                if (result > 0) {
+                    return res.status(400).json({success: false, errors: result.mapped(), msg: 'Bad request'});
                 }
-            });
 
-            const result = req.getValidationResult();
-            if (result.array().length > 0) {
-                return res.status(400).json({success: false, errors: result.mapped(), msg: 'Bad request'});
-            }
-            const user = User.findOne({email: req.body.email});
+                User
+                    .findOne({email: req.body.email}).then(user=>{
+                        if (!user) return res.status(401).json({success: false, error: 'User not found'});
 
-            if (!user) {
-                return res.status(401).json({success: false, error: 'User not found'});
-            }
+                        return user.sendMailReset();
 
-            await user.sendMailReset();
-
-            return res.json({success: true});
-
-        } catch (err) {
-            return res.status(401).json({success: false, error: err});
-        }
+                }).then(user =>{
+                    return res.json({success: true});
+                }).catch(err => {
+                    console.log('tr in catch post /reset:'+ err);
+                    return res.status(401).json({success: false, error: err});
+                })
     });
 
     router.get('/reset/:code', (req, res) => {
@@ -685,5 +688,19 @@ module.exports = web3 => {
             });
     });
 
+    router.post('/notifications', passport.authenticate('jwt', {session: false}), async (req, res) => {
+        Notification.find({user: req.user._id})
+            .then(notifications =>{
+                if (!notifications) {
+                    throw {
+                        msg: 'not find notif'
+                    };
+                }
+                Notification.update({user: req.user._id, viewed: false}, {$set: {viewed: true}}, {multi: true})
+                    .then(function (notifications) { return res.json({success:true});
+                });
+            })
+            .catch(err => res.status(400).json({success: false, error: err}))
+    });
     return router;
 };

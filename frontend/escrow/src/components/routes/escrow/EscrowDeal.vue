@@ -10,7 +10,8 @@
             <b-row>
                 <b-col md="3">
                     <div class="profile-card" v-if="deal.seller">
-                        Seller: {{deal.seller.username}}<br>
+                        Seller: <router-link :to="{name: 'user-by-id', params: {id: deal.seller._id}}">{{deal.seller.username}}</router-link><br>
+                        <!--Seller: {{deal.seller.username}}<br>-->
                         <img :src="deal.seller.profileImg">
                     </div>
                     <hr>
@@ -71,7 +72,8 @@
                 </b-col>
                 <b-col md="3">
                     <div class="profile-card" v-if="deal.buyer">
-                        Buyer: {{deal.buyer.username}}<br>
+                        Buyer: <router-link :to="{name: 'user-by-id', params: {id: deal.buyer._id}}">{{deal.buyer.username}}</router-link><br>
+                        <!--Buyer: {{deal.buyer.username}}<br>-->
                         <img :src="deal.buyer.profileImg">
                     </div>
                 </b-col>

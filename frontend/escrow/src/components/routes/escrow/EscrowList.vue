@@ -4,6 +4,8 @@
             <b-table striped hover
                     :items="getDeals"
                     :fields="fields"
+                     :sort-by.sync="sortBy"
+                     :sort-desc.sync="sortDesc"
                     ref="deals"
             >
                 <template slot="name" slot-scope="row"><router-link :to="{name: 'dispute', params: {id: row.item.dId}}">{{row.value}}</router-link></template>
@@ -20,6 +22,10 @@
         name: 'List',
         data: function () {
             return {
+
+                sortBy: 'created_at',
+                sortDesc: true,
+
                 fields: {
                     name: {label: 'Deal name', sortable: true},
                     decision: {label: 'Your decision', sortable: true},
@@ -36,8 +42,12 @@
         },
         methods: {
             // TODO: sort-changed, page-change, filter-change сделать методы
+
             getDeals: function (ctx) {
-                let promise = this.$http.get('/deals/dispute');
+                const sortBy = ctx.sortBy;
+                const order = ctx.sortDesc;
+
+                let promise = this.$http.get(`/deals/dispute?sortBy=${sortBy}&order=${order}`);
                 return promise.then(function (response) {
                     return(response.data || []);
                 }, function (err) {

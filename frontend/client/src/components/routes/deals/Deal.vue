@@ -87,7 +87,7 @@
                             </b-input-group>
                             <div class="attach-box">
                                 <ul class="attachments-items">
-                                    <li v-for="file, index in attachments">{{file.name}} - {{file.progress}}% [x]</li>
+                                    <li v-for="file, index in attachments">{{index}}.{{file.name}} - {{file.progress}}% <span v-on:click="removeFile(index)">[x]</span></li>
                                 </ul>
                             </div>
                         </b-form>
@@ -461,8 +461,9 @@
                     vm.$socket.emit('set_deal_condition', data);
                     vm.conditionsModal = false;
                     vm.$swal('Success', 'Deal conditions changed. But it must be accepted by your counterparty', 'success');
-                    this.conditionsEdition = false;
+
                 }
+                this.conditionsEdition = false;
             },
             acceptConditionsAndSum: function () {
                 const vm = this;
@@ -512,6 +513,9 @@
                 }
             },
             // chat
+            removeFile: function (index) {
+                this.attachments.splice(index, 1);
+            },
             onSubmit: function (e) {
                 e.preventDefault();
                 if (this.uploading) {
@@ -547,6 +551,7 @@
                 this.reviewModal = false;
             },
             submitReview: function () {
+                this.reviewModal = false;
                 let user_id = this.counterparty._id;
                 let review = this.review;
                 review.deal_id = this.deal._id;
@@ -764,5 +769,9 @@
     }
     .rating span{
         display: none;
+    }
+    #comment{
+        height: 155px;
+        resize: none;
     }
 </style>

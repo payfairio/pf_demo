@@ -28,7 +28,7 @@
                 </b-col>
                 <b-col sm="12" md="5">
                     <b-card :header="owner.username + ' reviews'">
-                        <h5><b>Total Rating: </b> {{reviews.length > 0 ? totalRating : 'no reviews'}}</h5>
+                        <h5><b>Total Rating: </b>{{averageRating}}</h5>
                         <hr>
                         <div v-for="review in reviews" class="review">
                             <p>
@@ -134,6 +134,22 @@ export default {
     watch: {
         'sum': function () {
             delete this.errors.sum;
+        }
+    },
+    computed: {
+        averageRating: function(){
+            const vm = this;
+            var review = 0;
+            var totalRating = 0;
+            for (var i = 0; i < vm.reviews.length; i++){
+               review = vm.reviews[i].rating;
+               totalRating = totalRating + review;
+            }
+            if(Object.keys(vm.reviews).length === 0){
+                return "no reviews";
+            } else{
+                return (Math.round(totalRating / vm.reviews.length * 100) / 100);    
+            }        
         }
     }
 }

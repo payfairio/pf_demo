@@ -201,6 +201,9 @@ module.exports = web3 => {
             });
         }
 
+        let {order, sortBy} = req.query;
+        order = order === 'true' ? -1 : 1;
+
         let status_filter = /*req.query.status == 0 ? */{$or: [{status: 'new'}, {status: 'accepted'}, {status: 'dispute'}]} /*: {status: 'completed'}*/;
 
         Deal.find({
@@ -224,11 +227,29 @@ module.exports = web3 => {
                     return tmp;
                 });
                 deals.sort((a, b) => {
-                    if (a.called_at < b.called_at) {
-                        return -1;
+                    if (sortBy === 'called_at'){
+                        if (a.called_at < b.called_at) {
+                            return order;
+                        }
+                        else return order*-1;
                     }
-                    if (a.called_at > b.called_at) {
-                        return 1;
+                    if (sortBy === 'created_at'){
+                        if (a.created_at < b.created_at) {
+                            return order;
+                        }
+                        else return order*-1;
+                    }
+                    if (sortBy === 'decision'){
+                        if (a.decision < b.decision) {
+                            return order;
+                        }
+                        else return order*-1;
+                    }
+                    if (sortBy === 'name'){
+                        if (a.name < b.name) {
+                            return order;
+                        }
+                        else return order*-1;
                     }
                     return 0;
                 });

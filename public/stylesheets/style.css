@@ -127,7 +127,7 @@ ul.footer-menu a {
 .bg-gray{
   background-color: #ececed;
   box-shadow: 0 4px 15px 1px rgba(172, 172, 172, 0.75);
-  z-index: 50;
+  z-index: 5;
 }
 .navbar-brand img {
   height: 35px;

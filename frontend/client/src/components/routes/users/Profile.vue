@@ -12,24 +12,20 @@
                         </b-alert>
                         <div class="profile-card">
 
-                            <img :src="$props.id ? profileImg : $auth.user().profileImg">
+                            <img :src="$props.id === $auth._id ? $auth.user().profileImg : profileImg">
                             <h2>{{username}}</h2>
-
                             <div class="review no-float">
                                 <span><b>{{averageRating}}</b></span><span></span>
                             </div>
 
                         </div>
                         <div class="tabs">
-                            <ul>
-                                <div v-if="!$props.id">
-                                    <li @click="tab = 1, visible=true" :class="{active : tab === 1}">Change profile image</li>
-                                    <li @click="tab = 2, visible=false" :class="{active : tab === 2}">Rating</li>
-                                </div>
-                                <div v-else>
-                                    <li @click="tab = 1, visible=true" :class="{active : true}">Rating</li>
-                                </div>
-
+                            <ul v-if="!$props.id">
+                                <li @click="tab = 1, visible=true" :class="{active : tab === 1}">Change profile image</li>
+                                <li @click="tab = 2, visible=false" :class="{active : tab === 2}">Rating</li>
+                            </ul>
+                            <ul v-else>
+                                <li @click="tab = 1, visible=true" :class="{active : true}">Rating</li>
                             </ul>
                         </div>
                         </b-card>
@@ -189,7 +185,7 @@
         box-shadow: 0px 0px 10px 0px #969696;
     }
     .profile-card h2{
-        font-weight: -700;
+        font-weight: 700;
         font-size: 30px;
     }
     .tabs ul{

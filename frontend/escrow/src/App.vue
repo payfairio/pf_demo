@@ -8,18 +8,19 @@
                 <b-nav-toggle target="nav_collapse"></b-nav-toggle>
                 <b-collapse is-nav id="nav_collapse">
                     <b-nav is-nav-bar class="ml-auto">
-                        <b-nav-item-dropdown v-if="$auth.check()" v-on:click="showNotifications" id="notifdown" class="ntf">
+                        <b-nav-item-dropdown v-if="$auth.check()" @click="showNotifications" @hide="markAllUnreadNotification" id="notifdown" class="ntf">
                             <template slot="button-content">
                                 <span id="notify"><span>{{uncheckedNotifications}}</span></span>
                             </template>
                             <b-dropdown-header>Notifications</b-dropdown-header>
                             <div class="notif-body">
                                 <b-dropdown-header v-if="!notifications.length">You don't have notifications</b-dropdown-header>
-                                <template
-                                    v-for="notification in notifications"
-                                >
-                                    <b-dropdown-item v-bind:key="notification._id" @click="$router.push({name: 'dispute', params: {id: notification.deal.dId}})">
-                                        <div :class="'title' + (notification.viewed ? '' : ' new')">
+
+                                <!--New notifications-->
+                                <template v-for="notification in notifications" v-if="!notification.viewed">
+                                    <b-dropdown-item  v-bind:key="notification._id" @click="$router.push({name: 'dispute', params: {id: notification.deal.dId}})">
+
+                                        <div  :class="'title new'">
                                             {{getNotificationTitle(notification)}}
                                             <div class="time">
                                                 <small v-if="isToday(notification.created_at)">Today, {{notification.created_at | moment("HH:mm:ss")}}</small>
@@ -30,6 +31,25 @@
                                             {{getNotificationText(notification)}}
                                         </div>
                                     </b-dropdown-item>
+                                </template>
+
+
+                                <!--Vieved notifications-->
+                                <template v-for="notification in notifications" v-if="notification.viewed">
+
+                                    <b-dropdown-item  v-bind:key="notification._id" @click="$router.push({name: 'dispute', params: {id: notification.deal.dId}})">
+                                        <div  :class="'title'">
+                                            {{getNotificationTitle(notification)}}
+                                            <div class="time">
+                                                <small v-if="isToday(notification.created_at)">Today, {{notification.created_at | moment("HH:mm:ss")}}</small>
+                                                <small v-if="!isToday(notification.created_at)">{{notification.created_at | moment("MM.D, HH:mm:ss")}}</small>
+                                            </div>
+                                        </div>
+                                        <div class="text">
+                                            {{getNotificationText(notification)}}
+                                        </div>
+                                    </b-dropdown-item>
+
                                 </template>
                             </div>
                         </b-nav-item-dropdown>
@@ -93,6 +113,10 @@
                                 <template v-for="item in getNotificationMessage(notif)">
                                     {{item.name}}: <router-link v-if="item.link" :to="item.link">{{item.text}}</router-link>{{!item.link ? item.text : ''}}<br>
                                 </template>
+                                <div class="time">
+                                    <small v-if="isToday(notif.created_at)">Today, {{notif.created_at | moment("HH:mm:ss")}}</small>
+                                    <small v-if="!isToday(notif.created_at)">{{notif.created_at | moment("MM.D, HH:mm:ss")}}</small>
+                                </div>
                             </div>
                         </div>
                         <div v-if="newNotifications.length > 1" class="hide-notif" @click="newNotifications = []">
@@ -267,6 +291,22 @@
             showNotifications: function (e) {
                 e.preventDefault();
                 this.notificationsVisible = true;
+            },
+            markAllUnreadNotification: function (){
+
+                const vm = this;
+                this.$http.post('/users/notifications')
+                    .then(
+                        function(response) {
+                            vm.uncheckedNotifications = 0;
+                            vm.notifications.map((n) => n.viewed = true);
+                            console.log(response)
+                        },
+                        function (err) {
+                            console.log(err);
+                        }
+                    )
+
             },
             noitfTimer: function (notif) {
                 const vm = this;

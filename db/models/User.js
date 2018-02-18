@@ -75,7 +75,7 @@ User.methods.sendMailInviteNotification = function (offer) {
             '<h2>You recieved invite into deal via payfair.io</h2>'+
             '<p>Deal name: '+offer.name+'</p>'+
             '<p>Invited by: '+offer.email+'</p>'+
-            '<p><a href="'+config.frontUrl+'/#/register/'+this._id+'">JOIN</a></p>'+
+            '<p><a href="'+config.frontUrl+'/register/'+this._id+'">JOIN</a></p>'+
             '</body></html>'
         },
         recipients: [

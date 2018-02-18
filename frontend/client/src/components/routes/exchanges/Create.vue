@@ -173,17 +173,17 @@
                         }
                     });
                 } else {
-                    this.$http.post('/exchanges/create', this.form).then(response => {
-                        vm.$router.push({name: 'exchanges'});
-                        vm.$swal('Success', 'Exchange was created', 'success');
-                    }, err => {
-                        if (err.response.status === 400) {
-                            vm.errors = err.response.data.errors;
-                        }
-                        if (err.response.status === 500) {
-                            vm.errorMsg = 'Some error occured. Try again later';
-                        }
-                    });
+                        this.$http.post('/exchanges/create', this.form).then(response => {
+                            vm.$router.push({name: 'exchanges'});
+                            vm.$swal('Success', 'Exchange was created', 'success');
+                        }, err => {
+                            if (err.response.status === 400) {
+                                vm.errors = err.response.data.errors;
+                            }
+                            if (err.response.status === 500) {
+                                vm.errorMsg = 'Some error occured. Try again later';
+                            }
+                        });
                 }
             },
             isValid: function (key) {
