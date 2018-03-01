@@ -42,11 +42,13 @@
                                     </b-form-group>
                                 </b-col>
                                 <div class="clearfix"></div>
+
                                 <b-col sm="12" md="7">
                                     <b-form-group label="Rate:" label-for="rate" :state="isValid('rate')" :feedback="errorMessage('rate')">
                                         1{{form.coin}} = <b-form-input id="rate" v-model="form.rate" :state="isValid('rate')"></b-form-input>{{form.currency}}
                                     </b-form-group>
                                 </b-col>
+
                                 <div class="clearfix"></div>
                                 <b-col sm="12" md="7">
                                     <label>
@@ -55,18 +57,20 @@
                                     <b-row>
                                         <b-form-group class="col-sm-6">
                                             <b-input-group left="min">
-                                                <b-input id="minLimit" v-model="form.limits.min"></b-input>
+                                                <b-input id="minLimit" v-model="form.limits.min" :state="isValid('limits')"></b-input>
                                                 <b-input-group-addon slot="right">{{form.currency}}</b-input-group-addon>
                                             </b-input-group>
                                         </b-form-group>
                                         <b-form-group class="col-sm-6">
                                             <b-input-group left="max">
-                                                <b-input id="maxLimit" v-model="form.limits.max"></b-input>
+                                                <b-input id="maxLimit" v-model="form.limits.max" :state="isValid('limits')"></b-input>
                                                 <b-input-group-addon slot="right">{{form.currency}}</b-input-group-addon>
                                             </b-input-group>
                                         </b-form-group>
+                                        <b-form-group class="col-sm-12" :state="isValid('limits')" :feedback="errorMessage('limits')" ></b-form-group>
                                     </b-row>
                                 </b-col>
+
                                 <div class="clearfix"></div>
                                 <b-col sm="12" md="7">
                                     <b-form-group label="Trade conditions:" label-for="conditions" :state="isValid('conditions')" :feedback="errorMessage('conditions')">
@@ -99,8 +103,8 @@
                     rate: 0,
                     conditions: '',
                     limits: {
-                        min: null,
-                        max: null,
+                        min: 5,
+                        max: 1,
                     }
                 },
                 coinVariants: [],
@@ -220,6 +224,9 @@
             },
             'form.conditions': function () {
                 delete this.errors.conditions;
+            },
+            'form.limits': function () {
+                delete this.errors.limits;
             }
         }
     }

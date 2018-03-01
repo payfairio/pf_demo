@@ -26,7 +26,7 @@
                                 <!--New notifications-->
                                 <template v-for="notification in notifications" v-if="!notification.viewed">
                                     <b-dropdown-item  v-bind:key="notification._id" @click="$router.push({name: 'deal', params: {id: notification.deal.dId}})">
-                                            <div  :class="'title new'">
+                                        <div  :class="'title new'">
                                             {{getNotificationTitle(notification)}}
                                             <div class="time">
                                                 <small v-if="isToday(notification.created_at)">Today, {{notification.created_at | moment("HH:mm:ss")}}</small>
@@ -39,24 +39,8 @@
                                     </b-dropdown-item>
                                 </template>
 
-
-                                <!--Vieved notifications-->
-                                <template v-for="notification in notifications" v-if="notification.viewed">
-
-                                    <b-dropdown-item  v-bind:key="notification._id" @click="$router.push({name: 'deal', params: {id: notification.deal.dId}})">
-                                        <div  :class="'title'">
-                                            {{getNotificationTitle(notification)}}
-                                            <div class="time">
-                                                <small v-if="isToday(notification.created_at)">Today, {{notification.created_at | moment("HH:mm:ss")}}</small>
-                                                <small v-if="!isToday(notification.created_at)">{{notification.created_at | moment("MM.D, HH:mm:ss")}}</small>
-                                            </div>
-                                        </div>
-                                        <div class="text">
-                                            {{getNotificationText(notification)}}
-                                        </div>
-                                    </b-dropdown-item>
-
-                                </template>
+                                <b-dropdown-divider></b-dropdown-divider>
+                                <b-dropdown-item :to="{name: 'view_all_notifications'}" >View all</b-dropdown-item>
                             </div>
                         </b-nav-item-dropdown>
                         <b-nav-item-dropdown v-if="$auth.check() && $auth.ready()" right>
@@ -163,8 +147,11 @@
                 <b-col md="6" class="firstscreen_market">
                     <h4 class="text-center">You can buy/sell PFR tokens here:</h4>
                     <div class="bir-list">
-                        <a href="https://etherdelta.com/#PFR-ETH" target="_blank" class="bir_item item-1"><img :src="$config.staticUrl + '/images/bir/ether_delta.jpg'" alt=""></a>
-                        <a href="https://idex.market/eth/pfr" target="_blank" class="bir_item item-2"><img :src="$config.staticUrl + '/images/bir/idex.jpg'" alt=""></a>
+                        <a href="https://idex.market/eth/pfr" target="_blank" class="bir_item item-1"><img :src="$config.staticUrl + '/images/bir/idex.jpg'" alt=""></a>
+                        <a href="https://forkdelta.github.io/#!/trade/PFR-ETH " target="_blank" class="bir_item item-2"><img :src="$config.staticUrl + '/images/bir/forkdelta.jpg'" alt=""></a>
+                        <a href="https://etherdelta.com/#PFR-ETH" target="_blank" class="bir_item item-3"><img :src="$config.staticUrl + '/images/bir/ether_delta.jpg'" alt=""></a>
+
+
                     </div>
                 </b-col>
                 </b-row>
@@ -176,8 +163,10 @@
                     <b-col sm="12" md="3">
                         <ul class="footer-menu">
                             <li><b>Buy PFR</b></li>
-                            <li><a href="https://etherdelta.com/#PFR-ETH" target="_blank">EtherDelta</a></li>
                             <li><a href="https://idex.market/eth/pfr" target="_blank">IDEX</a></li>
+                            <li><a href="https://forkdelta.github.io/#!/trade/PFR-ETH" target="_blank">ForkDelta</a></li>
+                            <li><a href="https://etherdelta.com/#PFR-ETH" target="_blank">EtherDelta</a></li>
+
                         </ul>
                     </b-col>
                     <b-col sm="12" md="3">
@@ -397,7 +386,8 @@
                     changeDealConditions: 'New conditions',
                     dealConditionsAccepted: 'Conditions accepted',
                     changeDealSum: 'Deal sum changed',
-                    dealCompleted: 'Deal completed'
+                    dealCompleted: 'Deal completed',
+                    dealCanseled: 'Deal canceled',
                 };
                 return titles[notification.type];
             },
@@ -424,6 +414,9 @@
                     } break;
                     case 'dealCompleted' : {
                         result = notification.deal.name + ' was completed';
+                    } break;
+                    case 'dealCanseled' : {
+                        result = notification.deal.name + ' was canceled';
                     } break;
                 }
                 return result;
@@ -582,7 +575,25 @@
                             name: 'Message',
                             text: notification.sender.username + ' accept deal ' + notification.deal.name
                         }
-                    ]
+
+                    ],
+                    dealCanseled: [
+                        {
+                            name: 'Deal',
+                            link: {
+                                name: 'deal',
+                                params: {
+                                    id: notification.deal.dId
+                                }
+                            },
+                            text: notification.deal.name
+                        },
+                        {
+                            name: 'Message',
+                            text: notification.sender.username + ' canceled deal ' + notification.deal.name
+                        }
+                    ],
+
                 };
                 return messages[notification.type] || [];
             }

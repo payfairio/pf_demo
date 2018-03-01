@@ -1,5 +1,5 @@
 <template>
-    <div class="container-fluid">
+    <div class="container-fluid" v-if="$auth.user().statusEscrowBool === true">
         <div class="deals-list">
             <b-table striped hover
                     :items="getDeals"
@@ -20,6 +20,7 @@
 <script>
     export default {
         name: 'List',
+        activateAllFunctions: true,
         data: function () {
             return {
 
@@ -57,7 +58,7 @@
         },
         watch: {
 
-        }
+        },
     }
 </script>
 <style>

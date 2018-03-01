@@ -14,12 +14,28 @@
                             <p><b>Status:</b> {{status}}</p>
                             <p><b>Conditions:</b> <br>{{conditions}}</p>
                         </div>
-                        <b-form-group v-if="owner.username != $auth.user().username" id="sumInputGroup" label="Input sum:" label-for="sum" :state="isValid('sum')" :feedback="errorMessage('sum')">
-                            <b-form-input id="sum" step="any" v-model="sum" :state="isValid('sum')"></b-form-input>
+                        <b-form-group 
+                            v-if="owner.username != $auth.user().username" 
+                            id="sumInputGroup" 
+                            label="Input sum:" 
+                            label-for="sum"
+                            :feedback="errorMessage('sum')"
+                        >
+                            <b-form-input 
+                                id="sum" 
+                                step="any" 
+                                v-model="sum" 
+                                :state="isValid('sum')"
+                            >
+                            </b-form-input>
                         </b-form-group>
                         <div v-if="$auth.check()">
-                            <b-button disabled v-if="owner.username == $auth.user().username || status == 'closed'">{{tradeType == 'buy' ? 'sell' : 'buy'}}</b-button>
-                            <b-button v-if="owner.username != $auth.user().username && status != 'closed'" variant="primary" @click="acceptExchange">{{tradeType == 'buy' ? 'sell' : 'buy'}}</b-button>
+                            <b-button disabled v-if="owner.username == $auth.user().username || status == 'closed'">
+                                {{tradeType == 'buy' ? 'sell' : 'buy'}}
+                            </b-button>
+                            <b-button v-if="owner.username != $auth.user().username && status != 'closed'" variant="primary" @click.prevent="acceptExchange">
+                                {{tradeType == 'buy' ? 'sell' : 'buy'}}
+                            </b-button>
                         </div>
                         <div v-if="!$auth.check()">
                             Please sign in for {{tradeType}} coins: <router-link :to="{name: 'login'}" class="btn btn-success">Login</router-link>
@@ -30,7 +46,7 @@
                     <b-card :header="owner.username + ' reviews'">
                         <h5><b>Total Rating: </b>{{averageRating}}</h5>
                         <hr>
-                        <div v-for="review in reviews" class="review">
+                        <div v-for="review in newreviews" class="review">
                             <p>
                                 <b>By:</b> <router-link :to="{name: 'user-by-id', params: {id: review.author._id}}">{{review.author.username}}</router-link><br>
                                 <!-- <b>Rating:</b> {{review.rating}}<br>
@@ -45,6 +61,7 @@
                             <p v-if="!isToday(review.created_at)" class="date">{{review.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</p>
                             <hr>
                         </div>
+                        <b-pagination :total-rows="totalRows" :per-page="perPage" v-model="currentPage" @input="getReview" />
                     </b-card>
                 </b-col>
             </b-row>
@@ -76,12 +93,21 @@ export default {
             totalRating: 0,
             errors: {},
             errorMsg: '',
-            sum: 0
+            sum: 0,
+            newreviews: [],
+            currentPage: 1,
+            perPage: 2,
+            totalRows: 0
         }
     },
     methods: {
         getExchange: function(){
             const vm = this;
+            const limit = vm.perPage;
+            const offset = (vm.currentPage - 1) * vm.perPage;
+            const sort = "created_at";
+            const order = "true";
+            var ownerNumber;
             this.$http.get('/exchanges/' + this.id).then(function(response){
                 let exch = response.data.exchange;
                 vm._id = exch._id;
@@ -90,6 +116,7 @@ export default {
                 vm.created_at = (new Date(exch.created_at)).toLocaleString();
                 vm.currency = exch.currency;
                 vm.owner = exch.owner;
+                ownerNumber = exch.owner._id;
                 vm.paymentType = exch.paymentType;
                 vm.rate = exch.rate;
                 vm.status = exch.status;
@@ -105,20 +132,47 @@ export default {
                     vm.totalRating = 0;
                 }
                 vm.totalRating /= vm.reviews.length;
-            }, function(err){
-                console.log(err);
+            }).then(function(){
+                vm.$http.get('/users/user/' + ownerNumber + '/getreview?limit='+limit+'&offset='+offset+'&sortBy='+sort+'&order='+order).then(response => {
+                    vm.newreviews = response.data.data;
+                    vm.totalRows = response.data.total;
+                    return (response.data.data || []);
+                }, err => {
+                    console.log(err);
+                });
             });
         },
         acceptExchange: function(e){
-            e.preventDefault();
             const vm = this;
 
-            this.$http.post('/deals/exchange', {exchange: this._id, sum: this.sum}).then(function (response) {
-                vm.$router.push({name: 'deal', params: {id: response.data.deal.dId}});
-                vm.$swal('Success', 'Deal was created', 'success');
-            }, function (err) {
-                console.log(err);
-            });
+            this
+                .$http
+                .post('/deals/exchange', {exchange: this._id, sum: this.sum, exchange_id: vm.id})
+                .then(
+                    response => {
+                        vm.$router.push({name: 'deal', params: {id: response.data.deal.dId}});
+                        vm.$swal('Success', 'Deal was created', 'success');
+                    }, 
+                    err => {
+                        if (err.response.status === 400) {
+                            vm.errors = err.response.data.errors;
+                        }
+                    }
+                );
+        },
+        getReview: function(ctx){
+            const vm = this;
+            const limit = vm.perPage;
+            const offset = (vm.currentPage - 1) * vm.perPage;
+            const sort = "created_at";
+            const order = "true";
+                return this.$http.get('/users/user/' + this.owner._id + '/getreview?limit='+limit+'&offset='+offset+'&sortBy='+sort+'&order='+order).then(response => {
+                    vm.newreviews = response.data.data;
+                    vm.totalRows = response.data.total;
+                    return (response.data.data || []);
+                }, err => {
+                    console.log(err);
+                });
         },
         isValid: function (key) {
             return this.errors.hasOwnProperty(key) ? 'invalid' : '';
@@ -134,6 +188,9 @@ export default {
     watch: {
         'sum': function () {
             delete this.errors.sum;
+        },
+        '$route.fullPath'() {
+            this.getReview();
         }
     },
     computed: {

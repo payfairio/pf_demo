@@ -21,7 +21,7 @@
                         <b-pagination :total-rows="totalRows" :per-page="perPage" v-model="currentPage" />
                 </b-table>
             </b-card>
-            <b-row>
+            <b-row v-if="$auth.user().status === 'active'">
                 <b-col md="4">
                     <b-card header="Your balance" class="currencies">
                         <div class="currency-header"><span>Currency</span><span class="right"><span>Total</span><span> (hold)</span></span></div>
@@ -39,13 +39,41 @@
                             <b-form-group id="amountInputGroup" label="Amount:" label-for="amount" :state="isValid('amount')" :feedback="errorMessage('amount')">
                                 <b-form-input id="amount" type="text" v-model="send_form.amount" :state="isValid('amount')"></b-form-input>
                             </b-form-group>
-                            <b-button disabled v-if="balance[active_currency] == 0">Send</b-button>
+                            <b-button disabled v-if="balance[active_currency] ==0">Send</b-button>
                             <b-button v-if="balance[active_currency] != 0" type="submit" variant="primary">Send</b-button> <span v-if="sending"><img :src="$config.staticUrl+'/images/loading.gif'"> Transaction pending</span>
                         </b-form>
                     </b-card>
-                    <b-card :header="'Receive ' + active_currency" class="send">
-                        You can use this {{active_currency}} address:
-                        <pre>{{address}}</pre>
+                </b-col>
+            </b-row>
+
+
+            <b-row v-if="$auth.user().status === 'active'">
+                <b-col md="4">
+                    <b-card header="Instruction" class="currencies">
+                        <b-form>
+                            <p>Go to the website <a href="https://www.myetherwallet.com/signmsg.html">https://www.myetherwallet.com/signmsg.html</a>  <br>
+                                Enter your <a style="font-weight: bold">username</a> PayFair in the message window <br>
+                                Confirm the wallet in a convenient way and sign the message<br>
+                                Copy the "Signature" field and paste it into the "Signature" field in PayFair<br>
+                                Click the "Check and add wallet"<br>
+                                If the wallet is signed correctly and there are enough coins (10000 PFR) on it, it will connect your profile</p>
+                            <a style="color: red">Use Ropsten accounts</a>
+                        </b-form>
+                    </b-card>
+                </b-col>
+
+                <b-col md="8">
+                    <b-card :header="'Specify a new wallet'" class="send">
+                        <b-form @submit="addConfirmWallet">
+                            <b-form-group id="sigInputGroup" label="Signature" label-for="Signature">
+                                <b-form-textarea id="sig" placeholder="Here must be your signature" :rows="8" v-model="textArea_form.text"></b-form-textarea>
+                            </b-form-group>
+
+                            <b-button type="submit" variant="primary">
+                                Check and add wallet
+                            </b-button>
+                        </b-form>
+
                     </b-card>
                 </b-col>
             </b-row>
@@ -57,6 +85,10 @@ export default {
     name: 'Wallet',
     data: function(){
         return {
+            textArea_form:{
+                text:''
+            },
+
             errors: [],
             currentPage: 1,
             perPage: 10,
@@ -71,11 +103,9 @@ export default {
                 address: '',
                 amount: ''
             },
+
             active_currency: 'pfr',
-            balance: {
-                pfr: {total: 0, hold: 0},
-                eth: {total: 0, hold: 0}
-            },
+            balance: {},
             address: '',
             sending: false,
         }
@@ -131,10 +161,41 @@ export default {
                 console.log(err);
             });
         },
+
+        //confirmWallet
+        addConfirmWallet: function (e) {
+            e.preventDefault();
+            const vm = this;
+
+            let address = '';
+            let sig = '';
+            let signmsg = this.textArea_form.text.replace(/\s/g,'').replace(/{/g,'').replace(/}/g,'').replace(/"/g,'').replace(/'/g,'').split(',');
+
+            for (let i in signmsg){
+                let currItem = signmsg[i].split(':');
+                if (currItem[0].toLowerCase() === 'address'){
+                    address = currItem[1];
+                }
+                if (currItem[0].toLowerCase() === 'sig'){
+                    sig = currItem[1];
+                }
+            }
+            this.$http.post('/wallet/addConfirmWallet', {address: address, sig: sig}).then( function (res) {
+                vm.$swal('Succes', 'success', 'success');
+                vm.textArea_form.text = '';
+            }, function (err) {
+                vm.$swal('Error', 'There was a problem verifying your wallet', 'error');
+                console.log(err);
+            });
+        },
+
         updateBalance: function () {
             const balances = this.$auth.user().balances;
             const holds = this.$auth.user().holds;
-            for (var i in balances) {
+            for (let i in balances) {
+                if (!this.balance.hasOwnProperty(i)) {
+                    this.balance[i] = {};
+                }
                 this.balance[i].total = balances[i];
                 this.balance[i].hold = holds[i];
             }
@@ -147,7 +208,7 @@ export default {
         errorMessage: function(key) {
             return this.errors.hasOwnProperty(key) ? this.errors[key].msg : '';
         }
-    }
+    },
 }
 </script>
 

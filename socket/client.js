@@ -2,13 +2,14 @@ const Deal = require('../db/models/Deal');
 const Message = require('../db/models/Message');
 const Attachment = require('../db/models/Attachment');
 const Notification = require('../db/models/Notification');
+const Crypto = require('../db/models/crypto/Crypto');
 const User = require('../db/models/User');
 
 const Web3 = require('web3');
 const web3 = new Web3(
     new Web3.providers.HttpProvider('https://ropsten.infura.io/')
 );
-const config_crypto = require('../config/crypto');
+
 const strings = require('../config/strings');
 
 const checkUserInRoom = (clients, room) => {
@@ -30,7 +31,7 @@ const getUsersFromRoom = (clients, room) => {
         }
     }
     return result;
-}
+};
 
 const createAndSendNotification = async (notification, io) => {
     notification = await new Notification(notification).save(); // create notification
@@ -45,7 +46,7 @@ const createAndSendNotification = async (notification, io) => {
             io.to(client).emit('notification', notification); // send notification to all clients (tabs)
         }
     }
-}
+};
 
 const getDealBydId = (dId) => {
     return Deal
@@ -58,28 +59,31 @@ const getDealBydId = (dId) => {
             path: 'buyer',
             select: ['-password', '-wallet', '-verifyCode', '-changePwdCode']
         });
-}
+};
 
-const sendCoins = async (deal, from_id, to_id, sum, coin) => { // todo: error handling
+const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
     const from_user = await User.findById(from_id).populate('wallet');
     const to_user = await User.findById(to_id).populate('wallet');
+
+    let db_crypto = await Crypto.findOne({$and: [{name: coin.toUpperCase()}, {active: true}]});
+
+    if (typeof db_crypto === undefined || db_crypto.length === 0){
+        throw {succes: false, message: 'Wrong coin ' + coin};
+    }
+
     let count = 0;
     let txData = null;
     let receipt = null;
-    switch (config_crypto[coin.toLowerCase()].type) {
+
+    switch (db_crypto.typeMonet){
         case 'erc20':
-            amount = sum * Math.pow(10, config_crypto[coin.toLowerCase()].decimals);
-            const contract = new web3.eth.Contract(require('../abi/'+coin.toLowerCase()+'/Token.json'), config_crypto[coin.toLowerCase()].address);
+            amount = sum * Math.pow(10, db_crypto.decimals);
+            const contract = new web3.eth.Contract(require('../abi/'+coin.toLowerCase()+'/Token.json'), db_crypto.address);
             // transfer
             count = await web3.eth.getTransactionCount(from_user.wallet.address);
             // Choose gas price and gas limit based on what ethereum wallet was recommending for a similar transaction. You may need to change the gas price!
-            /*let gasLimit = await web3.eth.estimateGas({
-             nonce: count,
-             to: config_crypto[coin.toLowerCase()].address,
-             data: contract.methods.transfer(toAddress, amount).encodeABI()
-             });*/
             txData = await web3.eth.accounts.signTransaction({
-                to: config_crypto[coin.toLowerCase()].address,
+                to: db_crypto.address,
                 gas: 110000,//gasLimit,
                 gasPrice: await web3.eth.getGasPrice(),
                 data: contract.methods.transfer(to_user.wallet.address, amount).encodeABI(),
@@ -190,15 +194,6 @@ module.exports = (client, io) => {
                 data.type = 'system';
                 data.text = strings('accept_deal_condition', 'eng');
 
-                switch (role) {
-                    case 'seller':
-                        deal.acceptedBySeller = true;
-                        break;
-                    case 'buyer':
-                        deal.acceptedByBuyer = true;
-                        break;
-                }
-
                 const message = {
                     sender: client.decoded_token._id,
                     text: data.text,
@@ -206,74 +201,92 @@ module.exports = (client, io) => {
                     type: data.type
                 };
 
-                if (deal.acceptedBySeller && deal.acceptedByBuyer) {
-                    deal.status = 'accepted';
-                }
+                const buyer = await User.findById(deal.buyer._id).populate('wallet');
+                let balance = 0,
+                    coin = deal.coin.toLowerCase();
+
                 let notEnoughMoney = false,
                     messages = [message];
 
-                if (deal.status === 'accepted') {
-                    const buyer = await User.findById(deal.buyer._id).populate('wallet');
-                    let balance = 0,
-                        coin = deal.coin.toLowerCase();
+                let db_crypto = await Crypto.findOne({$and: [{name: coin.toUpperCase()}, {active: true}]});
 
-                    if (!config_crypto.hasOwnProperty(coin)) {
-                        throw {succes: false, message: 'Wrong coin ' + coin}
-                    }
-                    switch (config_crypto[coin].type) { // check balances
-                        case 'erc20':
-                            const contract = new web3.eth.Contract(require('../abi/' + coin + '/Token.json'), config_crypto[coin].address);
-                            balance = await contract.methods.balanceOf(buyer.wallet.address).call();
-                            const e = Math.pow(10, config_crypto[coin].decimals);
-                            if (balance - buyer.holds[coin] * e < deal.sum * e) {
-                                notEnoughMoney = true;
-                            }
-                            break;
 
-                        case 'eth':
-                            balance = await web3.eth.getBalance(buyer.wallet.address);
-                            if (balance - web3.utils.toWei(buyer.holds.eth.toString(), 'ether') < web3.utils.toWei(deal.sum.toString(), 'ether') ) {
-                                notEnoughMoney = true;
-                            }
-                            break;
-                    }
+                if (typeof db_crypto === undefined || db_crypto.length === 0){
+                    throw {succes: false, message: 'Wrong coin ' + coin};
+                }
 
-                    if (notEnoughMoney) {
-                        if (role === 'buyer') {
-                            client.emit('NotEnoughMoney');
-                            throw {};
-                        } else {
-                            messages.push({
-                                deal: message.deal,
-                                type: message.type,
-                                text: strings('buyer_not_enough_money', 'eng'),
-                            });
-                            deal.status = 'new';
-                            deal.acceptedByBuyer = false;
+                switch (db_crypto.typeMonet) { // check balances
+
+                    case 'erc20':
+                        const contract = new web3.eth.Contract(require('../abi/' + coin + '/Token.json'), db_crypto.address);
+                        balance = await contract.methods.balanceOf(buyer.wallet.address).call();
+                        const e = Math.pow(10, db_crypto.decimals);
+                        if (balance - buyer.holds[coin] * e < deal.sum * e) {
+                            notEnoughMoney = true;
                         }
-                    } else {
-                        buyer.holds[coin] += parseFloat(deal.sum);
-                        buyer.markModified('holds.' + coin);
-                        await buyer.save();
-                        
+                        break;
+
+                    case 'eth':
+                        balance = await web3.eth.getBalance(buyer.wallet.address);
+                        if ((balance - web3.utils.toWei(buyer.holds.eth.toString(), 'ether')) < web3.utils.toWei(deal.sum.toString(), 'ether') ) {
+                            notEnoughMoney = true;
+                        }
+                        break;
+                }
+
+                switch (role) {
+                    case 'seller':
+                        deal.acceptedBySeller = true;
+                        break;
+                    case 'buyer':
+                        if (!notEnoughMoney) deal.acceptedByBuyer = true;
+                        break;
+                }
+
+                if (notEnoughMoney) {
+                    if (role === 'buyer') {
+                        client.emit('NotEnoughMoney');
+                        throw {success: false, message: 'The buyer does not have enough money.'};
+                    }
+
+                    if (role === 'seller') {
                         messages.push({
                             deal: message.deal,
                             type: message.type,
-                            text: strings('accept_deal_both', 'eng'),
+                            text: strings('buyer_not_enough_money', 'eng'),
                         });
+                        deal.status = 'new';
+                        deal.acceptedByBuyer = false;
                     }
+                };
+
+                if (deal.acceptedBySeller && deal.acceptedByBuyer && !notEnoughMoney) {
+                    deal.status = 'accepted';
+                };
+
+                if (deal.status === 'accepted') {
+                    buyer.holds[coin] += parseFloat(deal.sum);
+                    buyer.markModified('holds.' + coin);
+                    await buyer.save();
+                        
+                    messages.push({
+                        deal: message.deal,
+                        type: message.type,
+                        text: strings('accept_deal_both', 'eng'),
+                    });
                 }
+
                 messages = await Message.insertMany(messages);
                 messages.forEach(item => {
                     deal.messages.push(item);
                 });
+
                 await deal.save();
+
+                client.emit('dealConditionsAcceptedWithNotice', data);
 
                 io.in(deal._id.toString()).emit('dealConditionsAccepted', data);
 
-                if (notEnoughMoney) {
-                    throw {};
-                }
 
                 const user = role === 'seller' ? deal.buyer._id : deal.seller._id;
 
@@ -391,8 +404,11 @@ module.exports = (client, io) => {
             const deal = await getDealBydId(data.deal_id);
             const role = deal.getUserRole(client.decoded_token._id);
 
-            if (role === 'buyer') {
+            if (role === 'buyer' && deal.status !== 'canceled') {
+                //TODO my f sendCoins_test
+
                 sendCoins(deal, deal.buyer._id, deal.seller._id, deal.sum.toString(), deal.coin);
+
                 data.sender = client.decoded_token;
                 data.created_at = new Date();
                 data.type = 'system';
@@ -424,6 +440,40 @@ module.exports = (client, io) => {
         } catch (err) {
             client.emit('errorOccured');
             console.log('Sockets error (accept_deal): ', err)
+        }
+    });
+
+    client.on('cancel_Deal', async data =>{
+        try{
+            const deal = await getDealBydId(data.deal_id);
+            const role = deal.getUserRole(client.decoded_token._id);
+
+            if (deal && deal.status === 'new' && role){
+                deal.acceptedByBuyer = false;
+                deal.acceptedByBuyer = false;
+                deal.status = 'canceled'
+                await deal.save();
+
+                io.in(deal._id.toString()).emit('dealCanseled', data);
+
+                //TODO доделать нитификейшоны для отмены?
+                const user = role === 'seller' ? deal.buyer._id : deal.seller._id;
+
+                const notification = {
+                    sender: client.decoded_token._id,
+                    user: user,
+                    deal: deal._id,
+                    type: 'dealCanseled',
+                    text: 'The deal was canceled',
+                };
+
+                createAndSendNotification(notification, io);
+            }
+            console.log('socket cancel deal, curr deal status: ' + deal.status);
+            //
+        }
+        catch (err) {
+            console.log('Sockets error (cancel_Deal): ', err)
         }
     });
 }

@@ -24,6 +24,7 @@
                         <div class="form-group" v-if="deal.status === 'new'">
                             <button v-if="!conditionsAcceptedByMe" class="btn btn-success" @click="acceptConditionsAndSum">Accept conditions and sum</button>
                             <p v-if="conditionsAcceptedByMe">You have already accepted the conditions and sum. If your counterparty changes them, you will have to accept them again for the deal to start.</p>
+                            <button v-if="deal.status !== 'canceled'" class="btn btn-danger" @click="cancelDeal">Cancel the deal</button>
                         </div>
 
                         <div class="form-group" v-if="deal.status === 'accepted'">
@@ -39,7 +40,7 @@
                             <p>Deal is being verified by escrows. Please wait.</p>
                             <hr>
                             <ul>
-                                <li v-for="(decision, index) in deal.escrows">escrow {{index + 1}}: {{decision.decision ? decision.decision : 'pending'}}</li>
+                                <li v-for="(decision, index) in deal.escrows">escrow {{index + 1}}: {{decision.decision ? decision.decision === 'rejected' ? 'rejected' : 'made a decision' : 'pending'}}</li>
                             </ul>
                         </div>
                     </div>
@@ -74,7 +75,7 @@
                                 </li>
                             </ul>
                         </div>
-                        <b-form @submit="onSubmit" class="message-form" v-if="deal.status !== 'completed'">
+                        <b-form @submit="onSubmit" class="message-form" v-if="deal.status !== 'completed' && deal.status !== 'canceled'">
                             <b-input-group>
                                 <b-form-textarea id="message-text" @keydown.native="inputHandler" v-model="form.text" :max-rows="1" style="resize: none;"></b-form-textarea>
                                 <b-input-group-button>
@@ -107,6 +108,7 @@
                 </b-col>
             </b-row>
             <hr>
+
             <b-row class="buy-sel-conditions">
                 <b-col md="6">
                     <div class="" v-if="deal.seller && deal.seller._id === $auth.user()._id && conditionsEdition === false">
@@ -119,6 +121,7 @@
                         <p>{{deal.buyerConditions}}</p>
                         <button v-if="deal.status === 'new' && conditionsEdition === false" class="btn btn-primary" @click="openConditions('buyer');changeConditionsClick();">change</button>
                     </div>
+
                     <div class="" v-if="((deal.seller && deal.seller._id === $auth.user()._id) || (deal.buyer && deal.buyer._id === $auth.user()._id)) && deal.status === 'new' && conditionsEdition === true">
                         <h4>{{activeCondition.role}} conditions</h4>
                         <b-form-textarea class="form-modal-conditions" v-model="activeCondition.editedText" :rows="9"></b-form-textarea>
@@ -156,8 +159,8 @@
                     <span :state="isValid('rating')">{{review.rating}}</span>
                 </div>
             </b-form-group>
-            <b-form-group id="commentInputGroup" label="Your comment:" label-for="comment" :state="isValid('comment')" :feedback="errorMessage('comment')">
-                <b-form-textarea id="comment" v-model="review.comment" :rows="6" :state="isValid('comment')"></b-form-textarea>
+            <b-form-group id="commentInputGroup" label="Your comment:" label-for="comment" :state="isValid('review.comment')" :feedback="errorMessage('review.comment')">
+                <b-form-textarea id="comment" v-model="review.comment" :rows="6" :state="isValid('review.comment')"></b-form-textarea>
             </b-form-group>
 
             <div slot="modal-footer" class="w-100">
@@ -284,6 +287,13 @@
                 // reset data
                 this.$socket.emit('leave_chat', {deal_id: this.id});
                 this.$socket.emit('join_chat', {deal_id: this.id});
+                this.$swal('Success', 'Deal sum changed. But it must be accepted by your counterparty', 'success');
+            },
+
+            dealConditionsAcceptedWithNotice: function () {
+                this.$socket.emit('leave_chat', {deal_id: this.id});
+                this.$socket.emit('join_chat', {deal_id: this.id});
+                this.$swal('Success', 'You accepted deal condition and sum.', 'success');
             },
             dealConditionsAccepted: function (data) {
                 // reset data
@@ -297,8 +307,10 @@
             },
             dealCompleted: function (data) {
                 // reset data
+
                 this.$socket.emit('leave_chat', {deal_id: this.id});
                 this.$socket.emit('join_chat', {deal_id: this.id});
+                this.$swal('Success', 'Deal complete. Sum released from deposit', 'success');
                 this.reviewModal = true;
             },
             disputeChanged: function (data) {
@@ -327,6 +339,13 @@
             },
             uploadError: function (data) {
 
+            },
+
+            dealCanseled: function (data) {
+                // reset data
+                this.$socket.emit('leave_chat', {deal_id: this.id});
+                this.$socket.emit('join_chat', {deal_id: this.id});
+                this.$swal('Warning', 'Deal canseled', 'warning');
             }
         },
         computed: {
@@ -472,7 +491,6 @@
                         deal_id: vm.id,
                     };
                     vm.$socket.emit('accept_deal_condition', data);
-                    vm.$swal('Success', 'You accepted deal condition and sum. But it must be accepted by your counterparty too', 'success');
                 }
             },
             changeSumClick: function () {
@@ -488,7 +506,7 @@
                     };
                     vm.$socket.emit('set_deal_sum', data);
                     vm.sumModal = false;
-                    vm.$swal('Success', 'Deal sum changed. But it must be accepted by your counterparty', 'success');
+
                 }
             },
             //
@@ -499,7 +517,7 @@
                         deal_id: vm.id,
                     };
                     vm.$socket.emit('accept_deal', data);
-                    vm.$swal('Success', 'Deal complete. Sum released from deposit', 'success');
+
                 }
             },
             openDispute: function () {
@@ -510,6 +528,17 @@
                     };
                     vm.$socket.emit('call_escrow', data);
                     vm.$swal('Success', 'Dispute opened. Wait for escrows decision', 'success');
+                }
+            },
+            //cancel deal
+            cancelDeal: function () {
+                const vm = this;
+                if (confirm('Are you sure you want to cancel the deal?')) {
+                    let data = {
+                        deal_id: vm.id,
+                    };
+                    vm.$socket.emit('cancel_Deal', data);
+
                 }
             },
             // chat
@@ -562,15 +591,19 @@
                     console.log(response);
                     vm.$router.push({name: 'deals'});
                     vm.$swal('Success', response.data.msg, 'success');
+
                 }, function (err) {
                     if (err.response.status === 400) {
                         vm.errors = err.response.data.errors;
+                        this.reviewModal = false;
                     }
                     if (err.response.status === 500) {
                         vm.errorMsg = 'Some error occured. Try again later';
+                        this.reviewModal = false;
                     }
+
                 });
-                this.ratingModal = false;
+                this.reviewModal = false;
             },
             isValid: function (key) {
                 return this.errors.hasOwnProperty(key) ? 'invalid' : '';
@@ -749,6 +782,8 @@
     .modal .btn-success, .btn-secondary{
         margin-left:5px;
     }
+
+
     .img-deal {
         max-width: 70%;
     }

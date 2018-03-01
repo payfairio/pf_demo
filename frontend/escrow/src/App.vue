@@ -8,7 +8,8 @@
                 <b-nav-toggle target="nav_collapse"></b-nav-toggle>
                 <b-collapse is-nav id="nav_collapse">
                     <b-nav is-nav-bar class="ml-auto">
-                        <b-nav-item-dropdown v-if="$auth.check()" @click="showNotifications" @hide="markAllUnreadNotification" id="notifdown" class="ntf">
+                        <b-nav-item-dropdown v-if="$auth.check() && $auth.user().statusEscrowBool === true" @click="showNotifications" @hide="markAllUnreadNotification" id="notifdown" class="ntf">
+
                             <template slot="button-content">
                                 <span id="notify"><span>{{uncheckedNotifications}}</span></span>
                             </template>
@@ -33,24 +34,6 @@
                                     </b-dropdown-item>
                                 </template>
 
-
-                                <!--Vieved notifications-->
-                                <template v-for="notification in notifications" v-if="notification.viewed">
-
-                                    <b-dropdown-item  v-bind:key="notification._id" @click="$router.push({name: 'dispute', params: {id: notification.deal.dId}})">
-                                        <div  :class="'title'">
-                                            {{getNotificationTitle(notification)}}
-                                            <div class="time">
-                                                <small v-if="isToday(notification.created_at)">Today, {{notification.created_at | moment("HH:mm:ss")}}</small>
-                                                <small v-if="!isToday(notification.created_at)">{{notification.created_at | moment("MM.D, HH:mm:ss")}}</small>
-                                            </div>
-                                        </div>
-                                        <div class="text">
-                                            {{getNotificationText(notification)}}
-                                        </div>
-                                    </b-dropdown-item>
-
-                                </template>
                             </div>
                         </b-nav-item-dropdown>
 
@@ -91,7 +74,6 @@
                         <b-nav-item v-if="!$auth.check()" :to="{name: 'login'}">Login</b-nav-item>
                         <b-nav-item v-if="!$auth.check()" :to="{name: 'register'}">Register</b-nav-item>
                     </b-nav>
-
                 </b-collapse>
             </b-navbar>
             <div id="app-content-container">
@@ -103,7 +85,7 @@
                         <router-link :to="{name: 'deal', params: {id: notification.id}}"><span @click="showNotification=false">{{notification.message}}</span></router-link>
                     </b-alert> -->
 
-                    <div id="new-notifics">
+                    <div id="new-notifics" v-if="$auth.user().statusEscrowBool === true">
                         <div class="notification" v-for="notif in newNotifications" v-bind:key="notif._id" @click="noitfTimer(notif)">
                             <div class="notification-header">
                                 {{getNotificationTitle(notif)}}
@@ -124,7 +106,7 @@
                         </div>
                     </div>
 
-                    <div class="container" v-if="$auth.user().status == 'unverified'">
+                    <div class="container" v-if="$auth.user().status === 'unverified'">
                         <div class="welcome">
                             <b-row align-h="center">
                                 <b-col sm="12">
@@ -132,6 +114,18 @@
                                         <h3>Hello, {{$auth.user().username}}</h3>
                                         <p>Please check email and verify your account.</p>
                                         <b-btn @click="sendVerifyCode" variant="info">Send verification email again</b-btn>
+                                    </div>
+                                </b-col>
+                            </b-row>
+                        </div>
+                    </div>
+
+                    <div class="container" v-if="$auth.user().statusEscrowBool === false">
+                        <div class="welcome">
+                            <b-row align-h="center">
+                                <b-col sm="12">
+                                    <div class="wel-inner text-center">
+                                        <a style="font-weight: bolder">Please top up your account. There's not enough money on your wallet.</a>
                                     </div>
                                 </b-col>
                             </b-row>
@@ -168,6 +162,9 @@
         components: {
             PulseLoader
         },
+
+
+
         data: function () {
             return {
                 loading: false,
@@ -199,6 +196,7 @@
             },
             authorized: function () {
                 this.socketReady = true;
+                this.checkWallet();
                 this.getNotifications();
             },
             unauthorized: function () {
@@ -246,6 +244,17 @@
             }
         },
         methods: {
+            //confirmWallet
+            checkWallet: function () {
+                const vm = this;
+                this.$http.post('/wallet/addConfirmWallet').then( function (res) {
+                }, function (err) {
+                    if (vm.$auth.check()) {
+                        vm.$swal('Warning', 'There is not enough money in your account to work with PF!', 'warning');
+                    }
+                });
+            },
+
             sendVerifyCode: function () {
                 this.$http
                     .get('/users/sendVerify')
@@ -254,7 +263,7 @@
                     })
                     .catch((error) => {
                         if (error.status == 400) {
-                            this.$swal('Error', response.data.msg, 'error');
+                            this.$swal('Error', error.data.msg, 'error');
                         }
                     });
             },
@@ -306,7 +315,6 @@
                             console.log(err);
                         }
                     )
-
             },
             noitfTimer: function (notif) {
                 const vm = this;
@@ -337,7 +345,7 @@
                     dispute: "New Dispute",
                     message: 'New message',
                     disputeTimesOut: 'Times out'
-                }
+                };
                 return titles[notification.type];
             },
             getNotificationText: function (notification) {
@@ -430,7 +438,6 @@
             }
         },
         watch: {
-
         }
     }
 </script>

@@ -14,14 +14,35 @@ const jwt = require('jsonwebtoken');
 
 const validator = require('express-validator');
 
+
+var req_body = null;//body of request
 router.use(validator({
     customValidators: {
-
+        checkOnBelongToLimits: (sum) => {
+            return new Promise((resolve, reject) => {
+                Exchange.findOne({_id: req_body.exchange}, function(err, doc){
+                    if (err) {
+                        reject();
+                    } else if ((sum >= doc.limits.min) && (sum <= doc.limits.max)) {
+                        resolve();
+                    } else {
+                        console.log('reject');
+                        reject();
+                    }
+                });
+            });
+        }
     }
 }));
 module.exports = web3 => {
     router.get('/', passport.authenticate('jwt', {session: false}), (req, res) => {
-        let status_filter = req.query.status == 0 ? {$or: [{status: 'new'}, {status: 'accepted'}, {status: 'dispute'}]} : {status: 'completed'};
+
+        let status_filter = {$or: [{status: 'new'}, {status: 'accepted'}, {status: 'dispute'}]};
+
+        if (req.query.status == 0) status_filter = {$or: [{status: 'new'}, {status: 'accepted'}, {status: 'dispute'}]};
+        if (req.query.status == 1) status_filter = {status: 'completed'};
+        if (req.query.status == 2) status_filter = {status: 'canceled'};
+
         let {
             offset,
             limit,
@@ -190,8 +211,6 @@ module.exports = web3 => {
             });
         });
     });
-
-
     router.get('/dispute', passport.authenticate('jwt', {
         session: false
     }), (req, res) => {
@@ -245,6 +264,7 @@ module.exports = web3 => {
                         }
                         else return order*-1;
                     }
+
                     if (sortBy === 'name'){
                         if (a.name < b.name) {
                             return order;
@@ -440,94 +460,104 @@ module.exports = web3 => {
     });
 
 
-    router.post('/exchange', passport.authenticate('jwt', {
-        session: false
-    }), (req, res) => {
-        if (req.user.type !== 'client') {
-            return res.status(403).json({
-                error: "Forbidden"
-            });
-        }
-        req.checkBody({
-            sum: {
-                notEmpty: {
-                    errorMessage: 'Sum is required'
-                },
-                matches: {
-                    options: /^([0-9]+[.])?[0-9]+$/i,
-                    errorMessage: 'Wrong sum. Use only digits and one dot'
-                }
-            },
-        });
-
-        req.getValidationResult().then(result => {
-            if (result.array().length > 0) {
-                return res.status(400).json({
-                    success: false,
-                    errors: result.mapped(),
-                    msg: 'Bad request'
+    router.post('/exchange', 
+        passport.authenticate('jwt', {
+            session: false
+        }), 
+        (req, res) => {
+            if (req.user.type !== 'client') {
+                return res.status(403).json({
+                    error: "Forbidden"
                 });
             }
-
-            let owner = null;
-
-            Exchange.findOne({
-                _id: req.body.exchange
-            }).populate('owner', ['-password', '-wallet']).then(exchange => {
-                let deal = {
-                    _id: new mongoose.Types.ObjectId(),
-                    name: 'Ex#' + exchange.eId + '. ' + exchange.tradeType + ' ' + exchange.coin + ' for ' + exchange.currency,
-                    sum: req.body.sum,
-                    coin: exchange.coin.toUpperCase(),
-                    type: 'exchange',
-                    exchange: exchange._id
-                };
-
-                owner = exchange.owner;
-
-                if (exchange.tradeType === 'sell') {
-                    deal.seller = req.user._id;
-                    deal.buyer = exchange.owner;
-                    deal.buyerConditions = exchange.conditions+" \n\n1"+exchange.coin+" = "+exchange.rate+exchange.currency;
-                } else {
-                    deal.seller = exchange.owner;
-                    deal.buyer = req.user._id;
-                    deal.sellerConditions = exchange.conditions+" \n\n1"+exchange.coin+" = "+exchange.rate+exchange.currency;
-                }
-                return new Deal(deal).save();
-            }).then(deal => {
-                const notification = {
-                    sender: req.user._id,
-                    user: owner,
-                    deal: deal._id,
-                    type: 'dealFromExchange',
-                    text: deal.name,
-                };
-
-                return new Notification(notification).save().then(notification => {
-                    return {deal: deal, notification: notification}
-                });
-            }).then(data => {
-                Notification
-                    .findById(data.notification._id)
-                    .populate({path: 'deal', populate: [{path: 'exchange', select: ['tradeType']}]})
-                    .populate('sender', 'username')
-                    .then(notification => {
-                        const io = req.app.io;
-                        const clients = io.clients[data.notification.user._id];
-
-                        if (clients) {
-                            for (let client of clients) {
-                                io.to(client).emit('notification', notification);
-                            }
-                        }
-                    });
-                return res.json({success: true, deal: data.deal});
-            }).catch(err => {
-                console.log('/deals/exchange error:', err);
+            req_body = req.body;
+            req.checkBody({
+                sum: {
+                    notEmpty: {
+                        errorMessage: 'Sum is required'
+                    },
+                    matches: {
+                        options: /^([0-9]+[.])?[0-9]+$/i,
+                        errorMessage: 'Wrong sum. Use only digits and one dot'
+                    },
+                    checkOnBelongToLimits: {
+                        errorMessage: 'sum is not belong of limits',
+                    }
+                },
             });
-        });
-    });
+
+            req.getValidationResult().then(
+                result => {
+                    if (result.array().length > 0) {
+                        return res.status(400).json({
+                            success: false,
+                            errors: result.mapped(),
+                            msg: 'Bad request'
+                        });
+                    }
+
+                    let owner = null;
+
+                    Exchange.findOne({
+                        _id: req.body.exchange
+                    }).populate('owner', ['-password', '-wallet'])
+                      .then(exchange => {
+                        let deal = {
+                            _id: new mongoose.Types.ObjectId(),
+                            name: 'Ex#' + exchange.eId + '. ' + exchange.tradeType + ' ' + exchange.coin + ' for ' + exchange.currency,
+                            sum: req.body.sum,
+                            coin: exchange.coin.toUpperCase(),
+                            type: 'exchange',
+                            exchange: exchange._id
+                        };
+
+                        owner = exchange.owner;
+
+                        if (exchange.tradeType === 'sell') {
+                            deal.seller = req.user._id;
+                            deal.buyer = exchange.owner;
+                            deal.buyerConditions = exchange.conditions+" \n\n1"+exchange.coin+" = "+exchange.rate+exchange.currency;
+                        } else {
+                            deal.seller = exchange.owner;
+                            deal.buyer = req.user._id;
+                            deal.sellerConditions = exchange.conditions+" \n\n1"+exchange.coin+" = "+exchange.rate+exchange.currency;
+                        }
+                        return new Deal(deal).save();
+                    }).then(deal => {
+                        const notification = {
+                            sender: req.user._id,
+                            user: owner,
+                            deal: deal._id,
+                            type: 'dealFromExchange',
+                            text: deal.name,
+                        };
+
+                        return new Notification(notification).save().then(notification => {
+                            return {deal: deal, notification: notification}
+                        });
+                    }).then(data => {
+                        Notification
+                            .findById(data.notification._id)
+                            .populate({path: 'deal', populate: [{path: 'exchange', select: ['tradeType']}]})
+                            .populate('sender', 'username')
+                            .then(notification => {
+                                const io = req.app.io;
+                                const clients = io.clients[data.notification.user._id];
+
+                                if (clients) {
+                                    for (let client of clients) {
+                                        io.to(client).emit('notification', notification);
+                                    }
+                                }
+                            });
+                        return res.json({success: true, deal: data.deal});
+                    }).catch(err => {
+                        console.log('/deals/exchange error:', err);
+                    });
+                }
+            )
+        }
+    );
 
     router.post('/cancel/:id', passport.authenticate('jwt', {
         session: false

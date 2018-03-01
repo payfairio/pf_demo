@@ -1,5 +1,5 @@
 <template>
-    <div class="container-fluid">
+    <div class="container-fluid" v-if="$auth.user().status === 'active'">
         <div class="suggestions-list">
             <p>
                 <router-link :to="{name: 'create-suggestion'}" class="btn btn-success">Create new suggestion</router-link>
@@ -109,6 +109,7 @@
 </template>
 <script>
     export default {
+
         name: 'List',
         data: function () {
             return {
@@ -142,6 +143,7 @@
         },
 
         methods: {
+
             getSuggestions: function (ctx) {
                 const vm = this;
                 const limit = ctx.perPage;

@@ -63,6 +63,26 @@
 
                         <b-pagination :total-rows="totalRowsCompleted" :per-page="perPage" v-model="currentPageCompleted"></b-pagination>
                     </b-tab>
+                    <b-tab title="Canceled">
+                        <b-table striped hover
+                                 :items="getDeals"
+                                 :fields="fieldsCanceled"
+                                 :current-page="currentPageCanceled"
+                                 :per-page="perPage"
+                                 sort-by="created_at"
+                                 :sort-desc="true"
+                                 v-if="active_tab == 2"
+                        >
+                            <template slot="name" slot-scope="row"><router-link :to="{name: 'deal', params: {id: row.item.dId}}">{{row.value}}</router-link></template>
+                            <template slot="role" slot-scope="row">{{row.value}}</template>
+                            <template slot="counterparty" slot-scope="row"><router-link :to="{name: 'user-by-id', params: {id: row.item.counterparty_id}}">{{row.value}}</router-link></template>
+                            <template slot="created_at" slot-scope="row">{{row.value | date}}</template>
+                            <template slot="coin" slot-scope="row" v-if="row.value">{{row.value.toUpperCase()}}</template>
+
+                        </b-table>
+
+                        <b-pagination :total-rows="totalRowsCanceled" :per-page="perPage" v-model="currentPageCanceled"></b-pagination>
+                    </b-tab>
                 </b-tabs>
             </b-card>
         </div>
@@ -76,9 +96,11 @@
                 perPage: 20,
                 currentPageActive: 1,
                 currentPageCompleted: 1,
+                currentPageCanceled: 1,
 
                 totalRowsActive: 0,
                 totalRowsCompleted: 0,
+                totalRowsCanceled: 0,
                 fields: {
                     name: {label: 'Deal name', sortable: true},
                     role: {label: 'Your role', sortable: true},
@@ -94,6 +116,13 @@
                     counterparty: {label: 'Counterparty', sortable: true},
                     created_at: {label: 'Created at', sortable: true},
                     coin: {label: 'Currency'}
+                },
+                fieldsCanceled: {
+                    name: {label: 'Deal name', sortable: true},
+                    role: {label: 'Your role', sortable: true},
+                    counterparty: {label: 'Counterparty', sortable: true},
+                    created_at: {label: 'Created at', sortable: true},
+                    coin: {label: 'Currency'},
                 },
                 active_tab: 0
             }
@@ -121,6 +150,9 @@
                     }
                     if (status == 1) {
                         vm.totalRowsCompleted = response.data.total;
+                    }
+                    if (status == 2) {
+                        vm.totalRowsCanceled = response.data.total;
                     }
                     return(response.data.data || []);
                 }, err => {

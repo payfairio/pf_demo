@@ -25,13 +25,20 @@ const User = new Schema({
     profileImg: {
         type: String,
     },
-    status: { //unverified, active
+    status: { //unverified, active, invited
         type: String,
         default: 'unverified'
+    },
+    statusEscrowBool:{
+        type: Boolean,
     },
     wallet: {
         type: Schema.Types.ObjectId,
         ref: 'Account'
+    },
+    trustWallet: {
+        type: Schema.Types.ObjectId,
+        ref: 'ConfirmingWallet'
     },
     holds: {
         type: Object,
@@ -58,6 +65,8 @@ const User = new Schema({
         type: String
     }
 });
+
+
 
 User.methods.comparePassword = function (passw) {
     return this.password === hash(passw);

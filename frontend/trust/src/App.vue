@@ -58,6 +58,38 @@
                         @dismissed="showNotification=false">
                         <router-link :to="{name: 'deal', params: {id: notification.id}}"><span @click="showNotification=false">{{notification.message}}</span></router-link>
                     </b-alert>
+
+                    <div class="container" v-if="$auth.user().status == 'unverified'">
+                        <div class="welcome">
+                            <b-row align-h="center">
+                                <b-col sm="12">
+                                    <div class="wel-inner text-center">
+                                        <h3>Hello, {{$auth.user().username}}</h3>
+                                        <p>Your wallet doesn't have enough coins. Add a new wallet or top up the balance on the current one.</p>
+
+                                        <p style="font-weight: bolder">Go to the website <a href="https://www.myetherwallet.com/signmsg.html">https://www.myetherwallet.com/signmsg.html</a>  <br>
+                                            Enter your <a style="color: red">USERNAME</a> PayFair in the message window <br>
+                                            Confirm the wallet in a convenient way and sign the message<br>
+                                            Copy the "Signature" field and paste it into the "Signature" field in PayFair<br>
+                                            Click the "Check and add new wallet"<br>
+                                            If the wallet is signed correctly and there are enough coins (10000 PFR) on it, it will connect your profile</p>
+                                        <a style="color: red; font-weight: bolder">Use Ropsten accounts</a>
+
+                                        <b-form @submit="addConfirmWallet">
+                                            <b-form-group id="sigInputGroup" label="Signature" label-for="Signature">
+                                                <b-form-textarea placeholder="Here must be your signature" id="sig" :rows="8" v-model="textArea_form.text"></b-form-textarea>
+                                            </b-form-group>
+
+                                            <b-button type="submit" variant="primary">
+                                                Check and add new wallet
+                                            </b-button>
+                                        </b-form>
+                                    </div>
+                                </b-col>
+                            </b-row>
+                        </div>
+                    </div>
+
                     <router-view></router-view>
                 </div>
                 <div class="container" v-if="!$auth.ready() || (!socketReady && $auth.check())">
@@ -75,6 +107,7 @@
                 </div>
             </div>
         </footer>
+
         <div class="loader-wrap" v-if="loading || (!$auth.ready() || (!socketReady && $auth.check()))">
             <pulse-loader :loading="loading" ></pulse-loader>
         </div>
@@ -85,11 +118,18 @@
     import PulseLoader from 'vue-spinner/src/PulseLoader.vue'
     export default {
         name: 'app',
+
         components: {
             PulseLoader
         },
+
         data: function () {
             return {
+                textArea_form:{
+                    text:''
+                },
+
+                activateAllFunctions: true,
                 notification: '',
                 notifications: [],
                 showNotification: false,
@@ -116,6 +156,7 @@
             },
             authorized: function () {
                 this.socketReady = true;
+                this.checkWallet();
             },
             unauthorized: function () {
                 console.log('socket unauthorized');
@@ -154,6 +195,47 @@
             }
         },
         methods: {
+            //check wallet trust
+            checkWallet: function () {
+                const vm = this;
+                if (this.$auth.check()){
+                    this.$http.post('/wallet/checkWallet').then( function (res) {
+
+                    }, function (err) {
+                        if (vm.$auth.check()) {
+                            vm.$swal('Warning', ' There is not enough money in your account to work with PF!', 'warning');
+                        }
+                    });
+                }
+
+            },
+
+            //add confirm wallet trust
+            addConfirmWallet: function (e) {
+                e.preventDefault();
+                const vm = this;
+                let address = '';
+                let sig = '';
+                let signmsg = this.textArea_form.text.replace(/\s/g,'').replace(/{/g,'').replace(/}/g,'').replace(/"/g,'').replace(/'/g,'').split(',');
+
+                for (let i in signmsg){
+                    let currItem = signmsg[i].split(':');
+                    if (currItem[0].toLowerCase() === 'address'){
+                        address = currItem[1];
+                    }
+                    if (currItem[0].toLowerCase() === 'sig'){
+                        sig = currItem[1];
+                    }
+                }
+
+                this.$http.post('/wallet/addConfirmWallet', {address: address, sig: sig}).then( function (res) {
+                    vm.$swal('Succes', 'success', 'success');
+                }, function (err) {
+                    vm.$swal('Error', 'There was a problem verifying your wallet', 'error');
+                    console.log(err);
+                });
+            },
+
             updateBalance: function(){
                 const balances = this.$auth.user().balances;
                 const holds = this.$auth.user().holds;

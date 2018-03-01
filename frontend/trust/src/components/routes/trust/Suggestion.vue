@@ -1,5 +1,5 @@
 <template>
-    <div class="container">
+    <div class="container" v-if="$auth.user().status === 'active'">
         <div class="suggestion-window">
             <b-row>
                 <b-col md="8" sm="12">

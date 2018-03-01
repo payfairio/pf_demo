@@ -131,6 +131,62 @@
         }
     }
 </script>
-<style>
-
+<style scoped>
+    .card{
+        color:#212121;
+    }
+    .profile-card img{
+        box-shadow: 0px 0px 10px 0px #969696;
+    }
+    .profile-card h2{
+        font-weight: 700;
+        font-size: 30px;
+    }
+    .tabs ul{
+        font-size: 16px;
+        padding-left: 0;
+        list-style-type: none;
+        text-align: center;
+        margin: 0 30px;
+    }
+    .tabs ul li{
+        margin: 15px 0;
+        cursor: pointer;
+        padding: 10px;
+        color:#010101;
+        transition: .3s;
+        font-size: 16px;
+    }
+    .tabs ul li.active{
+        background-color: #49e1cd;
+        color:#000;
+    }
+    .tabs ul li.active:hover{
+        background-color: #49e1cd;
+    }
+    .tabs ul li:hover{
+        background-color: #49e1cda6;
+    }
+    .img-tab{
+        text-align: center;
+    }
+    .review.no-float span:first-child{
+        background: none;
+        float:none;
+    }
+    .review.no-float span:last-child{
+        float: none;
+        display: inline-block;
+        vertical-align: top;
+    }
+    .review-tab .review{
+        padding-top: 15px;
+        border-bottom: 1px solid #f1f1f1;
+    }
+    .review-tab .review:last-child {
+        border-bottom: none;
+    }
+    .date{
+        font-style: italic;
+    }
 </style>

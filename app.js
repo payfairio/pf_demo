@@ -13,10 +13,10 @@ const app = express();
 const passport = require('passport');
 const config = require('./config/database');
 const mongoose = require('mongoose');
-mongoose.Promise = global.Promise;
-mongoose.connect(config.database, {
-    useMongoClient: true
-});
+      mongoose.Promise = global.Promise;
+      mongoose.connect(config.database, {
+        useMongoClient: true
+      });
 
 const Sequelize = require('sequelize');
 const Op = Sequelize.Op;
@@ -29,6 +29,7 @@ app.use(passport.initialize());
 
 app.use(logger('dev'));
 app.use(cookieParser());
+//yастройка работы с формами
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
@@ -70,3 +71,5 @@ app.use((err, req, res) => {
 });
 
 module.exports = app;
+
+

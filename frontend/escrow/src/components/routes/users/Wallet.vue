@@ -46,6 +46,7 @@
                     <b-card :header="'Receive ' + active_currency" class="send">
                         You can use this {{active_currency}} address:
                         <pre>{{address}}</pre>
+                        <font color="red"> Please do not send REAL tokens to this address, you will lose them! The address is only for demonstration into the Ropsten network.</font>
                     </b-card>
                 </b-col>
             </b-row>
@@ -71,11 +72,14 @@ export default {
                 address: '',
                 amount: ''
             },
-            active_currency: 'pfr',
-            balance: {
-                pfr: {total: 0, hold: 0},
-                eth: {total: 0, hold: 0}
+
+            confirm_form:{
+                address: '',
+                sig:''
             },
+
+            active_currency: 'pfr',
+            balance: {},
             address: '',
             sending: false,
         }
@@ -131,10 +135,14 @@ export default {
                 console.log(err);
             });
         },
+
         updateBalance: function () {
             const balances = this.$auth.user().balances;
             const holds = this.$auth.user().holds;
-            for (var i in balances) {
+            for (let i in balances) {
+                if (!this.balance.hasOwnProperty(i)) {
+                    this.balance[i] = {};
+                }
                 this.balance[i].total = balances[i];
                 this.balance[i].hold = holds[i];
             }

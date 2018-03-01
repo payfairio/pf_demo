@@ -67,7 +67,7 @@
                             <template slot="coin" slot-scope="row">{{row.value}}</template>
                             <template slot="paymentType" slot-scope="row">{{row.value}}{{row.item.paymentTypeDetail ? ':' + $options.filters.truncate(row.item.paymentTypeDetail) : ''}}</template>
                             <template slot="rate" slot-scope="row">{{row.value}} {{row.item.currency}} / {{row.item.coin}}</template>
-                            <template slot="limits" slot-scope="row">{{row.value && row.value.min ? row.value.min : ''}} - {{row.value && row.value.max ? row.value.max : ''}}</template>
+                            <template slot="limits" slot-scope="row">{{row.value && row.value.min ? row.value.min : ''}} - {{row.value && row.value.max ? row.value.max : '&infin;'}}</template>
                             <template slot="created_at" slot-scope="row">{{row.value | date}}</template>
                             <template slot="actions" slot-scope="row">
                                 <router-link v-if="row.item.owner.username != $auth.user().username && row.item.status != 'closed'" :to="{name: 'exchange', params: {id: row.item.eId}}" class="btn btn-primary">{{tradeType}} coins</router-link>

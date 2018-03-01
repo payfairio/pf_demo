@@ -13,6 +13,7 @@ import Suggestion from '@/components/routes/trust/Suggestion'
 Vue.use(Router);
 
 export default new Router({
+    mode: 'history',
     routes: [
         //trust sections
         {

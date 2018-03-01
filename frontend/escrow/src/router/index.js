@@ -3,7 +3,11 @@ import Router from 'vue-router'
 
 import Login from '@/components/routes/users/Login'
 import Register from '@/components/routes/users/Register'
+
+
 import Profile from '@/components/routes/users/Profile'
+
+
 import Wallet from '@/components/routes/users/Wallet'
 
 import Verify from '@/components/routes/users/Verify'

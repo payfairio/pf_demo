@@ -41,7 +41,7 @@
                     </div>
                     <div v-else class="review-tab">
                         <h3>Reviews:</h3>
-                         <div v-for="review in reviews" class="review">
+                         <div v-for="review in newreviews" class="review">
                              <p>
                                 <b>By:</b> <router-link :to="{name: 'user-by-id', params: {id: review.author._id}}">{{review.author.username}}</router-link><br>
                             </p>
@@ -55,6 +55,7 @@
                            <p v-if="!isToday(review.created_at)" class="date">{{review.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</p>
 
                          </div>
+                         <b-pagination :total-rows="totalRows" :per-page="perPage" v-model="currentPage" @input="getReview" />
                     </div>
                 </b-col>
             </b-row>
@@ -71,6 +72,9 @@
         },
         data: () => {
             return {
+                currentPage: 1,
+                perPage: 3,
+                totalRows: 0,
                 form: {
                     profileImg: '',
                 },
@@ -80,13 +84,42 @@
                 username: '',
                 profileImg: '',
                 visible: true,
-                tab: 1
+                tab: 1,
+                newreviews: [],
             }
+        },
+        mounted() {
+            this.getReview();
         },
         created: function () {
             this.getUser();
         },
         methods: {
+            getReview: function (ctx) {
+                const vm = this;
+                const limit = vm.perPage;
+                const offset = (vm.currentPage - 1) * vm.perPage;
+                const sort = "created_at";
+                const order = "true";
+                if (this.$props.id) {
+                    return this.$http.get('/users/user/' + this.$props.id + '/getreview?limit='+limit+'&offset='+offset+'&sortBy='+sort+'&order='+order).then(response => {
+                        vm.newreviews = response.data.data;
+                        vm.totalRows = response.data.total;
+                        return (response.data.data || []);
+                    }, err => {
+                        console.log(err);
+                    });
+                }
+                else {
+                    return this.$http.get('/users/user/' + this.$auth.user()._id + '/getreview?limit='+limit+'&offset='+offset+'&sortBy='+sort+'&order='+order).then(response => {
+                        vm.newreviews = response.data.data;
+                        vm.totalRows = response.data.total;
+                        return (response.data.data || []);
+                    }, err => {
+                        console.log(err);
+                    });
+                }
+            },
             dataURItoBlob: function (dataURI) {
                 // convert base64/URLEncoded data component to raw binary data held in a string
                 var byteString;
@@ -156,6 +189,9 @@
         watch: {
             id: function () {
                 this.getUser();
+            },
+            '$route.fullPath'() {
+                this.getReview();
             }
         },
         computed: {

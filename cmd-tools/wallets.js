@@ -20,7 +20,7 @@ function createAccount (data) {
     return new Account(data).save();
 }
 
-User.find({wallet: {$exists: false}, status: 'active'}).then(async function (users) {
+User.find({wallet: {$exists: false}}).then(async function (users) {
     await Promise.all(users.map(async function (user) {
         let newAccount = web3.eth.accounts.create();
         let account = await createAccount({

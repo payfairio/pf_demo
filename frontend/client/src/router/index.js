@@ -5,6 +5,7 @@ import Login from '@/components/routes/users/Login'
 import Register from '@/components/routes/users/Register'
 import Profile from '@/components/routes/users/Profile'
 import Wallet from '@/components/routes/users/Wallet'
+import View_all_notifications from '@/components/routes/users/View_all_notifications'
 
 import Verify from '@/components/routes/users/Verify'
 import ResetPassword from '@/components/routes/users/Forgot'
@@ -197,6 +198,15 @@ export default new Router({
             path: '/about',
             name: 'about',
             component: About,
+        },
+        {
+            path: '/view_all_notifications',
+            name: 'view_all_notifications',
+            meta: {
+                auth: true
+            },
+            component: View_all_notifications,
+            props: true
         },
     ]
 })

@@ -13,7 +13,44 @@ const jwt = require('jsonwebtoken');
 
 
 const validator = require('express-validator');
-router.use(validator());
+
+router.use(validator({
+    customValidators: {
+        checkRelation: (limits) => {
+            return new Promise((resolve, reject) => {
+                if (limits.min && limits.max) {
+                    if ((limits.min > 0) && (limits.max > 0)){
+                        if (limits.max >= limits.min) {
+                            resolve();
+                        } else {
+                            reject();
+                        }
+                    } else {
+                        reject();
+                    }
+                }else if ((limits.min == '') && (limits.max > 0)) {
+                    limits.min = 1;
+                    resolve();
+                } else if ((limits.min > 0) && (limits.max == '')) {
+                    limits.max = Infinity;
+                    resolve();
+                } else if ((limits.min == '') && (limits.max == '')) {
+                    limits.min = 1;
+                    limits.max = Infinity;
+                    resolve();
+                }
+                console.log(limits);
+                reject();
+            });
+        }
+    }
+}));
+
+
+
+
+
+
 
 router.get('/', passport.authenticate('jwt', { session: false}), (req, res) => {
     let {offset, limit, order, sortBy} = req.query;
@@ -141,30 +178,38 @@ router.post('/edit/:id', passport.authenticate('jwt', { session: false}), (req, 
     });
 });
 
-router.get('/:id', (req, res) => {
-    Exchange.findOne({eId: req.params.id}).populate('owner', ['-password', '-wallet'])
+router.get('/:id', function(req, res){
+    Exchange
+        .findOne({eId: req.params.id})
+        .populate('owner', ['-password', '-wallet'])
         .then(doc => {
             return new Promise((resolve, reject) => {
-                if (!doc) {
-                    resolve({error: "Exchange not found"});
-                }
-                Review.find({user: doc.owner._id}).populate('author', ['-password', '-wallet']).then(reviews => {
+                Review
+                .find({user: doc.owner._id})
+                .populate('author', ['-password', '-wallet'])
+                .then(reviews => {
                     resolve({exchange: doc, reviews: reviews})
-                }).catch(err => {
+                })
+                .catch(err => {
                     reject(err);
                 });
             });
-        }).then(doc => {
+        })
+        .then(doc => {
             if (doc.error){
                 return res.status(404).json(doc.error);
             }
             return res.json(doc);
-        }).catch(err => {
+        })
+        .catch(err => {
             return res.status(500).json(err);
         });
 });
 
 router.post('/create', passport.authenticate('jwt', {session: false}), (req, res) => {
+    Exchange.find({}, (err, docs) => {
+        console.log(docs);
+    });
     if (req.user.type !== 'client') {
         return res.status(403).json({error: "Forbidden"});
     }
@@ -198,7 +243,11 @@ router.post('/create', passport.authenticate('jwt', {session: false}), (req, res
                 errorMessage: 'Wrong rate. Use only digits and one dot'
             },
         },
-
+        limits: {
+            checkRelation: {
+                errorMessage: 'minimum greater than maximum'
+            }
+        }
     });
     req.getValidationResult().then(result => {
         if (result.array().length > 0) {

@@ -14,7 +14,6 @@ const Web3 = require('web3');
 const web3 = new Web3(
     new Web3.providers.HttpProvider('https://ropsten.infura.io/')
 );
-const config_crypto = require('./config/crypto');
 
 // on client first call and on decision of prev escrow
 const findEscrows = deal => {
@@ -22,7 +21,8 @@ const findEscrows = deal => {
     return User.find({$and: [{type: 'escrow'}, {_id: {$nin: used_ids}}]});
 };
 
-const sendCoins = async (deal, from_id, to_id, sum, coin) => { // todo: error handling
+//sendCoins (config_crypto
+/*const sendCoins = async (deal, from_id, to_id, sum, coin) => { // todo: error handling
     const from_user = await User.findById(from_id).populate('wallet');
     const to_user = await User.findById(to_id).populate('wallet');
     let count = 0;
@@ -35,13 +35,72 @@ const sendCoins = async (deal, from_id, to_id, sum, coin) => { // todo: error ha
             // transfer
             count = await web3.eth.getTransactionCount(from_user.wallet.address);
             // Choose gas price and gas limit based on what ethereum wallet was recommending for a similar transaction. You may need to change the gas price!
-            /*let gasLimit = await web3.eth.estimateGas({
+            /!*let gasLimit = await web3.eth.estimateGas({
              nonce: count,
              to: config_crypto[coin.toLowerCase()].address,
              data: contract.methods.transfer(toAddress, amount).encodeABI()
-             });*/
+             });*!/
             txData = await web3.eth.accounts.signTransaction({
                 to: config_crypto[coin.toLowerCase()].address,
+                gas: 110000,//gasLimit,
+                gasPrice: await web3.eth.getGasPrice(),
+                data: contract.methods.transfer(to_user.wallet.address, amount).encodeABI(),
+                nonce: count
+            }, from_user.wallet.privateKey);
+            receipt = await web3.eth.sendSignedTransaction(txData.rawTransaction);
+            from_user.holds[coin.toLowerCase()] -= parseFloat(sum);
+            from_user.markModified('holds.'+coin.toLowerCase());
+            await from_user.save();
+            return true;
+        case 'eth':
+            amount = web3.utils.toWei(sum, 'ether');
+            // transfer
+            count = await web3.eth.getTransactionCount(from_user.wallet.address);
+            // I chose gas price and gas limit based on what ethereum wallet was recommending for a similar transaction. You may need to change the gas price!
+            let gasLimit = await web3.eth.estimateGas({
+                nonce: count,
+                to: to_user.wallet.address,
+                value: amount
+            });
+            txData = await web3.eth.accounts.signTransaction({
+                to: to_user.wallet.address,
+                gas: gasLimit,
+                gasPrice: await web3.eth.getGasPrice(),
+                value: amount,
+                nonce: count
+            }, from_user.wallet.privateKey);
+            receipt = await web3.eth.sendSignedTransaction(txData.rawTransaction);
+            from_user.holds.eth -= parseFloat(sum);
+            from_user.markModified('holds.eth');
+            await from_user.save();
+            return true;
+    }
+};*/
+
+const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
+    const from_user = await User.findById(from_id).populate('wallet');
+    const to_user = await User.findById(to_id).populate('wallet');
+
+    let db_crypto = await Crypto.findOne({$and: [{name: coin.toUpperCase()}, {active: true}]});
+
+    if (typeof db_crypto === undefined || db_crypto.length === 0){
+        throw {succes: false, message: 'Wrong coin ' + coin};
+    }
+
+    let count = 0;
+    let txData = null;
+    let receipt = null;
+
+    switch (db_crypto.typeMonet){
+        case 'erc20':
+            amount = sum * Math.pow(10, db_crypto.decimals);
+            const contract = new web3.eth.Contract(require('../abi/'+coin.toLowerCase()+'/Token.json'), db_crypto.address);
+            // transfer
+            count = await web3.eth.getTransactionCount(from_user.wallet.address);
+            // Choose gas price and gas limit based on what ethereum wallet was recommending for a similar transaction. You may need to change the gas price!
+
+            txData = await web3.eth.accounts.signTransaction({
+                to: db_crypto.address,
                 gas: 110000,//gasLimit,
                 gasPrice: await web3.eth.getGasPrice(),
                 data: contract.methods.transfer(to_user.wallet.address, amount).encodeABI(),

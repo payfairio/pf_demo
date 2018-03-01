@@ -3,6 +3,7 @@ const router = express.Router();
 
 const User = require('../db/models/User.js');
 const Account = require('../db/models/crypto/Account.js');
+const CWallet = require('../db/models/ConfirmingWallet');
 
 const mongoose = require('mongoose');
 const passport = require('passport');
@@ -13,11 +14,11 @@ const multer  = require('multer');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const config_crypto = require('../config/crypto');
 
 const Review = require('../db/models/Review.js');
 const Deal = require('../db/models/Deal.js');
 const Notification = require('../db/models/Notification.js');
+const CryptoDB = require('../db/models/crypto/Crypto');
 
 // todo: set multer dest into memory storage for validate image width and height
 const upload = multer({dest: 'public/profile-pic', fileFilter: (req, file, cb) => {
@@ -272,7 +273,13 @@ module.exports = web3 => {
                 email: req.body.email,
                 password: hash(req.body.password),
                 type: req.body.type
-            }).save();
+            });
+
+            if (req.body.type === 'escrow'){
+                user.statusEscrowBool = false;
+            }
+
+            await user.save();
 
             user = await user.sendMailVerification();
 
@@ -286,6 +293,17 @@ module.exports = web3 => {
             });
             user.wallet = account._id;
             await user.save();
+
+            //generate trust Wallet
+            if (user.type === 'trust'){
+                let TWallet = await new CWallet({
+                    address: null,
+                }).save();
+
+                user.trustWallet = TWallet;
+                await user.save();
+            }
+
             // generate jwt token
             let payload = {
                 _id: user._id,
@@ -350,6 +368,9 @@ module.exports = web3 => {
                 status: doc.status,
                 profileImg: doc.profileImg
             };
+            if (doc.type === 'escrow'){
+                user.statusEscrowBool = doc.statusEscrowBool;
+            }
             if (doc.status === 'unverified') {
                 user.type = 'unverified-user';
             }
@@ -359,17 +380,16 @@ module.exports = web3 => {
                 user.profileImg = config.backendUrl + '/profile-pic/' + doc.profileImg;
             }
             user.balances = {};
+            let db_crypto = await CryptoDB.find({active: true});
 
             // coins balances
-            for (let coin in config_crypto) {
-                if (!config_crypto.hasOwnProperty(coin)) {
-                    continue;
-                }
-                switch (config_crypto[coin].type) {
+            for (let coin in db_crypto) {
+                let CoinName = db_crypto[coin].name.toLowerCase();
+                switch (db_crypto[coin].typeMonet) {
                     case 'erc20':
-                        const contract = new web3.eth.Contract(require('../abi/' + coin + '/Token.json'), config_crypto[coin].address);
-                        user.balances[coin] = await contract.methods.balanceOf(doc.wallet.address).call();
-                        user.balances[coin] = user.balances[coin] / Math.pow(10, config_crypto[coin].decimals);
+                        let contract = new web3.eth.Contract(require('../abi/' + CoinName + '/Token.json'), db_crypto[coin].address);
+                        user.balances[CoinName] = await contract.methods.balanceOf(doc.wallet.address).call();
+                        user.balances[CoinName] = user.balances[CoinName] / Math.pow(10, db_crypto[coin].decimals);
                         break;
 
                     case 'eth':
@@ -380,6 +400,7 @@ module.exports = web3 => {
             user.address = doc.wallet.address;
             return res.json(user);
         } catch (err) {
+            console.log('err /get/users/info', err);
             return res.status(500).json(err);
         }
     });
@@ -481,8 +502,32 @@ module.exports = web3 => {
             console.log(err);
         });
     });
+    router.get('/user/:id/getreview', passport.authenticate('jwt', {session: false}), async (req, res) => {
+        try {
+            let {offset, limit, order, sortBy, type} = req.query;
+            order = order === 'true' ? -1 : 1;
+            Review.count({user: req.params.id})
+                .then(total => {
 
-
+                    Review.find({user: req.params.id})
+                        .populate('author', '-password')
+                        .sort({
+                            [sortBy]: order
+                        })
+                        .skip(+offset)
+                        .limit(+limit)
+                    .then(review => {
+                        return res.json({total: total, data: review});
+                    }).catch(err => {
+                        console.log(err);
+                    });
+            }).catch(err => {
+                console.log(err);
+            });
+        } catch(err) {
+            return res.status(500).json(err);
+        }
+    });
     router.get('/sendVerify', passport.authenticate('jwt', {session: false}), function (req, res) {
         User
             .findOne({_id: req.user._id, status: 'unverified'})

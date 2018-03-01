@@ -41,7 +41,7 @@ const Deal = new Schema({
     }],
     status: {
         type: String,
-        default: 'new'  // new, accepted, dispute, completed
+        default: 'new'  // new, accepted, dispute, completed, canceled
     },
     acceptedBySeller: {
         type: Boolean,
