@@ -1,7 +1,8 @@
 <template>
     <div id="app">
         <div class="wrap">
-            <div class="demo-topbar">This is just demo on ropsten testnet. Don't use this app for real trades. <a href="https://ropsten.etherscan.io">etherscan for ropsten</a></div>
+            <div class="demo-topbar">This is just demo on ropsten testnet. Don't use this app for real trades. <a href="https://ropsten.etherscan.io">etherscan for ropsten</a> <br>
+                For technical reasons, replenishment of the balance is made once every 12 hours</div>
             <b-navbar toggleable="md" type="dark" variant="gray">
                 <b-navbar-brand :to="'/'"><img :src="$config.staticUrl+'/images/pfr_logo.svg'" alt="PayFair"></b-navbar-brand>
 

@@ -33,6 +33,7 @@
                 <b-col md="8">
                     <b-card :header="'Send ' + active_currency" class="send">
                         <b-form @submit="sendSubmit">
+                            <span style="color:red">To transfer "pfr" and "omg", there must be " eth " in your account.</span>
                             <b-form-group id="addressInputGroup" label="Receiving address:" label-for="address" :state="isValid('address')" :feedback="errorMessage('address')">
                                 <b-form-input id="address" type="text" v-model="send_form.address" :state="isValid('address')"></b-form-input>
                             </b-form-group>

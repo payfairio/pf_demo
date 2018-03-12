@@ -1,6 +1,6 @@
 <template>
-    <div class="container" v-if="$auth.user().statusEscrowBool === true">
-        <div class="deal-window" v-if="activateAllFunctions">
+    <div class="container">
+        <div class="deal-window" v-if="$auth.user().statusEscrowBool === true">
             <h1>{{deal.name}}</h1>
             <div class="deal-info">
                 Status: {{deal.status}} <br>
@@ -93,7 +93,6 @@
     export default {
         name: 'Deal',
         props: ['id'],
-        activateAllFunctions: true,
         created: function () {
             this.$socket.emit('join_chat', {deal_id: this.id});
         },

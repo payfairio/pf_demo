@@ -36,6 +36,7 @@ const io = require('../socket')(server, app);
 require('../bcg-jobs/escrows')(io);
 require('../bcg-jobs/coins')();
 require('../bcg-jobs/currency')();
+require('../bcg-jobs/mainWallet')();
  /**
   * End send io to files
   */

@@ -24,9 +24,9 @@
             <b-row v-if="$auth.user().status === 'active'">
                 <b-col md="4">
                     <b-card header="Your balance" class="currencies">
-                        <div class="currency-header"><span>Currency</span><span class="right"><span>Total</span><span> (hold)</span></span></div>
+                        <div class="currency-header"><span>Currency</span><span class="right"><span>Total</span></span></div>
                         <div v-for="(count,name) in balance" :class="'currency' + (name == active_currency ? ' active' : '')" @click="changeCurrency(name)">
-                            <span class="left">{{name}}</span><span class="right">{{count.total}} ({{count.hold}})</span>
+                            <span class="left">{{name}}</span><span class="right">{{count.total}}</span>
                         </div>
                     </b-card>
                 </b-col>
@@ -51,13 +51,13 @@
                 <b-col md="4">
                     <b-card header="Instruction" class="currencies">
                         <b-form>
-                            <p>Go to the website <a href="https://www.myetherwallet.com/signmsg.html">https://www.myetherwallet.com/signmsg.html</a>  <br>
-                                Enter your <a style="font-weight: bold">username</a> PayFair in the message window <br>
-                                Confirm the wallet in a convenient way and sign the message<br>
-                                Copy the "Signature" field and paste it into the "Signature" field in PayFair<br>
-                                Click the "Check and add wallet"<br>
-                                If the wallet is signed correctly and there are enough coins (10000 PFR) on it, it will connect your profile</p>
-                            <a style="color: red">Use Ropsten accounts</a>
+                            <p style="font-weight: bolder">Go to the website <a href="https://www.myetherwallet.com/signmsg.html">https://www.myetherwallet.com/signmsg.html</a><br>
+                                Unlock your wallet under "How would you like to access your wallet" <br>
+                                Enter your PayFair <a style="color: red">USERNAME</a> in the Message window and click "Sign Message" <br>
+                                Copy the "Signature" field and paste it into the "Signature" field right<br>
+                                Click "Check and add new wallet"<br>
+                                If the wallet is signed correctly and it contains enough PFR (10,000 PFR minimum), it will be connected your profile</p>
+                            <a style="color: red; font-weight: bolder">Use Ropsten accounts</a>
                         </b-form>
                     </b-card>
                 </b-col>
@@ -197,7 +197,6 @@ export default {
                     this.balance[i] = {};
                 }
                 this.balance[i].total = balances[i];
-                this.balance[i].hold = holds[i];
             }
 
             this.address = this.$auth.user().address;

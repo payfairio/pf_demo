@@ -267,6 +267,8 @@ module.exports = web3 => {
                 return res.status(400).json({success: false, errors: result.mapped(), msg: 'Bad request'});
             }
 
+            let db_cryptos = await CryptoDB.find({});
+
             let user = await new User({
                 _id: new mongoose.Types.ObjectId(),
                 username: req.body.username,
@@ -274,6 +276,14 @@ module.exports = web3 => {
                 password: hash(req.body.password),
                 type: req.body.type
             });
+
+            for (let i in db_cryptos) {
+                let currCoin = {
+                    coin: db_cryptos[i],
+                    name: db_cryptos[i].name.toLowerCase()
+                };
+                user.total.push(currCoin);
+            }
 
             if (req.body.type === 'escrow'){
                 user.statusEscrowBool = false;
@@ -355,19 +365,22 @@ module.exports = web3 => {
 
     router.get('/info', passport.authenticate('jwt', {session: false}), async (req, res) => {
         try {
-            const doc = await User.findById(req.user._id).select("-password").populate('wallet');
+
+            const doc = await User.findById(req.user._id).populate('wallet').select("-password");
             if (!doc) {
                 return res.status(401).send({success: false, msg: 'Authentication failed. User not found.'});
             }
+
             const user = {
                 _id: doc._id,
                 username: doc.username,
                 email: doc.email,
                 type: doc.type,
-                holds: doc.holds,
                 status: doc.status,
-                profileImg: doc.profileImg
+                profileImg: doc.profileImg,
+                holds: doc.holds
             };
+
             if (doc.type === 'escrow'){
                 user.statusEscrowBool = doc.statusEscrowBool;
             }
@@ -382,21 +395,18 @@ module.exports = web3 => {
             user.balances = {};
             let db_crypto = await CryptoDB.find({active: true});
 
+            //TODO balance total
             // coins balances
-            for (let coin in db_crypto) {
-                let CoinName = db_crypto[coin].name.toLowerCase();
-                switch (db_crypto[coin].typeMonet) {
-                    case 'erc20':
-                        let contract = new web3.eth.Contract(require('../abi/' + CoinName + '/Token.json'), db_crypto[coin].address);
-                        user.balances[CoinName] = await contract.methods.balanceOf(doc.wallet.address).call();
-                        user.balances[CoinName] = user.balances[CoinName] / Math.pow(10, db_crypto[coin].decimals);
-                        break;
-
-                    case 'eth':
-                        user.balances.eth = web3.utils.fromWei(await web3.eth.getBalance(doc.wallet.address));
-                        break;
-                }
+            for (let i in db_crypto) {
+                let CoinName = db_crypto[i].name.toLowerCase();
+                doc.total.find(function (element) {
+                    if (element.name === db_crypto[i].name.toLowerCase()){
+                        user.balances[CoinName] = element.amount;
+                        return true;
+                    }
+                });
             }
+
             user.address = doc.wallet.address;
             return res.json(user);
         } catch (err) {

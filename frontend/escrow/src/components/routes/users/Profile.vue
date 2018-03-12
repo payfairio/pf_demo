@@ -18,7 +18,7 @@
                         <hr>
                         <b-form v-if="!$props.id || $auth.user()._id == $props.id" @submit="onSubmit" enctype="multipart/form-data">
                             <b-form-group id="imgInputGroup" label="Change profile image:" label-for="profileImg">
-                                <image-upload v-model="form.profileImg" :init="form.profileImg" :width="256" :height="256" :label="'Загрузить 256 X 256'"></image-upload>
+                                <image-upload v-model="form.profileImg" :init="form.profileImg" :width="256" :height="256" :label="'Download 256 X 256'"></image-upload>
                             </b-form-group>
                             <b-button type="submit" variant="primary">Save</b-button>
                         </b-form>

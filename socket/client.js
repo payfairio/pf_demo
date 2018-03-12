@@ -4,6 +4,7 @@ const Attachment = require('../db/models/Attachment');
 const Notification = require('../db/models/Notification');
 const Crypto = require('../db/models/crypto/Crypto');
 const User = require('../db/models/User');
+const CommissionWallet = require('../db/models/crypto/commissionWallet');
 
 const Web3 = require('web3');
 const web3 = new Web3(
@@ -61,61 +62,91 @@ const getDealBydId = (dId) => {
         });
 };
 
+const distribCommission = async (comSum, db_crypto) => {
+    try{
+        let comWallet = await CommissionWallet.findOne();
+
+        let comTrust = (comSum / 100 * 80).toFixed(8);
+
+        let comMaintenance = (comSum - comTrust).toFixed(8);
+
+        comWallet.trust.find(function (element) {
+            if (element.name === db_crypto.name.toLowerCase()){
+                element.amount = String((Number(element.amount) + Number(comTrust)).toFixed(8)); //do not use +=
+                return true;
+            }
+        });
+
+        comWallet.maintenance.find(function (element) {
+            if (element.name === db_crypto.name.toLowerCase()){
+                element.amount = String((Number(element.amount) + Number(comMaintenance)).toFixed(8)); //do not use +=
+                return true;
+            }
+        });
+
+        await comWallet.save();
+        console.log('comTrust',comTrust);
+        console.log('comMaintenance',comMaintenance);
+        return true;
+    }
+    catch (err) {
+        console.log(err);
+        return false;
+    }
+
+};
+
 const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
     const from_user = await User.findById(from_id).populate('wallet');
     const to_user = await User.findById(to_id).populate('wallet');
 
     let db_crypto = await Crypto.findOne({$and: [{name: coin.toUpperCase()}, {active: true}]});
 
-    if (typeof db_crypto === undefined || db_crypto.length === 0){
+    if (!db_crypto){
         throw {succes: false, message: 'Wrong coin ' + coin};
     }
 
-    let count = 0;
-    let txData = null;
-    let receipt = null;
+    let comSum = (sum / 100).toFixed(8); //TODO Определять по decimals и отдельно для эфира
 
-    switch (db_crypto.typeMonet){
-        case 'erc20':
-            amount = sum * Math.pow(10, db_crypto.decimals);
-            const contract = new web3.eth.Contract(require('../abi/'+coin.toLowerCase()+'/Token.json'), db_crypto.address);
-            // transfer
-            count = await web3.eth.getTransactionCount(from_user.wallet.address);
-            // Choose gas price and gas limit based on what ethereum wallet was recommending for a similar transaction. You may need to change the gas price!
-            txData = await web3.eth.accounts.signTransaction({
-                to: db_crypto.address,
-                gas: 110000,//gasLimit,
-                gasPrice: await web3.eth.getGasPrice(),
-                data: contract.methods.transfer(to_user.wallet.address, amount).encodeABI(),
-                nonce: count
-            }, from_user.wallet.privateKey);
-            receipt = await web3.eth.sendSignedTransaction(txData.rawTransaction);
-            from_user.holds[coin.toLowerCase()] -= parseFloat(sum);
-            from_user.markModified('holds.'+coin.toLowerCase());
-            await from_user.save();
-            return true;
-        case 'eth':
-            amount = web3.utils.toWei(sum, 'ether');
-            // transfer
-            count = await web3.eth.getTransactionCount(from_user.wallet.address);
-            // I chose gas price and gas limit based on what ethereum wallet was recommending for a similar transaction. You may need to change the gas price!
-            let gasLimit = await web3.eth.estimateGas({
-                nonce: count,
-                to: to_user.wallet.address,
-                value: amount
-            });
-            txData = await web3.eth.accounts.signTransaction({
-                to: to_user.wallet.address,
-                gas: gasLimit,
-                gasPrice: await web3.eth.getGasPrice(),
-                value: amount,
-                nonce: count
-            }, from_user.wallet.privateKey);
-            receipt = await web3.eth.sendSignedTransaction(txData.rawTransaction);
-            from_user.holds.eth -= parseFloat(sum);
-            from_user.markModified('holds.eth');
-            await from_user.save();
-            return true;
+    if (distribCommission(comSum, db_crypto)){
+        switch (db_crypto.typeMonet){
+            case 'erc20':
+                to_user.total.find(function (element) {
+                    if (element.name === db_crypto.name.toLowerCase()){
+                        element.amount = String((Number(element.amount) + Number(sum) - comSum).toFixed(8)); //do not use +=
+                        return true;
+                    }
+                });
+                from_user.total.find(function (element) {
+                    if (element.name === db_crypto.name.toLowerCase()){
+                        element.amount = String((Number(element.amount) - Number(sum)).toFixed(8)); //do not use +=
+                        return true;
+                    }
+                });
+                from_user.holds[coin.toLowerCase()] -= parseFloat(sum);
+                from_user.markModified('holds.'+coin.toLowerCase());
+                await to_user.save();
+                await from_user.save();
+                return true;
+            case 'eth':
+                to_user.total.find(function (element) {
+                    if (element.name === db_crypto.name.toLowerCase()){
+                        element.amount = String(Number(element.amount) + Number(sum) - comSum); //do not use +=
+                        return true;
+                    }
+                });
+                from_user.total.find(function (element) {
+                    if (element.name === db_crypto.name.toLowerCase()){
+                        element.amount = String(Number(element.amount) - Number(sum));
+                        return true;
+                    }
+                });
+                from_user.holds.eth -= parseFloat(sum);
+                from_user.markModified('holds.eth');
+                await to_user.save();
+                await from_user.save();
+                return true;
+        }
     }
 };
 
@@ -216,21 +247,24 @@ module.exports = (client, io) => {
                 }
 
                 switch (db_crypto.typeMonet) { // check balances
-
                     case 'erc20':
-                        const contract = new web3.eth.Contract(require('../abi/' + coin + '/Token.json'), db_crypto.address);
-                        balance = await contract.methods.balanceOf(buyer.wallet.address).call();
-                        const e = Math.pow(10, db_crypto.decimals);
-                        if (balance - buyer.holds[coin] * e < deal.sum * e) {
-                            notEnoughMoney = true;
-                        }
+                        buyer.total.find(function (element) {
+                            if (element.name === db_crypto.name.toLowerCase()){
+                                if (element.amount - buyer.holds[coin] < deal.sum){
+                                    notEnoughMoney = true;
+                                }
+                            }
+                        });
                         break;
 
                     case 'eth':
-                        balance = await web3.eth.getBalance(buyer.wallet.address);
-                        if ((balance - web3.utils.toWei(buyer.holds.eth.toString(), 'ether')) < web3.utils.toWei(deal.sum.toString(), 'ether') ) {
-                            notEnoughMoney = true;
-                        }
+                        buyer.total.find(function (element) {
+                            if (element.name === db_crypto.name.toLowerCase()){
+                                if (element.amount - buyer.holds[coin] < deal.sum){
+                                    notEnoughMoney = true;
+                                }
+                            }
+                        });
                         break;
                 }
 
@@ -405,8 +439,6 @@ module.exports = (client, io) => {
             const role = deal.getUserRole(client.decoded_token._id);
 
             if (role === 'buyer' && deal.status !== 'canceled') {
-                //TODO my f sendCoins_test
-
                 sendCoins(deal, deal.buyer._id, deal.seller._id, deal.sum.toString(), deal.coin);
 
                 data.sender = client.decoded_token;
@@ -451,12 +483,11 @@ module.exports = (client, io) => {
             if (deal && deal.status === 'new' && role){
                 deal.acceptedByBuyer = false;
                 deal.acceptedByBuyer = false;
-                deal.status = 'canceled'
+                deal.status = 'canceled';
                 await deal.save();
 
                 io.in(deal._id.toString()).emit('dealCanseled', data);
 
-                //TODO доделать нитификейшоны для отмены?
                 const user = role === 'seller' ? deal.buyer._id : deal.seller._id;
 
                 const notification = {
@@ -470,7 +501,6 @@ module.exports = (client, io) => {
                 createAndSendNotification(notification, io);
             }
             console.log('socket cancel deal, curr deal status: ' + deal.status);
-            //
         }
         catch (err) {
             console.log('Sockets error (cancel_Deal): ', err)

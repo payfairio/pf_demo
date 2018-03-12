@@ -10,36 +10,6 @@ const request = require('request-promise-native');
 
 
 module.exports = function(){
-/*    setInterval(function(){
-        let promises = [];
-        Price.find({}).then(function(results) {
-            for (let coin in cryptos){
-                var coinname = cryptos[coin].fullname;
-                var options = {
-                    uri: 'https://api.coinmarketcap.com/v1/ticker/'+coinname+'/',
-                    json: true
-                };
-                promises.push(request(options));
-            }
-            Promise.all(promises).then(function(responses) {
-                for (var i = 0; i < Object.keys(cryptos).length; i++){
-                    Price.deleteMany( {}, function(err, results) {
-                        //console.log(results);
-                    } );
-                    new Price({
-                        _id: new mongoose.Types.ObjectId(),
-                        name: Object.values(cryptos)[i].name,
-                        value: responses[i][0].price_usd,
-                        date: new Date(Date.now()).toISOString()
-                    }).save();
-                }
-            }).catch(function (err){
-                console.log(err);
-            });
-        }).catch(function (err){
-            console.log(err);
-        });
-    }, 1000 * settings.time_to_check_currency );*/
 
     setInterval(function(){
         Crypto.find({active: true}).then(cryptos => {
@@ -56,7 +26,7 @@ module.exports = function(){
                 Promise.all(promises).then(function(responses) {
                     for (var i = 0; i < Object.keys(cryptos).length; i++){
                         Price.deleteMany( {}, function(err, results) {
-                            console.log('result coins usd: ',results);
+                            //console.log('result coins usd: ',results);
                         } );
                         new Price({
                             _id: new mongoose.Types.ObjectId(),
@@ -75,4 +45,5 @@ module.exports = function(){
             console.log(err);
         });
     }, 1000 * settings.time_to_check_currency);
+
 };

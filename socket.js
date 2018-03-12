@@ -317,7 +317,7 @@ module.exports = (server, app) => {
 
         // attachments in chats
         require('./socket/uploads')(client);
-        
+
         // message, accept_*, set_* in deal
         require('./socket/client')(client, io);
 

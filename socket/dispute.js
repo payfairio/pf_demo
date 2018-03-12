@@ -3,6 +3,7 @@ const Message = require('../db/models/Message');
 const Notification = require('../db/models/Notification');
 const User = require('../db/models/User');
 const Crypto = require('../db/models/crypto/Crypto');
+const CommissionWallet = require('../db/models/crypto/commissionWallet');
 
 const strings = require('../config/strings');
 
@@ -17,7 +18,7 @@ const getDealBydId = (dId) => {
             path: 'buyer',
             select: ['-password', '-wallet', '-verifyCode', '-changePwdCode']
         });
-}
+};
 
 const findEscrows = deal => {
     const used_ids = deal.escrows.map(escrow => escrow.escrow);
@@ -37,7 +38,7 @@ const createAndSendNotification = async (notification, io) => {
             io.to(client).emit('notification', notification); // send notification to all clients (tabs)
         }
     }
-}
+};
 
 const checkDispute = decisions => {
     if (decisions.length < 3) {
@@ -64,62 +65,99 @@ const checkDispute = decisions => {
     }
 };
 
+const distribCommission = async (comSum, db_crypto) => {
+    try {
+        let comWallet = await CommissionWallet.findOne();
+
+        let comEscrow = (comSum / 2).toFixed(8);
+        let comSumTrustAndMaint = (comSum - comEscrow).toFixed(8);
+        let comTrust = (comSumTrustAndMaint / 100 * 80).toFixed(8);
+        let comMaintenance = (comSumTrustAndMaint - comTrust).toFixed(8);
+
+        comWallet.escrow.find(function (element) {
+            if (element.name === db_crypto.name.toLowerCase()){
+                element.amount = String(Number(element.amount) + Number(comEscrow));
+                return true;
+            }
+        });
+        comWallet.trust.find(function (element) {
+            if (element.name === db_crypto.name.toLowerCase()){
+                element.amount = String(Number(element.amount) + Number(comTrust));
+                return true;
+            }
+        });
+        comWallet.maintenance.find(function (element) {
+            if (element.name === db_crypto.name.toLowerCase()){
+                element.amount = String(Number(element.amount) + Number(comMaintenance));
+                return true;
+            }
+        });
+
+        await comWallet.save();
+        return true;
+    }
+    catch (err) {
+        console.log(err);
+        return false;
+    }
+};
+
 const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
+
     const from_user = await User.findById(from_id).populate('wallet');
     const to_user = await User.findById(to_id).populate('wallet');
 
     let db_crypto = await Crypto.findOne({$and: [{name: coin.toUpperCase()}, {active: true}]});
 
-    if (typeof db_crypto === undefined || db_crypto.length === 0){
+    if (!db_crypto){
         throw {succes: false, message: 'Wrong coin ' + coin};
     }
 
-    let count = 0;
-    let txData = null;
-    let receipt = null;
+    let comSum = (sum / 100 * 3).toFixed(8); //TODO Определять по decimals и отдельно для эфира примерно до 6 знаков
 
-    switch (db_crypto.typeMonet){
-        case 'erc20':
-            amount = sum * Math.pow(10, db_crypto.decimals);
-            const contract = new web3.eth.Contract(require('../abi/'+coin.toLowerCase()+'/Token.json'), db_crypto.address);
-            // transfer
-            count = await web3.eth.getTransactionCount(from_user.wallet.address);
-            // Choose gas price and gas limit based on what ethereum wallet was recommending for a similar transaction. You may need to change the gas price!
+    if (distribCommission(comSum, db_crypto)){
+        switch (db_crypto.typeMonet){
+            case 'erc20':
+                to_user.total.find(function (element) {
+                    if (element.name === db_crypto.name.toLowerCase()){
+                        element.amount = String((Number(element.amount) + Number(sum) - comSum).toFixed(8)); //do not use +=
+                        return true;
+                    }
+                });
+                from_user.total.find(function (element) {
+                    if (element.name === db_crypto.name.toLowerCase()){
+                        element.amount = String((Number(element.amount) - Number(sum)).toFixed(8));
+                        return true;
+                    }
+                });
+                from_user.holds[coin.toLowerCase()] -= parseFloat(sum);
+                from_user.markModified('holds.' + coin.toLowerCase());
 
-            txData = await web3.eth.accounts.signTransaction({
-                to: db_crypto.address,
-                gas: 110000,//gasLimit,
-                gasPrice: await web3.eth.getGasPrice(),
-                data: contract.methods.transfer(to_user.wallet.address, amount).encodeABI(),
-                nonce: count
-            }, from_user.wallet.privateKey);
-            receipt = await web3.eth.sendSignedTransaction(txData.rawTransaction);
-            from_user.holds[coin.toLowerCase()] -= parseFloat(sum);
-            from_user.markModified('holds.'+coin.toLowerCase());
-            await from_user.save();
-            return true;
-        case 'eth':
-            amount = web3.utils.toWei(sum, 'ether');
-            // transfer
-            count = await web3.eth.getTransactionCount(from_user.wallet.address);
-            // I chose gas price and gas limit based on what ethereum wallet was recommending for a similar transaction. You may need to change the gas price!
-            let gasLimit = await web3.eth.estimateGas({
-                nonce: count,
-                to: to_user.wallet.address,
-                value: amount
-            });
-            txData = await web3.eth.accounts.signTransaction({
-                to: to_user.wallet.address,
-                gas: gasLimit,
-                gasPrice: await web3.eth.getGasPrice(),
-                value: amount,
-                nonce: count
-            }, from_user.wallet.privateKey);
-            receipt = await web3.eth.sendSignedTransaction(txData.rawTransaction);
-            from_user.holds.eth -= parseFloat(sum);
-            from_user.markModified('holds.eth');
-            await from_user.save();
-            return true;
+                await to_user.save();
+                await from_user.save();
+
+                return true;
+            case 'eth':
+                to_user.total.find(function (element) {
+                    if (element.name === db_crypto.name.toLowerCase()){
+                        element.amount = String((Number(element.amount) + Number(sum) - comSum).toFixed(8)); //do not use +=
+                        return true;
+                    }
+                });
+                from_user.total.find(function (element) {
+                    if (element.name === db_crypto.name.toLowerCase()){
+                        element.amount = String((Number(element.amount) - Number(sum)).toFixed(8));
+                        return true;
+                    }
+                });
+                from_user.holds.eth -= parseFloat(sum);
+                from_user.markModified('holds.eth');
+
+                await to_user.save();
+                await from_user.save();
+
+                return true;
+        }
     }
 };
 
@@ -129,7 +167,9 @@ module.exports = (client, io) => {
     client.on('call_escrow', async data => {
         try {
             const deal = await getDealBydId(data.deal_id);
+
             if (deal && deal.status === 'accepted') {
+
                 const role = deal.getUserRole(client.decoded_token._id);
                 if (role) {
                     data.sender = client.decoded_token;
@@ -147,12 +187,12 @@ module.exports = (client, io) => {
                     deal.status = 'dispute';
                     deal.messages.push(message._id);
 
+
                     const escrows = await findEscrows(deal);
                     if (escrows.length > 0) {
                         const random = Math.floor(Math.random() * escrows.length);
                         let pichedID = escrows[random]._id;
                         deal.escrows.push({escrow: pichedID});
-                        console.log('pick escrow _id random: ' + pichedID);
                     }
                     await deal.save();
                     io.in(deal._id.toString()).emit('disputeOpened', data);
@@ -162,8 +202,7 @@ module.exports = (client, io) => {
                         deal: deal._id,
                         type: 'dispute',
                         text: "You need to resolve dispute"
-                    }
-                    console.log('pick escrow _id in notif: ' + notification.user);
+                    };
                     createAndSendNotification(notification, io);
                 }
             }

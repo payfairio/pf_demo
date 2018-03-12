@@ -8,6 +8,8 @@ const User = require('../db/models/User.js');
 const Crypto = require('../db/models/crypto/Crypto');
 const Price = require('../db/models/Price');
 
+const mainWallet = require('../config/mainWallet');
+
 const passport = require('passport');
 
 require('../config/passport')(passport);
@@ -17,72 +19,108 @@ module.exports = web3 => {
 
     router.post('/withdraw', passport.authenticate('jwt', {session: false}), async (req, res) => {
         try {
-            const toAddress = req.body.address;
+            let toAddress = req.body.address;
             let amount = req.body.amount;
             let balance = 0;
+            let balanceEthMainWallet =  await web3.eth.getBalance(mainWallet.mWallet.address);
             let count = 0;
             let txData = null;
             let receipt = null;
+            let gasPrice = await web3.eth.getGasPrice();
             const user = await User.findById(req.user._id).populate('wallet');
 
             //find coin in db Crypto
-            const coin = await Crypto.findOne({$and: [{name: req.body.currency.toUpperCase()}, {active: true}]});
+            let coin = await Crypto.findOne({$and: [{name: req.body.currency.toUpperCase()}, {active: true}]});
 
             if (coin === undefined || coin === null) {
                 return res.status(400).json({success: false, error: 'Wrong coin'});
             }
-            switch (coin.type) {
+
+            switch (coin.typeMonet) {
                 case 'erc20':
+                    //Minimum amount of transfer
+                    if (amount < 100){
+                        return res.status(400).json({
+                            success: false,
+                            error: 'Minimum transfer limit'
+                        });
+                    }
                     // get balance
-                    amount = amount * Math.pow(10, coin.decimals);
                     const contract = new web3.eth.Contract(require('../abi/'+coin.name.toLowerCase()+'/Token.json'), coin.address);
-                    balance = await contract.methods.balanceOf(user.wallet.address).call() - user.holds[coin.name.toLowerCase()] * Math.pow(10, coin.decimals);
-                    if (balance < amount) {
+                    let balanceCurrCoinMainWallet = await contract.methods.balanceOf(mainWallet.mWallet.address).call();
+                    user.total.find(function (element) {
+                        if (element.name === coin.name.toLowerCase()){
+                            balance = element.amount - user.holds[coin.name.toLowerCase()];
+                            if (balance > amount){
+                                element.amount = element.amount - Number(amount); //do not use '-="
+                            }
+                            return true;
+                        }
+                    });
+
+                    let balanceInWalletEth = user.total.find(function (element) {
+                        if (element.name === 'eth'){
+                            return true;
+                        }
+                    });
+                    let amountErc20 = amount * Math.pow(10, coin.decimals);
+                    let gasCurrCoin = await contract.methods.transfer(toAddress, amountErc20.toString()).estimateGas({from: mainWallet.mWallet.address}) * 3;
+                    if (balance < amount || Number(web3.utils.toWei(balanceInWalletEth.amount.toString(), 'ether')) < Number(gasCurrCoin)) {
                         return res.status(400).json({
                             success: false,
                             error: 'Not enough money'
                         });
                     }
+                    await user.save();
                     // transfer
-                    count = await web3.eth.getTransactionCount(user.wallet.address);
-                    // I choose gas price and gas limit based on what ethereum wallet was recommending for a similar transaction. You may need to change the gas price!
-
-                    txData = await web3.eth.accounts.signTransaction({
+                    count = await web3.eth.getTransactionCount(mainWallet.mWallet.address);
+                    let txDataErc20 = await web3.eth.accounts.signTransaction({
                         to: coin.address,
-                        gas: 110000,//gasLimit,
-                        gasPrice: await web3.eth.getGasPrice(),
-                        data: contract.methods.transfer(toAddress, amount).encodeABI(),
-                        nonce: count
-                    }, user.wallet.privateKey);
-                    receipt = await web3.eth.sendSignedTransaction(txData.rawTransaction);
+                        gas: gasCurrCoin.toString(),
+                        gasPrice: gasPrice.toString(),
+                        data: contract.methods.transfer(toAddress, amountErc20.toString()).encodeABI(),
+                        nonce: count,
+                    }, mainWallet.mWallet.privateKey);
+
+                    receipt = await web3.eth.sendSignedTransaction(txDataErc20.rawTransaction);
+
                     return res.json({
                         success: true,
                     });
                 case 'eth':
-                    // get balance
                     amount = web3.utils.toWei(amount, 'ether');
-                    balance = await web3.eth.getBalance(user.wallet.address) - web3.utils.toWei(user.holds.eth.toString(), 'ether');
-                    if (balance < amount) {
+                    user.total.find(function (element) {
+                        if (element.name === 'eth'){
+                            balance = web3.utils.toWei(element.amount.toString(), 'ether') - web3.utils.toWei(user.holds.eth.toString(), 'ether');
+                            if (balance > amount){
+                                element.amount = element.amount - web3.utils.fromWei(amount); //do not use '+="
+                            }
+                            return true;
+                        }
+                    });
+
+                    if (balance < amount || balance > balanceEthMainWallet) {
                         return res.status(400).json({
                             success: false,
                             error: 'Not enough money'
                         });
                     }
+                    await user.save();
                     // transfer
-                    count = await web3.eth.getTransactionCount(user.wallet.address);
-                    let gasLimit = await web3.eth.estimateGas({
-                        nonce: count,
-                        to: toAddress,
-                        value: amount
-                    });
+                    count = await web3.eth.getTransactionCount(mainWallet.mWallet.address);
+                    let gasLimit = await web3.eth.estimateGas({nonce: count, to: toAddress, value: amount});
+
                     let txData = await web3.eth.accounts.signTransaction({
                         to: toAddress,
-                        gas: gasLimit,
-                        gasPrice: await web3.eth.getGasPrice(),
-                        value: amount,
-                        nonce: count
-                    }, user.wallet.privateKey);
+                        gas: gasLimit.toString(),
+                        gasPrice: gasPrice,
+                        value: amount.toString(),
+                        nonce: count,
+                        chainId: 3
+                    }, mainWallet.mWallet.privateKey);
+
                     receipt = await web3.eth.sendSignedTransaction(txData.rawTransaction);
+
                     return res.json({
                         success: true,
                     });
@@ -108,7 +146,6 @@ module.exports = web3 => {
                 case 'trust':
                     let address = await User.findOne({$and: [{username: req.user.username}, {trustWallet: { $exists: true }}]}).populate('trustWallet').select({trustWallet: 1});
 
-                        //костыль
                         if (address === null){
                             user.status = "unverified";
                             await user.save();
@@ -127,7 +164,6 @@ module.exports = web3 => {
                                 error: 'wallet not found'
                             });
                         }
-                        //конец костыля
 
                         let db_pfr = await Crypto.findOne({$and: [{name: 'PFR'}, {active: true}]});
 
@@ -193,9 +229,6 @@ module.exports = web3 => {
                         });
                     }
 
-                    console.log('address', address);
-                    console.log('sig', sig);
-
                     let encrAddress = await web3.eth.accounts.recover(user.username, sig);
 
                     if (encrAddress.toLowerCase() === address){
@@ -260,14 +293,23 @@ module.exports = web3 => {
 
                 case 'escrow':
                     let db_pfr = await Crypto.findOne({$and: [{name: 'PFR'}, {active: true}]});
-                    let userWallet = await User.findById(req.user._id).select("-password").populate('wallet');
+                    /*let userWallet = await User.findById(req.user._id).select("-password").populate('wallet');
 
                     let contract = new web3.eth.Contract(require('../abi/' + db_pfr.name.toLowerCase() + '/Token.json'), db_pfr.address);
+                    let balance = await contract.methods.balanceOf(userWallet.wallet.address).call();
+                    let priceUSD = Math.pow(10, db_pfr.decimals) * priceCoin.value;*/
+
+                    let balance = 0;
+
+                    user.total.find(function (element) {
+                        if (element.name === 'pfr'){
+                            balance = element.amount;
+                        }
+                    });
 
                     let priceCoin = await Price.findOne({name: db_pfr.name});
-                    let balance = await contract.methods.balanceOf(userWallet.wallet.address).call();
-                    let priceUSD = Math.pow(10, db_pfr.decimals) * priceCoin.value;
-                    balance *= priceUSD;
+
+                    balance *= priceCoin.value;
 
                     if (balance >= 250){
                         user.statusEscrowBool = true;

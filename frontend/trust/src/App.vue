@@ -1,7 +1,8 @@
 <template>
     <div id="app">
         <div class="wrap">
-            <div class="demo-topbar">This is just a demo on the ropsten testnet. Please do not use this app for real trades. <a href="https://ropsten.etherscan.io">etherscan for ropsten</a></div>
+            <div class="demo-topbar">This is just a demo on the ropsten testnet. Please do not use this app for real trades. <a href="https://ropsten.etherscan.io">etherscan for ropsten</a> <br>
+                For technical reasons, replenishment of the balance is made once every 12 hours</div>
             <b-navbar toggleable="md" type="dark" variant="gray">
                 <b-navbar-brand :to="'/'"><img :src="$config.staticUrl+'/images/pfr_logo.svg'" alt="PayFair"></b-navbar-brand>
 
@@ -19,14 +20,12 @@
                                     <span>Currency</span>
                                     <span class="right">
                                         <span class="total">Total</span>
-                                        <span class="hold">(hold)</span>
                                     </span>
                                 </div>
                                 <div v-for="(value, name) in getBalances()" class="currency">
                                     <span>{{name}}</span>
                                     <span class="right">
                                         <span class="total">{{value.total}}</span>
-                                        <span class="hold">({{value.hold}})</span>
                                     </span>
                                 </div>
                             </div>
@@ -65,19 +64,19 @@
                                 <b-col sm="12">
                                     <div class="wel-inner text-center">
                                         <h3>Hello, {{$auth.user().username}}</h3>
-                                        <p>Your wallet doesn't have enough coins. Add a new wallet or top up the balance on the current one.</p>
+                                        <p>Your wallet doesn't have enough coins. Add a new wallet or top up the balance on your current one.</p>
 
-                                        <p style="font-weight: bolder">Go to the website <a href="https://www.myetherwallet.com/signmsg.html">https://www.myetherwallet.com/signmsg.html</a>  <br>
-                                            Enter your <a style="color: red">USERNAME</a> PayFair in the message window <br>
-                                            Confirm the wallet in a convenient way and sign the message<br>
-                                            Copy the "Signature" field and paste it into the "Signature" field in PayFair<br>
-                                            Click the "Check and add new wallet"<br>
-                                            If the wallet is signed correctly and there are enough coins (10000 PFR) on it, it will connect your profile</p>
+                                        <p style="font-weight: bolder">Go to the website <a href="https://www.myetherwallet.com/signmsg.html">https://www.myetherwallet.com/signmsg.html</a><br>
+                                            Unlock your wallet under "How would you like to access your wallet" <br>
+                                            Enter your PayFair <a style="color: red">USERNAME</a> in the Message window and click "Sign Message" <br>
+                                            Copy the "Signature" field and paste it into the "Signature" field below<br>
+                                            Click "Check and add new wallet"<br>
+                                            If the wallet is signed correctly and it contains enough PFR (10,000 PFR minimum), it will be connected your profile</p>
                                         <a style="color: red; font-weight: bolder">Use Ropsten accounts</a>
 
                                         <b-form @submit="addConfirmWallet">
                                             <b-form-group id="sigInputGroup" label="Signature" label-for="Signature">
-                                                <b-form-textarea placeholder="Here must be your signature" id="sig" :rows="8" v-model="textArea_form.text"></b-form-textarea>
+                                                <b-form-textarea placeholder="Paste your NEW signature here" id="sig" :rows="8" v-model="textArea_form.text"></b-form-textarea>
                                             </b-form-group>
 
                                             <b-button type="submit" variant="primary">
@@ -129,7 +128,6 @@
                     text:''
                 },
 
-                activateAllFunctions: true,
                 notification: '',
                 notifications: [],
                 showNotification: false,
@@ -241,17 +239,18 @@
                 const holds = this.$auth.user().holds;
                 for (var i in balances) {
                     this.balance[i].total = balances[i];
-                    this.balance[i].hold = holds[i];
                 }
             },
             getBalances: function () {
                 const balances = this.$auth.user().balances;
                 const holds = this.$auth.user().holds;
-                let balance = {};
-                for (var i in balances){
+                const balance = {};
+                for (let i in balances) {
+                    if (!balances.hasOwnProperty(i)) {
+                        continue;
+                    }
                     balance[i] = {};
                     balance[i].total = balances[i];
-                    balance[i].hold = holds[i];
                 }
                 return balance;
             },

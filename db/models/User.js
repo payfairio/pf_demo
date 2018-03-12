@@ -40,6 +40,19 @@ const User = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'ConfirmingWallet'
     },
+    total:[{
+        coin:{
+            type: Schema.Types.ObjectId,
+            ref: 'Crypto'
+        },
+        name:{
+            type: String
+        },
+        amount: {
+            type: String,
+            default: '0'
+        }
+    }],
     holds: {
         type: Object,
         default: {

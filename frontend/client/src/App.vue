@@ -1,7 +1,8 @@
 <template>
     <div id="app">
         <div class="wrap">
-            <div class="demo-topbar">This is just a demo on the ropsten testnet. Please do not use this app for real trades. <a href="https://ropsten.etherscan.io">etherscan for ropsten</a></div>
+            <div class="demo-topbar">This is just a demo on the ropsten testnet. Please do not use this app for real trades. <a href="https://ropsten.etherscan.io">etherscan for ropsten</a> <br>
+                For technical reasons, replenishment of the balance is made once every 12 hours</div>
             <b-navbar toggleable="md" type="dark" variant="gray">
                 <b-navbar-brand :to="'/'"><img :src="$config.staticUrl+'/images/pfr_logo.svg'" alt="PayFair"></b-navbar-brand>
 
@@ -150,8 +151,8 @@
                         <a href="https://idex.market/eth/pfr" target="_blank" class="bir_item item-1"><img :src="$config.staticUrl + '/images/bir/idex.jpg'" alt=""></a>
                         <a href="https://forkdelta.github.io/#!/trade/PFR-ETH " target="_blank" class="bir_item item-2"><img :src="$config.staticUrl + '/images/bir/forkdelta.jpg'" alt=""></a>
                         <a href="https://etherdelta.com/#PFR-ETH" target="_blank" class="bir_item item-3"><img :src="$config.staticUrl + '/images/bir/ether_delta.jpg'" alt=""></a>
-
-
+                        <a href="https://next.exchange/login#/tokenexchange/PFR" target="_blank" class="bir_item item-4"><img :src="$config.staticUrl + '/images/bir/NEXT.EXCHANGE_logo.jpg'" alt=""></a>
+                        <a href="https://ddex.io/trade/PFR-ETH" target="_blank" class="bir_item item-5"><img :src="$config.staticUrl + '/images/bir/DDEX_logo.jpg'" alt=""></a>
                     </div>
                 </b-col>
                 </b-row>

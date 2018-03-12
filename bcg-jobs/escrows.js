@@ -20,9 +20,8 @@ const sendNotification = async (notification, io) => {
 module.exports = io => {
     setInterval(async () => {
         try {
-            const deals = await Deal.find({
-                status: 'dispute'
-            });
+            const deals = await Deal.find({ status: 'dispute' }).sort({created_at: -1});
+
             deals.forEach(async (deal, index) => {
                 if (deal.escrows.length) {
                     let lastEscrow = deal.escrows[deal.escrows.length - 1];
