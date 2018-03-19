@@ -6,6 +6,8 @@ const Crypto = require('../db/models/crypto/Crypto');
 const User = require('../db/models/User');
 const CommissionWallet = require('../db/models/crypto/commissionWallet');
 
+const BigNumber = require('bignumber.js');
+
 const Web3 = require('web3');
 const web3 = new Web3(
     new Web3.providers.HttpProvider('https://ropsten.infura.io/')
@@ -66,27 +68,25 @@ const distribCommission = async (comSum, db_crypto) => {
     try{
         let comWallet = await CommissionWallet.findOne();
 
-        let comTrust = (comSum / 100 * 80).toFixed(8);
+        let comTrust = comSum.dividedBy(100).multipliedBy(80).decimalPlaces(8);
 
-        let comMaintenance = (comSum - comTrust).toFixed(8);
+        let comMaintenance = comSum.minus(comTrust);
 
         comWallet.trust.find(function (element) {
             if (element.name === db_crypto.name.toLowerCase()){
-                element.amount = String((Number(element.amount) + Number(comTrust)).toFixed(8)); //do not use +=
+                element.amount = new BigNumber(element.amount).plus(comTrust).toString(10);
                 return true;
             }
         });
 
         comWallet.maintenance.find(function (element) {
             if (element.name === db_crypto.name.toLowerCase()){
-                element.amount = String((Number(element.amount) + Number(comMaintenance)).toFixed(8)); //do not use +=
+                element.amount = new BigNumber(element.amount).plus(comMaintenance).toString(10);
                 return true;
             }
         });
 
         await comWallet.save();
-        console.log('comTrust',comTrust);
-        console.log('comMaintenance',comMaintenance);
         return true;
     }
     catch (err) {
@@ -97,56 +97,64 @@ const distribCommission = async (comSum, db_crypto) => {
 };
 
 const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
-    const from_user = await User.findById(from_id).populate('wallet');
-    const to_user = await User.findById(to_id).populate('wallet');
+    try {
+        const from_user = await User.findById(from_id).populate('wallet');
+        const to_user = await User.findById(to_id).populate('wallet');
 
-    let db_crypto = await Crypto.findOne({$and: [{name: coin.toUpperCase()}, {active: true}]});
+        let db_crypto = await Crypto.findOne({$and: [{name: coin.toUpperCase()}, {active: true}]});
 
-    if (!db_crypto){
-        throw {succes: false, message: 'Wrong coin ' + coin};
-    }
-
-    let comSum = (sum / 100).toFixed(8); //TODO Определять по decimals и отдельно для эфира
-
-    if (distribCommission(comSum, db_crypto)){
-        switch (db_crypto.typeMonet){
-            case 'erc20':
-                to_user.total.find(function (element) {
-                    if (element.name === db_crypto.name.toLowerCase()){
-                        element.amount = String((Number(element.amount) + Number(sum) - comSum).toFixed(8)); //do not use +=
-                        return true;
-                    }
-                });
-                from_user.total.find(function (element) {
-                    if (element.name === db_crypto.name.toLowerCase()){
-                        element.amount = String((Number(element.amount) - Number(sum)).toFixed(8)); //do not use +=
-                        return true;
-                    }
-                });
-                from_user.holds[coin.toLowerCase()] -= parseFloat(sum);
-                from_user.markModified('holds.'+coin.toLowerCase());
-                await to_user.save();
-                await from_user.save();
-                return true;
-            case 'eth':
-                to_user.total.find(function (element) {
-                    if (element.name === db_crypto.name.toLowerCase()){
-                        element.amount = String(Number(element.amount) + Number(sum) - comSum); //do not use +=
-                        return true;
-                    }
-                });
-                from_user.total.find(function (element) {
-                    if (element.name === db_crypto.name.toLowerCase()){
-                        element.amount = String(Number(element.amount) - Number(sum));
-                        return true;
-                    }
-                });
-                from_user.holds.eth -= parseFloat(sum);
-                from_user.markModified('holds.eth');
-                await to_user.save();
-                await from_user.save();
-                return true;
+        if (!db_crypto){
+            throw {success: false, message: 'Wrong coin ' + coin};
         }
+        
+        let sumBN = new BigNumber(sum).decimalPlaces(8);
+        let comSum = sumBN.dividedBy(100).decimalPlaces(8);
+
+
+        if (distribCommission(comSum, db_crypto)){
+            switch (db_crypto.typeMonet){
+                case 'erc20':
+                    to_user.total.find(function (element) {
+                        if (element.name === db_crypto.name.toLowerCase()){
+                            element.amount = new BigNumber(element.amount).plus(sumBN).minus(comSum).toString(10);
+                            return true;
+                        }
+                    });
+                    from_user.total.find(function (element) {
+                        if (element.name === db_crypto.name.toLowerCase()){
+                            element.amount = new BigNumber(element.amount).minus(sumBN).toString(10);
+                            return true;
+                        }
+                    });
+                    from_user.holds[coin.toLowerCase()] -= parseFloat(sum);
+                    from_user.markModified('holds.'+coin.toLowerCase());
+                    await to_user.save();
+                    await from_user.save();
+                    return true;
+                case 'eth':
+                    to_user.total.find(function (element) {
+                        if (element.name === db_crypto.name.toLowerCase()){
+                            element.amount = new BigNumber(element.amount).plus(sumBN).minus(comSum).toString(10);
+                            return true;
+                        }
+                    });
+                    from_user.total.find(function (element) {
+                        if (element.name === db_crypto.name.toLowerCase()){
+                            element.amount = new BigNumber(element.amount).minus(sumBN).toString(10);
+                            return true;
+                        }
+                    });
+                    from_user.holds.eth -= parseFloat(sum);
+                    from_user.markModified('holds.eth');
+                    await to_user.save();
+                    await from_user.save();
+                    return true;
+            }
+        }
+    }
+    catch (err) {
+        console.log(err);
+        return false;
     }
 };
 
@@ -243,14 +251,14 @@ module.exports = (client, io) => {
 
 
                 if (typeof db_crypto === undefined || db_crypto.length === 0){
-                    throw {succes: false, message: 'Wrong coin ' + coin};
+                    throw {success: false, message: 'Wrong coin ' + coin};
                 }
 
                 switch (db_crypto.typeMonet) { // check balances
                     case 'erc20':
                         buyer.total.find(function (element) {
                             if (element.name === db_crypto.name.toLowerCase()){
-                                if (element.amount - buyer.holds[coin] < deal.sum){
+                                if (new BigNumber(element.amount).minus(new BigNumber(buyer.holds[coin])).comparedTo(new BigNumber(deal.sum)) === -1){
                                     notEnoughMoney = true;
                                 }
                             }
@@ -260,7 +268,7 @@ module.exports = (client, io) => {
                     case 'eth':
                         buyer.total.find(function (element) {
                             if (element.name === db_crypto.name.toLowerCase()){
-                                if (element.amount - buyer.holds[coin] < deal.sum){
+                                if (new BigNumber(element.amount).minus(new BigNumber(buyer.holds[coin])).comparedTo(new BigNumber(deal.sum)) === -1){
                                     notEnoughMoney = true;
                                 }
                             }
@@ -439,7 +447,7 @@ module.exports = (client, io) => {
             const role = deal.getUserRole(client.decoded_token._id);
 
             if (role === 'buyer' && deal.status !== 'canceled') {
-                sendCoins(deal, deal.buyer._id, deal.seller._id, deal.sum.toString(), deal.coin);
+                await sendCoins(deal, deal.buyer._id, deal.seller._id, deal.sum.toString(), deal.coin);
 
                 data.sender = client.decoded_token;
                 data.created_at = new Date();

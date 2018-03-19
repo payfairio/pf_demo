@@ -11,6 +11,7 @@ const Price = require('../db/models/Price');
 const mainWallet = require('../config/mainWallet');
 
 const passport = require('passport');
+const BigNumber = require('bignumber.js');
 
 require('../config/passport')(passport);
 const jwt = require('jsonwebtoken');
@@ -19,113 +20,204 @@ module.exports = web3 => {
 
     router.post('/withdraw', passport.authenticate('jwt', {session: false}), async (req, res) => {
         try {
-            let toAddress = req.body.address;
-            let amount = req.body.amount;
-            let balance = 0;
-            let balanceEthMainWallet =  await web3.eth.getBalance(mainWallet.mWallet.address);
-            let count = 0;
-            let txData = null;
-            let receipt = null;
-            let gasPrice = await web3.eth.getGasPrice();
+            const toAddress = req.body.address;
+
+            if (!web3.utils.isAddress(toAddress)){
+                return res.status(400).json({success: false, error: 'Wrong address'});
+            }
+
+            if (req.body.amount.toString() === '')
+                return res.status(400).json({success: false, error: 'The value of the sum is not correct'});
+
+            const amount = new BigNumber(req.body.amount).decimalPlaces(8);
+            if (!BigNumber.isBigNumber(amount) || amount.isNaN()){
+                return res.status(400).json({success: false, error: 'The value of the sum is not correct'});
+            }
+
+            const coin = await Crypto.findOne({$and: [{name: req.body.currency.toUpperCase()}, {active: true}]});
             const user = await User.findById(req.user._id).populate('wallet');
 
-            //find coin in db Crypto
-            let coin = await Crypto.findOne({$and: [{name: req.body.currency.toUpperCase()}, {active: true}]});
+            let coinDecimal_Wei = null;
+            if (coin.typeMonet === 'erc20')
+                coinDecimal_Wei = new BigNumber('10').pow(coin.decimals);
 
-            if (coin === undefined || coin === null) {
-                return res.status(400).json({success: false, error: 'Wrong coin'});
-            }
+            let gasPrise = await web3.eth.getGasPrice();
 
+            let receipt = null;
+            let amountCoinUserInDB = new BigNumber('-1');
+            let amountCoinUserHoldInDB = new BigNumber(Infinity);
+            let amountEthInUserDB_wei = new BigNumber('-1');
+
+            let minimumTransactionErc20 = new BigNumber('0');
+
+            user.total.find(function (element) {
+                if (element.name === 'eth')
+                {
+                    amountEthInUserDB_wei = new BigNumber(web3.utils.toWei((element.amount), 'ether'));
+                    return true;
+                }
+            });
+
+            if (!coin || coin === undefined) return res.status(400).json({
+                success: false,
+                error: 'Coin not found'
+            });
             switch (coin.typeMonet) {
                 case 'erc20':
-                    //Minimum amount of transfer
-                    if (amount < 100){
-                        return res.status(400).json({
-                            success: false,
-                            error: 'Minimum transfer limit'
-                        });
-                    }
-                    // get balance
+
+                    //set minimum sum transaction erc20
+                    minimumTransactionErc20 = new BigNumber('99');
+                    if (amount.comparedTo(minimumTransactionErc20) === -1)
+                        return res.status(400).json({success: false, error: 'amount < minimum transfer limit'});
+
                     const contract = new web3.eth.Contract(require('../abi/'+coin.name.toLowerCase()+'/Token.json'), coin.address);
-                    let balanceCurrCoinMainWallet = await contract.methods.balanceOf(mainWallet.mWallet.address).call();
-                    user.total.find(function (element) {
-                        if (element.name === coin.name.toLowerCase()){
-                            balance = element.amount - user.holds[coin.name.toLowerCase()];
-                            if (balance > amount){
-                                element.amount = element.amount - Number(amount); //do not use '-="
-                            }
-                            return true;
-                        }
-                    });
 
-                    let balanceInWalletEth = user.total.find(function (element) {
-                        if (element.name === 'eth'){
+                    let amountCoinInMainWallet = new BigNumber(await contract.methods.balanceOf(mainWallet.mWallet.address).call()).dividedBy(coinDecimal_Wei);
+
+                    if (amount.comparedTo(amountCoinInMainWallet) === 1)
+                        return res.status(400).json({success: false, error: 'coin in main wallet < amount'});
+
+                    user.total.find(function (element) {
+                        if (element.name === coin.name.toLowerCase())
+                        {
+                            amountCoinUserInDB = new BigNumber(element.amount);
                             return true;
                         }
                     });
-                    let amountErc20 = amount * Math.pow(10, coin.decimals);
-                    let gasCurrCoin = await contract.methods.transfer(toAddress, amountErc20.toString()).estimateGas({from: mainWallet.mWallet.address}) * 3;
-                    if (balance < amount || Number(web3.utils.toWei(balanceInWalletEth.amount.toString(), 'ether')) < Number(gasCurrCoin)) {
+                    amountCoinUserHoldInDB = new BigNumber(user.holds[coin.name.toLowerCase()].toString());
+                    if (amountCoinUserInDB.minus(amountCoinUserHoldInDB).comparedTo(amount) === 1){
+
+                        let contractData = await contract.methods.transfer(toAddress, amount.multipliedBy(coinDecimal_Wei).toString(10));
+                        let coefReserveGas = new BigNumber('1.5', 10); // reserve gas for transfer coin  x1.5
+                        let amountGasForTransaction_token = new BigNumber(await contractData.estimateGas({from: mainWallet.mWallet.address})).multipliedBy(coefReserveGas);
+                        let amountEthForTransaction_token = amountGasForTransaction_token.multipliedBy(gasPrise);
+
+                        if (amountEthInUserDB_wei.comparedTo(amountEthForTransaction_token) === -1)
+                            return res.status(400).json({success: false, error: 'There is not enough ether for translation'});
+
+
+                        let txDataErc20 = await web3.eth.accounts.signTransaction({
+                            to: coin.address,
+                            gas: amountGasForTransaction_token.toString(10),
+                            gasPrice: gasPrise,
+                            data: contractData.encodeABI(),
+                        }, mainWallet.mWallet.privateKey);
+
+                        receipt = await web3.eth.sendSignedTransaction(txDataErc20.rawTransaction);
+                        //console.log(receipt.transactionHash);
+
+                        //save user
+                        user.total.find(function (element) {
+                            if (element.name === coin.name.toLowerCase()){
+                                element.amount = new BigNumber(element.amount).minus(amount);
+                                return true;
+                            }
+                        });
+                        user.total.find(function (element) {
+                            if (element.name === 'eth'){
+                                let amountEthForTransfer_token_fromWei = new BigNumber(web3.utils.fromWei(amountEthForTransaction_token.toString(10), 'ether'));
+                                element.amount = new BigNumber(element.amount).minus(amountEthForTransfer_token_fromWei);
+                                return true;
+                            }
+                        });
+
+                        user.save();
+
+                        //res success
+                        if (receipt.transactionHash){
+                            //return success
+                            return res.json({success: true});
+                        }
+                        else {
+                            return res.status(400).json({success: false, error: 'The transaction could not be completed.'});
+                        }
+                    }
+                    else {
                         return res.status(400).json({
                             success: false,
-                            error: 'Not enough money'
+                            error: 'Not enough coin'
                         });
                     }
-                    await user.save();
-                    // transfer
-                    count = await web3.eth.getTransactionCount(mainWallet.mWallet.address);
-                    let txDataErc20 = await web3.eth.accounts.signTransaction({
-                        to: coin.address,
-                        gas: gasCurrCoin.toString(),
-                        gasPrice: gasPrice.toString(),
-                        data: contract.methods.transfer(toAddress, amountErc20.toString()).encodeABI(),
-                        nonce: count,
-                    }, mainWallet.mWallet.privateKey);
 
-                    receipt = await web3.eth.sendSignedTransaction(txDataErc20.rawTransaction);
+                    break;
 
-                    return res.json({
-                        success: true,
-                    });
                 case 'eth':
-                    amount = web3.utils.toWei(amount, 'ether');
+                    //set minimum sum transaction eth
+                    minimumTransactionErc20 = new BigNumber('0.000099');
+                    if (amount.comparedTo(minimumTransactionErc20) === -1)
+                        return res.status(400).json({success: false, error: 'amount < minimum transfer limit'});
+
+                    let amount_wei = new BigNumber(web3.utils.toWei(amount.toString(10), 'ether'));
+
+                    let amountEthInMainWallet = await web3.eth.getBalance(mainWallet.mWallet.address);
+                    if (amount_wei.comparedTo(amountEthInMainWallet) === 1)
+                        return res.status(400).json({success: false, error: 'coin in main wallet < amount'});
+
                     user.total.find(function (element) {
-                        if (element.name === 'eth'){
-                            balance = web3.utils.toWei(element.amount.toString(), 'ether') - web3.utils.toWei(user.holds.eth.toString(), 'ether');
-                            if (balance > amount){
-                                element.amount = element.amount - web3.utils.fromWei(amount); //do not use '+="
-                            }
+                        if (element.name === coin.name.toLowerCase())
+                        {
+                            amountCoinUserInDB = new BigNumber(web3.utils.toWei(element.amount, 'ether'));
                             return true;
                         }
                     });
+                    amountCoinUserHoldInDB = new BigNumber(web3.utils.toWei(user.holds[coin.name.toLowerCase()].toString(), 'ether'));
 
-                    if (balance < amount || balance > balanceEthMainWallet) {
+
+                    let amountGasForTransaction_eth = new BigNumber(await web3.eth.estimateGas({to: toAddress, value: amount_wei}));
+                    let amountEthForTransaction_eth = amountGasForTransaction_eth.multipliedBy(gasPrise);
+
+                    if (amountCoinUserInDB.minus(amountEthForTransaction_eth).minus(amountCoinUserHoldInDB).comparedTo(amount_wei) === 1){
+
+                        let txData = await web3.eth.accounts.signTransaction({
+                            to: toAddress,
+                            gas: amountGasForTransaction_eth,
+                            gasPrice: gasPrise,
+                            value: amount_wei,
+                        }, mainWallet.mWallet.privateKey);
+
+                        receipt = await web3.eth.sendSignedTransaction(txData.rawTransaction);
+                        //console.log(receipt.transactionHash);
+
+                        //save user
+                        user.total.find(function (element) {
+                            if (element.name === coin.name.toLowerCase()){
+                                element.amount = web3.utils.fromWei(amountCoinUserInDB.minus(amountEthForTransaction_eth).minus(amount_wei).toString(10), 'ether');
+                                return true;
+                            }
+                        });
+
+                        user.save();
+
+                        //res success
+                        if (receipt.transactionHash){
+                            //return success
+                            return res.json({success: true});
+                        }
+                        else {
+                            return res.status(400).json({success: false, error: 'The transaction could not be completed.'});
+                        }
+                    }
+                    else {
                         return res.status(400).json({
                             success: false,
-                            error: 'Not enough money'
+                            error: 'Translation operation failed'
                         });
                     }
-                    await user.save();
-                    // transfer
-                    count = await web3.eth.getTransactionCount(mainWallet.mWallet.address);
-                    let gasLimit = await web3.eth.estimateGas({nonce: count, to: toAddress, value: amount});
 
-                    let txData = await web3.eth.accounts.signTransaction({
-                        to: toAddress,
-                        gas: gasLimit.toString(),
-                        gasPrice: gasPrice,
-                        value: amount.toString(),
-                        nonce: count,
-                        chainId: 3
-                    }, mainWallet.mWallet.privateKey);
+                    break;
 
-                    receipt = await web3.eth.sendSignedTransaction(txData.rawTransaction);
+                default:
+                    console.log('undefined type monet');
 
-                    return res.json({
-                        success: true,
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Undefined type monet'
                     });
+
+                    break;
             }
-        } catch (err) {
+        }
+        catch (err) {
             console.log(err);
             return res.status(500).json({
                 success: false,

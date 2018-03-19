@@ -7,6 +7,8 @@ const CommissionWallet = require('../db/models/crypto/commissionWallet');
 
 const strings = require('../config/strings');
 
+const BigNumber = require('bignumber.js');
+
 const getDealBydId = (dId) => {
     return Deal
         .findOne({dId: dId})
@@ -69,26 +71,29 @@ const distribCommission = async (comSum, db_crypto) => {
     try {
         let comWallet = await CommissionWallet.findOne();
 
-        let comEscrow = (comSum / 2).toFixed(8);
-        let comSumTrustAndMaint = (comSum - comEscrow).toFixed(8);
-        let comTrust = (comSumTrustAndMaint / 100 * 80).toFixed(8);
-        let comMaintenance = (comSumTrustAndMaint - comTrust).toFixed(8);
+        let comEscrow = comSum.dividedBy(2);
+
+        let comSumTrustAndMaint = comSum.minus(comEscrow);
+
+        let comTrust = comSumTrustAndMaint.dividedBy(100).multipliedBy(80);
+
+        let comMaintenance = comSumTrustAndMaint.minus(comTrust);
 
         comWallet.escrow.find(function (element) {
             if (element.name === db_crypto.name.toLowerCase()){
-                element.amount = String(Number(element.amount) + Number(comEscrow));
+                element.amount = new BigNumber(element.amount).plus(comEscrow).toString(10);
                 return true;
             }
         });
         comWallet.trust.find(function (element) {
             if (element.name === db_crypto.name.toLowerCase()){
-                element.amount = String(Number(element.amount) + Number(comTrust));
+                element.amount = new BigNumber(element.amount).plus(comTrust).toString(10);
                 return true;
             }
         });
         comWallet.maintenance.find(function (element) {
             if (element.name === db_crypto.name.toLowerCase()){
-                element.amount = String(Number(element.amount) + Number(comMaintenance));
+                element.amount = new BigNumber(element.amount).plus(comMaintenance).toString(10);
                 return true;
             }
         });
@@ -103,62 +108,69 @@ const distribCommission = async (comSum, db_crypto) => {
 };
 
 const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
+     try{
+         const from_user = await User.findById(from_id).populate('wallet');
+         const to_user = await User.findById(to_id).populate('wallet');
 
-    const from_user = await User.findById(from_id).populate('wallet');
-    const to_user = await User.findById(to_id).populate('wallet');
+         let db_crypto = await Crypto.findOne({$and: [{name: coin.toUpperCase()}, {active: true}]});
 
-    let db_crypto = await Crypto.findOne({$and: [{name: coin.toUpperCase()}, {active: true}]});
+         if (!db_crypto){
+             throw {success: false, message: 'Wrong coin ' + coin};
+         }
 
-    if (!db_crypto){
-        throw {succes: false, message: 'Wrong coin ' + coin};
-    }
+         let sumBN = new BigNumber(sum);
+         let comSum = sumBN.dividedBy(100).multipliedBy(3).decimalPlaces(8);
 
-    let comSum = (sum / 100 * 3).toFixed(8); //TODO Определять по decimals и отдельно для эфира примерно до 6 знаков
+         if (distribCommission(comSum, db_crypto)){
+             switch (db_crypto.typeMonet){
+                 case 'erc20':
+                     to_user.total.find(function (element) {
+                         if (element.name === db_crypto.name.toLowerCase()){
+                             element.amount = new BigNumber(element.amount).plus(sumBN).minus(comSum).toString(10);
+                             return true;
+                         }
+                     });
+                     from_user.total.find(function (element) {
+                         if (element.name === db_crypto.name.toLowerCase()){
+                             element.amount = new BigNumber(element.amount).minus(sumBN).toString(10);
+                             return true;
+                         }
+                     });
+                     from_user.holds[coin.toLowerCase()] -= parseFloat(sum);
+                     from_user.markModified('holds.' + coin.toLowerCase());
 
-    if (distribCommission(comSum, db_crypto)){
-        switch (db_crypto.typeMonet){
-            case 'erc20':
-                to_user.total.find(function (element) {
-                    if (element.name === db_crypto.name.toLowerCase()){
-                        element.amount = String((Number(element.amount) + Number(sum) - comSum).toFixed(8)); //do not use +=
-                        return true;
-                    }
-                });
-                from_user.total.find(function (element) {
-                    if (element.name === db_crypto.name.toLowerCase()){
-                        element.amount = String((Number(element.amount) - Number(sum)).toFixed(8));
-                        return true;
-                    }
-                });
-                from_user.holds[coin.toLowerCase()] -= parseFloat(sum);
-                from_user.markModified('holds.' + coin.toLowerCase());
+                     await to_user.save();
+                     await from_user.save();
 
-                await to_user.save();
-                await from_user.save();
+                     return true;
+                 case 'eth':
+                     to_user.total.find(function (element) {
+                         if (element.name === db_crypto.name.toLowerCase()){
+                             element.amount = new BigNumber(element.amount).plus(sumBN).minus(comSum).toString(10);
+                             return true;
+                         }
+                     });
+                     from_user.total.find(function (element) {
+                         if (element.name === db_crypto.name.toLowerCase()){
+                             element.amount = new BigNumber(element.amount).minus(sumBN).toString(10);
+                             return true;
+                         }
+                     });
+                     from_user.holds.eth -= parseFloat(sum);
+                     from_user.markModified('holds.eth');
 
-                return true;
-            case 'eth':
-                to_user.total.find(function (element) {
-                    if (element.name === db_crypto.name.toLowerCase()){
-                        element.amount = String((Number(element.amount) + Number(sum) - comSum).toFixed(8)); //do not use +=
-                        return true;
-                    }
-                });
-                from_user.total.find(function (element) {
-                    if (element.name === db_crypto.name.toLowerCase()){
-                        element.amount = String((Number(element.amount) - Number(sum)).toFixed(8));
-                        return true;
-                    }
-                });
-                from_user.holds.eth -= parseFloat(sum);
-                from_user.markModified('holds.eth');
+                     await to_user.save();
+                     await from_user.save();
 
-                await to_user.save();
-                await from_user.save();
+                     return true;
+             }
+         }
+     }
+     catch (err) {
+         console.log(err);
+         return false;
+     }
 
-                return true;
-        }
-    }
 };
 
 module.exports = (client, io) => {
@@ -223,10 +235,24 @@ module.exports = (client, io) => {
                         const decision = checkDispute(deal.escrows);
                         if (decision) {
                             if (decision === 'seller') {
-                                sendCoins(deal, deal.buyer._id, deal.seller._id, deal.sum.toString(), deal.coin);
+                                await sendCoins(deal, deal.buyer._id, deal.seller._id, deal.sum.toString(), deal.coin);
                             } else {
+                                let db_crypto = await Crypto.findOne({$and: [{name: coin.toUpperCase()}, {active: true}]});
                                 let user = await User.findById(deal.buyer._id);
-                                user.holds[deal.coin.toLowerCase()] -= deal.sum;
+
+                                let sumBN = new BigNumber(deal.sum);
+                                let comSum = sumBN.dividedBy(100).multipliedBy(3).decimalPlaces(8);
+
+                                await distribCommission(comSum, db_crypto);
+
+                                user.total.find(function (element) {
+                                    if (element.name === db_crypto.name.toLowerCase()){
+                                        element.amount = new BigNumber(element.amount).minus(comSum).toString(10);
+                                        return true;
+                                    }
+                                });
+
+                                user.holds[deal.coin.toLowerCase()] -= parseFloat(deal.sum);
                                 await user.save();
                             }
 

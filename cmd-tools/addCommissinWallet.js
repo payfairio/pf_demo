@@ -7,36 +7,37 @@ mongoose.connect(config.database, {
 
 const Cryptos = require('../db/models/crypto/Crypto');
 const ComWallet = require('../db/models/crypto/commissionWallet');
+const User = require('../db/models/User.js');
 
-const db_cryptos = Cryptos.find({});
+User.findOne({}).then(async function (user) {
+    let wal = await new ComWallet({trust:[], escrow: [], maintenance: []});
+    await wal.save();
+    console.log('wal',wal);
 
-async function createCommissionWallet() {
-    try {
-        let newWallet = await new ComWallet({});
-        await newWallet.save();
-        return true;
-    }
-    catch {
-        return false;
-    }
-}
+    ComWallet.findOne({}).then(async function (ComWallet) {
+        console.log('ComWallet',ComWallet);
+        const db_cryptos = await Cryptos.find({});
+        let arr = [];
+        for (let i in db_cryptos){
+            let currCoin = {
+                coin: db_cryptos[i],
+                name: db_cryptos[i].name.toLowerCase(),
+                amount: "0"
+            };
+            arr.push(currCoin);
+        }
+        console.log('arr',arr);
+        ComWallet.trust = arr;
+        ComWallet.escrow = arr;
+        ComWallet.maintenance = arr;
+        await ComWallet.save();
+        console.log("done! add commission wallet' \n");
+        process.exit();
 
-console.log(createCommissionWallet());
+    }).catch(function(err) {
+        console.log('Wal err',err);
+    });
 
-ComWallet.findOne({}).then(async function (ComWallet) {
-    for (let i in db_cryptos){
-        let currCoin = {
-            coin: db_cryptos[i],
-            name: db_cryptos[i].name.toLowerCase(),
-            amount: "0"
-        };
-        ComWallet.trust.push(currCoin);
-        ComWallet.escrow.push(currCoin);
-        ComWallet.maintenance.push(currCoin);
-    }
-    await wallet.save();
-    console.log("done! add commission wallet' \n");
-    process.exit();
 }).catch(function(err) {
-    console.log(err);
+    console.log('U err',err);
 });
