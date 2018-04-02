@@ -2,13 +2,16 @@
     <div id="app">
         <div class="wrap">
             <div class="demo-topbar">This is just demo on ropsten testnet. Don't use this app for real trades. <a href="https://ropsten.etherscan.io">etherscan for ropsten</a> <br>
-                For technical reasons, replenishment of the balance is made once every 12 hours</div>
+                Replenishment of the balance can be a delay of up to 3 hours.
+            </div>
             <b-navbar toggleable="md" type="dark" variant="gray">
                 <b-navbar-brand :to="'/'"><img :src="$config.staticUrl+'/images/pfr_logo.svg'" alt="PayFair"></b-navbar-brand>
 
                 <b-nav-toggle target="nav_collapse"></b-nav-toggle>
                 <b-collapse is-nav id="nav_collapse">
+                    <b-nav-item v-if="$auth.check()" :to="{name: 'disputes', path: '/'}">Disputes</b-nav-item>
                     <b-nav is-nav-bar class="ml-auto">
+
                         <b-nav-item-dropdown v-if="$auth.check() && $auth.user().statusEscrowBool === true" @click="showNotifications" @hide="markAllUnreadNotification" id="notifdown" class="ntf">
 
                             <template slot="button-content">
@@ -126,7 +129,7 @@
                             <b-row align-h="center">
                                 <b-col sm="12">
                                     <div class="wel-inner text-center">
-                                        <a style="font-weight: bolder">Please top up your account. There's not enough money on your wallet.</a>
+                                        <a style="font-weight: bolder">Your wallet does not contain enough Payfair Tokens to provide escrow services. You require $250</a>
                                     </div>
                                 </b-col>
                             </b-row>
@@ -251,7 +254,7 @@
                 this.$http.post('/wallet/addConfirmWallet').then( function (res) {
                 }, function (err) {
                     if (vm.$auth.check()) {
-                        vm.$swal('Warning', 'There is not enough money in your account to work with PF!', 'warning');
+                        vm.$swal('Warning', 'You require a minimum of $250 in your account to provide escrow services!', 'warning');
                     }
                 });
             },

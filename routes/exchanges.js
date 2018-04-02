@@ -10,7 +10,7 @@ const config = require('../config/database');
 require('../config/passport')(passport);
 const jwt = require('jsonwebtoken');
 
-
+const stringLodash = require('lodash/string');
 
 const validator = require('express-validator');
 
@@ -147,6 +147,27 @@ router.post('/edit/:id', passport.authenticate('jwt', { session: false}), (req, 
                 errorMessage: 'Wrong rate. Use only digits and one dot'
             }
         },
+        conditions:{
+            isLength: {
+                options: {
+                    max: 700
+                },
+                errorMessage: 'Too many characters (maximum 700)'
+            }
+        },
+        paymentTypeDetail:{
+            isLength: {
+                options: {
+                    max: 100
+                },
+                errorMessage: 'Too many characters (maximum 100)'
+            }
+        },
+        limits: {
+            checkRelation: {
+                errorMessage: 'The minimum value is greater than the maximum'
+            }
+        },
     });
     req.getValidationResult().then(result => {
         if (result.array().length > 0) {
@@ -164,10 +185,14 @@ router.post('/edit/:id', passport.authenticate('jwt', { session: false}), (req, 
             if (doc.owner.toString() !== req.user._id.toString()){
                 return res.status(403).json({error: "You can't edit this exchange"});
             }
+            if (doc.status !== 'active'){
+                return res.status(403).json({error: "You can't edit this exchange"});
+            }
 
-            doc.paymentTypeDetail = req.body.paymentTypeDetail;
+            doc.paymentTypeDetail = stringLodash.escape(req.body.paymentTypeDetail);
             doc.rate = req.body.rate;
-            doc.conditions = req.body.conditions;
+            doc.conditions = stringLodash.escape(req.body.conditions);
+            doc.limits = req.body.limits;
 
             return doc.save();
         }).then(doc => {
@@ -181,7 +206,7 @@ router.post('/edit/:id', passport.authenticate('jwt', { session: false}), (req, 
 router.get('/:id', function(req, res){
     Exchange
         .findOne({eId: req.params.id})
-        .populate('owner', ['-password', '-wallet'])
+        .populate('owner', ['_id', 'username'])
         .then(doc => {
             return new Promise((resolve, reject) => {
                 Review
@@ -207,9 +232,7 @@ router.get('/:id', function(req, res){
 });
 
 router.post('/create', passport.authenticate('jwt', {session: false}), (req, res) => {
-    Exchange.find({}, (err, docs) => {
-        console.log(docs);
-    });
+
     if (req.user.type !== 'client') {
         return res.status(403).json({error: "Forbidden"});
     }
@@ -221,12 +244,32 @@ router.post('/create', passport.authenticate('jwt', {session: false}), (req, res
         },
         coin: {
             notEmpty: {
-                errorMessage: 'Field is required'
+                errorMessage: 'Currency is required'
+            },
+            isIn: {
+                options: [['PFR', 'ETH', 'OMG']],
+                errorMessage: 'Wrong currency'
+            }
+        },
+        conditions:{
+            isLength: {
+                options: {
+                    max: 700
+                },
+                errorMessage: 'Too many characters (maximum 700)'
             }
         },
         paymentType: {
             notEmpty: {
                 errorMessage: 'Field is required'
+            }
+        },
+        paymentTypeDetail:{
+            isLength: {
+                options: {
+                    max: 100
+                },
+                errorMessage: 'Too many characters (maximum 100)'
             }
         },
         currency: {
@@ -245,7 +288,7 @@ router.post('/create', passport.authenticate('jwt', {session: false}), (req, res
         },
         limits: {
             checkRelation: {
-                errorMessage: 'minimum greater than maximum'
+                errorMessage: 'The minimum value is greater than the maximum'
             }
         }
     });
@@ -259,13 +302,13 @@ router.post('/create', passport.authenticate('jwt', {session: false}), (req, res
         let ex = {
             _id: new mongoose.Types.ObjectId(),
             owner: req.user._id,
-            tradeType: req.body.tradeType,
+            tradeType: stringLodash.escape(req.body.tradeType),
             coin: req.body.coin,
-            paymentType: req.body.paymentType,
-            paymentTypeDetail: req.body.paymentTypeDetail,
-            currency: req.body.currency,
+            paymentType: stringLodash.escape(req.body.paymentType),
+            paymentTypeDetail: stringLodash.escape(req.body.paymentTypeDetail),
+            currency: stringLodash.escape(req.body.currency),
             rate: req.body.rate,
-            conditions: req.body.conditions,
+            conditions: stringLodash.escape(req.body.conditions),
             limits: req.body.limits
         };
         new Exchange(ex).save()
@@ -279,11 +322,12 @@ router.post('/close', passport.authenticate('jwt', { session: false}), (req, res
         return res.status(403).json({error: "Forbidden"});
     }
     Exchange.findOne({
-        eId: req.body.id
+        eId: req.body.id, owner: req.user._id
     })
         .then(ex => {
             if (!ex){
-                throw {msg: "Exchange not found"};
+                return res.status(404).json({success: false, error: "Exchange not found"});
+                //throw {msg: "Exchange not found"};
             }
             if (ex.owner.toString() !== req.user._id.toString()){
                 throw {msg: "You don't have permissions"};

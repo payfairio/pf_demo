@@ -5,6 +5,7 @@ const User = require('../db/models/User.js');
 const Account = require('../db/models/crypto/Account.js');
 const CWallet = require('../db/models/ConfirmingWallet');
 
+const stringLodash = require('lodash/string');
 const mongoose = require('mongoose');
 const passport = require('passport');
 const config = require('../config/database');
@@ -19,6 +20,7 @@ const Review = require('../db/models/Review.js');
 const Deal = require('../db/models/Deal.js');
 const Notification = require('../db/models/Notification.js');
 const CryptoDB = require('../db/models/crypto/Crypto');
+const HistoryTransaction = require('../db/models/HistoryTransaction');
 
 // todo: set multer dest into memory storage for validate image width and height
 const upload = multer({dest: 'public/profile-pic', fileFilter: (req, file, cb) => {
@@ -31,6 +33,7 @@ const validator = require('express-validator');
 const hash = text => crypto.createHash('sha1').update(text).digest('base64');
 
 const createAccount = data => new Account(data).save();
+const createHistory = data => new HistoryTransaction(data).save();
 
 router.use(validator({
     customValidators: {
@@ -132,6 +135,17 @@ module.exports = web3 => {
                 })
                 .then(async user => {
                     // generate wallet (eth and erc20 only now)
+
+                    let db_cryptos = await CryptoDB.find({});
+
+                    for (let i in db_cryptos) {
+                        let currCoin = {
+                            coin: db_cryptos[i],
+                            name: db_cryptos[i].name.toLowerCase()
+                        };
+                        user.total.push(currCoin);
+                    }
+
                     let newAccount = web3.eth.accounts.create();
                     let account = await createAccount({
                         address: newAccount.address,
@@ -140,6 +154,14 @@ module.exports = web3 => {
                         owner: user._id
                     });
                     user.wallet = account._id;
+
+                    let historyTransactions = await createHistory({
+                        owner: user._id,
+                        outsidePlatform: [],
+                        inPlatform: []
+                    });
+                    user.historyTransaction = historyTransactions._id;
+
                     await user.save();
                     // generate jwt
                     let payload = {
@@ -147,6 +169,7 @@ module.exports = web3 => {
                         username: user.username,
                         email: user.email,
                         type: user.type,
+                        lastDateResetPassword: Date.now(),
                     };
                     let token = jwt.sign(payload, config.secret, {
                         expiresIn: 60 * 60 * 24 * 3 // expires in 3 days
@@ -196,6 +219,7 @@ module.exports = web3 => {
                         username: user.username,
                         email: user.email,
                         type: user.type,
+                        lastDateResetPassword: Date.now(),
                     };
                     let token = jwt.sign(payload, config.secret, {
                         expiresIn: 60 * 60 * 24 * 3 // expires in 3 days
@@ -218,6 +242,10 @@ module.exports = web3 => {
                 username: {
                     notEmpty: {
                         errorMessage: 'Username is required'
+                    },
+                    matches:{
+                        options: /^[a-zA-Z0-9_-]{3,15}$/i,
+                        errorMessage: 'Wrong username. The username must be at least 3 and not more than 15 characters. Use letters, digits, - , _ '
                     },
                     isUsernameAvailable: {
                         errorMessage: 'This username is already taken'
@@ -274,7 +302,8 @@ module.exports = web3 => {
                 username: req.body.username,
                 email: req.body.email,
                 password: hash(req.body.password),
-                type: req.body.type
+                type: req.body.type,
+                lastDateResetPassword: Date.now(),
             });
 
             for (let i in db_cryptos) {
@@ -302,6 +331,15 @@ module.exports = web3 => {
                 owner: user._id
             });
             user.wallet = account._id;
+
+            //create history transactions
+            let historyTransactions = await createHistory({
+                owner: user._id,
+                outsidePlatform: [],
+                inPlatform: []
+            });
+            user.historyTransaction = historyTransactions._id;
+
             await user.save();
 
             //generate trust Wallet
@@ -310,7 +348,7 @@ module.exports = web3 => {
                     address: null,
                 }).save();
 
-                user.trustWallet = TWallet;
+                user.trustWallet = TWallet._id;
                 await user.save();
             }
 
@@ -320,6 +358,7 @@ module.exports = web3 => {
                 username: user.username,
                 email: user.email,
                 type: user.type,
+                lastDateResetPassword: Date.now(),
             };
             let token = jwt.sign(payload, config.secret, {
                 expiresIn: 60 * 60 * 24 * 3 // expires in 3 days
@@ -384,19 +423,28 @@ module.exports = web3 => {
             if (doc.type === 'escrow'){
                 user.statusEscrowBool = doc.statusEscrowBool;
             }
+
+            if (doc.type === 'trust'){
+                let confWalletTrust = await CWallet.findOne({_id: doc.trustWallet});
+                if (confWalletTrust) {
+                    user.confirmingWallet = confWalletTrust;
+                }
+            }
+
             if (doc.status === 'unverified') {
                 user.type = 'unverified-user';
             }
+
             if (!user.profileImg) {
                 user.profileImg = config.backendUrl + '/images/default-user-img.png';
             } else {
                 user.profileImg = config.backendUrl + '/profile-pic/' + doc.profileImg;
             }
+
             user.balances = {};
             let db_crypto = await CryptoDB.find({active: true});
 
-            //TODO balance total
-            // coins balances
+            // balance total
             for (let i in db_crypto) {
                 let CoinName = db_crypto[i].name.toLowerCase();
                 doc.total.find(function (element) {
@@ -477,9 +525,6 @@ module.exports = web3 => {
         });
     });
 
-
-
-
     router.get('/user/:id', passport.authenticate('jwt', {session: false}), (req, res) => {
         User.findOne({
             _id: req.params.id
@@ -512,6 +557,7 @@ module.exports = web3 => {
             console.log(err);
         });
     });
+
     router.get('/user/:id/getreview', passport.authenticate('jwt', {session: false}), async (req, res) => {
         try {
             let {offset, limit, order, sortBy, type} = req.query;
@@ -538,6 +584,7 @@ module.exports = web3 => {
             return res.status(500).json(err);
         }
     });
+
     router.get('/sendVerify', passport.authenticate('jwt', {session: false}), function (req, res) {
         User
             .findOne({_id: req.user._id, status: 'unverified'})
@@ -588,6 +635,11 @@ module.exports = web3 => {
                         isEmail: {
                             errorMessage: 'Invalid email'
                         }
+                    },
+                    type: {
+                        notEmpty:{
+                            errorMessage: 'Type user error'
+                        },
                     }
                 });
 
@@ -598,7 +650,7 @@ module.exports = web3 => {
                 }
 
                 User
-                    .findOne({email: req.body.email}).then(user=>{
+                    .findOne({email: req.body.email, type: req.body.type}).then(user=>{
                         if (!user) return res.status(401).json({success: false, error: 'User not found'});
 
                         return user.sendMailReset();
@@ -611,7 +663,7 @@ module.exports = web3 => {
                 })
     });
 
-    router.get('/reset/:code', (req, res) => {
+    /*router.get('/reset/:code', (req, res) => {
         if (!req.params.code) {
             return res.status(404).json({success:false, error: {msg:'Empty reset code'}});
         }
@@ -628,9 +680,9 @@ module.exports = web3 => {
             .catch(err => {
                 return res.status(400).json({success: false, error: err});
             });
-    });
+    });*/
 
-    router.post('/reset/:code', (req, res) => {
+    /*router.post('/reset/:code', (req, res) => {
         if (!req.params.code) {
             return res.status(404).json({success:false, error: {msg:'Empty reset code'}});
         }
@@ -660,7 +712,7 @@ module.exports = web3 => {
                         msg: 'This session is not found'
                     };
                 }
-
+                user.lastDateResetPassword = Date.now();
                 user.password = hash(req.body.password);
                 user.changePwdCode = null;
                 return user.save();
@@ -668,7 +720,7 @@ module.exports = web3 => {
             .then(user => res.json({success: true}))
             .catch(err => res.status(400).json({success: false, error: err}));
         });
-    });
+    });*/
 
     router.get('/notifications', passport.authenticate('jwt', {session: false}), (req, res) => {
         Notification

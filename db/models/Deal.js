@@ -10,6 +10,14 @@ const Deal = new Schema({
         type: String, // 'custom', 'exchange'
         default: 'custom'
     },
+    rate: {
+        type: Number,
+        default: null,
+    },
+    currency:{
+        type: String,
+        default: null,
+    },
     name: {
         type: String,
         required: true

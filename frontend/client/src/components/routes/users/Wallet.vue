@@ -1,26 +1,6 @@
 <template>
     <div class="wallet">
         <div class="container">
-            <b-card v-if="false" header="History" id="history">
-
-                <b-table striped hover
-                         :items="getHistory"
-                         :fields="historyFields"
-                         :current-page="currentPage"
-                         :per-page="perPage"
-                         sort-by="created_at"
-                         :sort-desc="true"
-                >
-                    <template slot="created_at" slot-scope="row">{{row.value | date}}</template>
-                    <template slot="from" slot-scope="row">{{row.value}}</template>
-                    <template slot="comment" slot-scope="row">{{row.value}}</template>
-                    <template slot="amount" slot-scope="row">{{row.value}}</template>
-
-                </b-table>
-
-                <b-pagination :total-rows="totalRows" :per-page="perPage" v-model="currentPage"></b-pagination>
-
-            </b-card>
             <b-row>
                 <b-col md="4">
                     <b-card header="Your balance" class="currencies">
@@ -29,6 +9,15 @@
                             <span class="left">{{name.toUpperCase()}}</span><span class="right">{{count.total}} ({{count.hold}})</span>
                         </div>
                     </b-card>
+
+                    <b-card header="History" class="currencies">
+                        <div v-for="note in history" :class="'currency' + (note === active_currency ? ' active' : '')" @click="openHistory(note)">
+                            <span :style="note.charge ? 'color: green' : 'color: red'" class="left">{{note.amount}} {{note.coinName.toUpperCase()}}</span>
+                            <span v-if="!note.address && note.address !== null" class="right">{{note.charge ? `from ${note.fromUser}`  : `to ${note.toUser}`}}</span>
+                            <span v-else class="right">{{note.charge ? `received`  : `withdrawal`}}</span>
+                        </div>
+                    </b-card>
+                    <b-pagination :total-rows="totalRows" :per-page="perPage" v-model="currentPage" @input="getHistory" />
                 </b-col>
                 <b-col md="8">
                     <b-card :header="'Send ' + active_currency.toUpperCase()" class="send">
@@ -52,7 +41,32 @@
                 </b-col>
             </b-row>
         </div>
+
+        <b-modal v-model="historyModal" :title="activeHistory.charge ? 'Getting coins' : 'Transfer coins'">
+            <span style="font-weight: bold">{{activeHistory.date | moment("MMMM Do YYYY, HH:mm:ss")}}</span>
+            <div v-if="!activeHistory.address && activeHistory.address !== null">
+                <span class="left" v-if="activeHistory.charge">Received from <a style="font-weight: bold">{{activeHistory.fromUser}}</a> <br>
+                    <a style="color: green; font-weight: bold">{{activeHistory.amount}} {{activeHistory.coinName}}</a>
+                </span>
+                <span class="left" v-else>Transferred to <a style="font-weight: bold">{{activeHistory.toUser}}</a> <br>
+                    <a style="color: red; font-weight: bold">{{activeHistory.amount}} {{activeHistory.coinName}}</a>
+                </span>
+            </div>
+            <div v-else>
+                <span class="left" v-if="activeHistory.charge">Received <br>
+                    <a style="color: green; font-weight: bold">{{activeHistory.amount}} {{activeHistory.coinName}}</a>
+                </span>
+                <span class="left" v-else>Transferred to <a style="font-weight: bold">{{activeHistory.address}}</a> <br>
+                    <a style="color: red; font-weight: bold">{{activeHistory.amount}} {{activeHistory.coinName}}</a>
+                </span>
+            </div>
+            <div slot="modal-footer" class="w-100">
+                <b-btn size="sm" class="float-right" @click="historyModal = false">Cancel</b-btn>
+            </div>
+        </b-modal>
     </div>
+
+
 </template>
 <script>
     export default {
@@ -60,15 +74,11 @@
         data: () => {
             return {
                 errors: [],
+                history:[],
                 currentPage: 1,
-                perPage: 10,
+                perPage: 7,
                 totalRows: 0,
-                historyFields:{
-                    created_at: {label: 'Date', sortable: true},
-                    from: {label: 'From'},
-                    comment: {label: 'Comment'},
-                    amount: {label: 'Amount', sortable: true}
-                },
+
                 send_form:{
                     address: '',
                     amount: ''
@@ -77,10 +87,14 @@
                 balance: {},
                 address: '',
                 sending: false,
+
+                historyModal: false,
+                activeHistory: '',
             }
         },
         created: function(){
             this.updateBalance();
+            this.getHistory();
             const limit = Number.MAX_SAFE_INTEGER;
             /*
              this.$http.get(`/history?limit=${limit}&offset=0&sortBy=name&order=false`)
@@ -95,21 +109,38 @@
                 this.send_form.address = '';
                 this.send_form.amount = '';
             },
-            getHistory: function(ctx){
+            /*getHistory: function(ctx){
                 const limit = ctx.perPage;
                 const offset = (ctx.currentPage - 1) * ctx.perPage;
                 const sortBy = ctx.sortBy;
                 const order = ctx.sortDesc;
 
-                /*
                  let promise = this.$http.get(`/history?limit=${limit}&offset=${offset}&sortBy=${sortBy}&order=${order}`);
                  return promise.then(function (response) {
                  return(response.data || []);
                  }, function (err) {
                  return [];
                  });
-                 */
+            },*/
+            getHistory: function () {
+                const vm = this;
+
+                let offset = (vm.currentPage - 1) * vm.perPage;
+                let limit = offset + Number(vm.perPage);
+
+                this.$http.get(`/wallet/history?limit=${limit}&offset=${offset}`).then(res =>{
+                    this.history = res.data.history;
+                    this.totalRows = res.data.total;
+                }, err => {
+
+                })
             },
+
+            openHistory: function (note) {
+                this.historyModal = true;
+                this.activeHistory = note;
+            },
+
             sendSubmit: function(e){
                 e.preventDefault();
                 if (this.sending) {
@@ -154,6 +185,10 @@
 </script>
 
 <style scoped>
+    .currencies{
+        width: 100%;
+    }
+
     .currency-header{
         padding: 0 10px;
         font-size: 14px;

@@ -2,7 +2,8 @@
     <div id="app">
         <div class="wrap">
             <div class="demo-topbar">This is just a demo on the ropsten testnet. Please do not use this app for real trades. <a href="https://ropsten.etherscan.io">etherscan for ropsten</a> <br>
-                For technical reasons, replenishment of the balance is made once every 12 hours</div>
+                Replenishment of the balance can be a delay of up to 3 hours.
+            </div>
             <b-navbar toggleable="md" type="dark" variant="gray">
                 <b-navbar-brand :to="'/'"><img :src="$config.staticUrl+'/images/pfr_logo.svg'" alt="PayFair"></b-navbar-brand>
 
@@ -11,7 +12,7 @@
                     <b-nav is-nav-bar>
                         <b-nav-item :to="{name: 'exchanges'}" activeClass="">Buy/Sell coins</b-nav-item>
                         <b-nav-item v-if="$auth.check()" :to="{name: 'my-exchanges'}">Your exchange ads</b-nav-item>
-                        <b-nav-item v-if="$auth.check()" :to="{name: 'create-exchange'}">Post new trade ad</b-nav-item>
+                        <b-nav-item v-if="$auth.check()" :to="{name: 'create-exchange'}">Post a new trade</b-nav-item>
                         <b-nav-item v-if="$auth.check()" :to="{name: 'deals'}">Your deals</b-nav-item>
                     </b-nav>
 
@@ -413,6 +414,9 @@
                     case 'changeDealSum' : {
                         result = notification.sender.username + ' change deal sum to ' + notification.deal.sum + ' ' + notification.deal.coin + ' in deal ' + notification.deal.name
                     } break;
+                    case 'changeDealRate' : {
+                        result = notification.sender.username + ' change deal rate to ' + notification.deal.rate + ' ' + notification.deal.currency + ' in deal ' + notification.deal.name
+                    } break;
                     case 'dealCompleted' : {
                         result = notification.deal.name + ' was completed';
                     } break;
@@ -792,6 +796,7 @@
     }
     .notification-body {
         padding: 10px;
+        overflow-wrap: break-word;
     }
     .hide-notif {
         padding: 5px;

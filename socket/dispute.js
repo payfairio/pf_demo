@@ -4,6 +4,7 @@ const Notification = require('../db/models/Notification');
 const User = require('../db/models/User');
 const Crypto = require('../db/models/crypto/Crypto');
 const CommissionWallet = require('../db/models/crypto/commissionWallet');
+const HistoryTransaction = require('../db/models/HistoryTransaction');
 
 const strings = require('../config/strings');
 
@@ -142,6 +143,14 @@ const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
                      await to_user.save();
                      await from_user.save();
 
+                     await HistoryTransaction.update({owner: to_user._id}, {$push:{ inPlatform:
+                                 {fromUser: from_user.username, toUser:to_user.username, coinName: db_crypto.name.toLowerCase(), charge: true, amount: sumBN.minus(comSum).toString(10), dId: deal.dId}
+                         }});
+
+                     await HistoryTransaction.update({owner: from_user._id}, {$push:{ inPlatform:
+                                 {fromUser: from_user.username, toUser:to_user.username, coinName: db_crypto.name.toLowerCase(), charge: false, amount: sumBN.toString(10), dId: deal.dId}
+                         }});
+
                      return true;
                  case 'eth':
                      to_user.total.find(function (element) {
@@ -161,6 +170,14 @@ const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
 
                      await to_user.save();
                      await from_user.save();
+
+                     await HistoryTransaction.update({owner: to_user._id}, {$push:{ inPlatform:
+                                 {fromUser: from_user.username, toUser:to_user.username, coinName: db_crypto.name.toLowerCase(), charge: true, amount: sumBN.toString(10), dId: deal.dId}
+                         }});
+
+                     await HistoryTransaction.update({owner: from_user._id}, {$push:{ inPlatform:
+                                 {fromUser: from_user.username, toUser:to_user.username, coinName: db_crypto.name.toLowerCase(), charge: false, amount: sumBN.toString(10), dId: deal.dId}
+                         }});
 
                      return true;
              }

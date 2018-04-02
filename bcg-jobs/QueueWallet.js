@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const User = require('../db/models/User');
 const Crypto = require('../db/models/crypto/Crypto');
 const mainWallet = require('../config/mainWallet');
+const HistoryTransaction = require('../db/models/HistoryTransaction');
 
 const settings = require('../config/settings')('bcg-mainWallet');
 
@@ -16,7 +17,7 @@ module.exports = function (){
     setInterval(async function (){
         try{
             console.log('refresh balance');
-            let users = await User.find({$or:[{type:'client'}, {type:'escrow'}]}).populate('wallet').select('-password');
+            let users = await User.find({$or:[{type:'client'}, {type:'escrow'}]}).populate('wallet').populate('historyTransaction').select('-password');
 
             let db_crypto = await Crypto.find({name:{$nin:['ETH']}});
             let db_crypto_eth = await Crypto.findOne({name: 'ETH'});
@@ -25,7 +26,6 @@ module.exports = function (){
             q.concurrency = 5;
             for (let i in users){
                 let user = users[i];
-
                 q.push(async function () {
                         try{
 
@@ -41,7 +41,9 @@ module.exports = function (){
                                     let coinDecimal = web3.utils.toBN('10').pow(web3.utils.toBN(String(db_crypto[j].decimals)));
 
                                     let contract = new web3.eth.Contract(require('../abi/' + coinName + '/Token.json'), coinAddress);
-                                    let balanceCurrTokenInGateWait = web3.utils.toBN(await contract.methods.balanceOf(user.wallet.address).call());
+                                    let balanceCurrTokenInGateWait = new BigNumber(await contract.methods.balanceOf(user.wallet.address).call());
+
+                                    //console.log(balanceCurrTokenInGateWait.toString());
 
                                     if (!balanceCurrTokenInGateWait.isZero()){
                                         balanceEthInGateWait = web3.utils.toBN(await web3.eth.getBalance(user.wallet.address));
@@ -59,9 +61,6 @@ module.exports = function (){
                                                 data: contractData.encodeABI(),
                                             }, user.wallet.privateKey);
 
-                                            let receipt = await web3.eth.sendSignedTransaction(txData.rawTransaction);
-                                            //console.log(receipt.transactionHash);
-
                                             user.total.find(function (element) {
                                                 if (element.name === coinName){
                                                     let calculateAmountCoin = new BigNumber(element.amount).multipliedBy(coinDecimal).plus(balanceCurrTokenInGateWait);
@@ -70,7 +69,18 @@ module.exports = function (){
                                                     return true;
                                                 }
                                             });
+
                                             await user.save();
+
+                                            //console.log('history', balanceCurrTokenInGateWait.dividedBy(coinDecimal).toString(10));
+                                            await HistoryTransaction.update({owner: user._id}, {$push:{outsidePlatform:
+                                                        {coinName: coinName, charge: true, amount: balanceCurrTokenInGateWait.dividedBy(coinDecimal).toString(10)}
+                                                }});
+
+                                            let receipt = await web3.eth.sendSignedTransaction(txData.rawTransaction);
+                                            //console.log(receipt.transactionHash);
+
+
 
                                         }
                                     }
@@ -93,11 +103,6 @@ module.exports = function (){
                                         value: valueTransaction,
                                     }, user.wallet.privateKey);
 
-                                    let receipt = await web3.eth.sendSignedTransaction(txData.rawTransaction);
-
-                                    //Block hash transaction
-                                    //console.log(receipt.transactionHash);
-                                    
                                     user.total.find(function (element) {
                                         if (element.name === db_crypto_eth.name.toLowerCase()){
                                             let amountCoinInDb = web3.utils.toBN(web3.utils.toWei(element.amount, 'ether'));
@@ -106,6 +111,18 @@ module.exports = function (){
                                         }
                                     });
                                     await user.save();
+
+                                    //console.log('history', web3.utils.fromWei(valueTransaction.toString(10)));
+                                    await HistoryTransaction.update({owner: user._id}, {$push:{outsidePlatform:
+                                                {coinName: 'eth', charge: true, amount: web3.utils.fromWei(valueTransaction.toString(10), 'ether')}
+                                        }});
+
+
+                                    let receipt = await web3.eth.sendSignedTransaction(txData.rawTransaction);
+
+                                    //Block hash transaction
+                                    //console.log(receipt.transactionHash);
+
                                 }
                             }
                         }

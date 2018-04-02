@@ -5,8 +5,10 @@ const Notification = require('../db/models/Notification');
 const Crypto = require('../db/models/crypto/Crypto');
 const User = require('../db/models/User');
 const CommissionWallet = require('../db/models/crypto/commissionWallet');
+const HistoryTransaction = require('../db/models/HistoryTransaction');
 
 const BigNumber = require('bignumber.js');
+const stringLodash = require('lodash/string');
 
 const Web3 = require('web3');
 const web3 = new Web3(
@@ -128,8 +130,20 @@ const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
                     });
                     from_user.holds[coin.toLowerCase()] -= parseFloat(sum);
                     from_user.markModified('holds.'+coin.toLowerCase());
+
+                    await HistoryTransaction.update({owner: to_user._id}, {$push:{ inPlatform:
+                                {fromUser: from_user.username, toUser:to_user.username, coinName: db_crypto.name.toLowerCase(), charge: true, amount: sumBN.minus(comSum).toString(10), dId: deal.dId}
+                        }});
+
+                    await HistoryTransaction.update({owner: from_user._id}, {$push:{ inPlatform:
+                                {fromUser: from_user.username, toUser: to_user.username, coinName: db_crypto.name.toLowerCase(), charge: false, amount: sumBN.toString(10), dId: deal.dId}
+                        }});
+
                     await to_user.save();
                     await from_user.save();
+
+
+
                     return true;
                 case 'eth':
                     to_user.total.find(function (element) {
@@ -148,6 +162,14 @@ const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
                     from_user.markModified('holds.eth');
                     await to_user.save();
                     await from_user.save();
+
+                    await HistoryTransaction.update({owner: to_user._id}, {$push:{ inPlatform:
+                                {fromUser: from_user.username, toUser:to_user.username, coinName: db_crypto.name.toLowerCase(), charge: true, amount: sumBN.toString(10), dId: deal.dId}
+                        }});
+
+                    await HistoryTransaction.update({owner: from_user._id}, {$push:{ inPlatform:
+                                {fromUser: from_user.username, toUser:to_user.username, coinName: db_crypto.name.toLowerCase(), charge: false, amount: sumBN.toString(10), dId: deal.dId}
+                        }});
                     return true;
             }
         }
@@ -394,6 +416,64 @@ module.exports = (client, io) => {
         
     });
 
+    client.on('set_deal_rate', async data => {
+        try {
+
+            const deal = await getDealBydId(data.deal_id);
+
+            const role = deal.getUserRole(client.decoded_token._id);
+            if (deal && deal.type === 'exchange' && deal.status === 'new' && (/^([0-9]+[.])?[0-9]+$/i.test(data.rate)) && role) {
+                data.sender = client.decoded_token;
+                data.created_at = new Date();
+                data.type = 'system';
+
+                console.log(data.rate, deal.currency);
+
+                switch (role) {
+                    case 'seller':
+                        deal.acceptedByBuyer = false;
+                        break;
+                    case 'buyer':
+                        deal.acceptedBySeller = false;
+                        break;
+                }
+
+                //change rate
+                deal.rate = data.rate;
+
+                //TODO fix rate notifications
+                data.text = strings('deal_rate_changed', 'eng', {rate: deal.rate, currency: deal.currency});
+
+                const message = await new Message({
+                    sender: client.decoded_token._id,
+                    text: data.text,
+                    deal: deal._id,
+                    type: data.type
+                }).save();
+
+                deal.messages.push(message._id);
+
+
+                await deal.save();
+
+                io.in(deal._id.toString()).emit('changeDealRate', data);
+
+                const notification = {
+                    sender: client.decoded_token._id,
+                    user: role === 'seller' ? deal.buyer._id : deal.seller._id,
+                    deal: deal._id,
+                    type: 'changeDealRate',
+                    text: 'New rate:' + deal.rate,
+                };
+
+                createAndSendNotification(notification, io);
+            }
+        } catch (err) {
+            console.log('Sockets error (set_deal_rate): ', err)
+        }
+
+    });
+
     client.on('set_deal_condition', async data => {
         try {
             const deal = await getDealBydId(data.deal_id);
@@ -403,6 +483,7 @@ module.exports = (client, io) => {
                 data.sender = client.decoded_token;
                 data.created_at = new Date();
                 data.type = 'system';
+                data.conditions = stringLodash.escape(data.conditions);
                 data.text = strings('set_deal_condition', 'eng', {conditions: data.conditions});
                 switch (role) {
                     case 'seller':
@@ -494,7 +575,7 @@ module.exports = (client, io) => {
                 deal.status = 'canceled';
                 await deal.save();
 
-                io.in(deal._id.toString()).emit('dealCanseled', data);
+                io.in(deal._id.toString()).emit('dealCanceled', data);
 
                 const user = role === 'seller' ? deal.buyer._id : deal.seller._id;
 
@@ -502,7 +583,7 @@ module.exports = (client, io) => {
                     sender: client.decoded_token._id,
                     user: user,
                     deal: deal._id,
-                    type: 'dealCanseled',
+                    type: 'dealCanceled',
                     text: 'The deal was canceled',
                 };
 

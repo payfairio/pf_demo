@@ -6,6 +6,8 @@ const Deal = require('../db/models/Deal.js');
 const Exchange = require('../db/models/Exchange.js');
 const Notification = require('../db/models/Notification.js');
 
+const stringLodash = require('lodash/string');
+
 const mongoose = require('mongoose');
 const passport = require('passport');
 const config = require('../config/database');
@@ -179,10 +181,10 @@ module.exports = web3 => {
                         counterparty: {
                             $cond: {
                                 if: {
-                                    $eq: ['$seller.email', req.user.email]
+                                    $eq: ['$seller.username', req.user.username]
                                 },
-                                then: '$buyer.email',
-                                else: '$seller.email'
+                                then: '$buyer.username',
+                                else: '$seller.username'
                             }
                         },
                         counterparty_id: {
@@ -211,9 +213,8 @@ module.exports = web3 => {
             });
         });
     });
-    router.get('/dispute', passport.authenticate('jwt', {
-        session: false
-    }), (req, res) => {
+
+    router.get('/dispute', passport.authenticate('jwt', {session: false}), (req, res) => {
         if (req.user.type !== 'escrow') {
             return res.status(403).json({
                 error: "Forbidden"
@@ -279,9 +280,7 @@ module.exports = web3 => {
         });
     });
 
-    router.get('/deal/:id', passport.authenticate('jwt', {
-        session: false
-    }), (req, res) =>  {
+    router.get('/deal/:id', passport.authenticate('jwt', {session: false}), (req, res) =>  {
         Deal.findOne({
             dId: req.params.id
         }).populate('seller', ['-password', '-wallet']).populate('buyer', ['-password', '-wallet']).populate('messages')
@@ -302,9 +301,7 @@ module.exports = web3 => {
             });
     });
 
-    router.post('/create', passport.authenticate('jwt', {
-        session: false
-    }), (req, res) => {
+    router.post('/create', passport.authenticate('jwt', {session: false}), (req, res) => {
         if (req.user.type !== 'client') {
             return res.status(403).json({
                 error: "Forbidden"
@@ -339,9 +336,12 @@ module.exports = web3 => {
                     errorMessage: 'Counterparty email is invalid'
                 }
             },
-            conditions: {
-                notEmpty: {
-                    errorMessage: 'Please fill your conditions'
+            conditions:{
+                isLength: {
+                    options: {
+                        max: 700
+                    },
+                    errorMessage: 'Too many characters (maximum 700)'
                 }
             },
             sum: {
@@ -362,10 +362,7 @@ module.exports = web3 => {
                     msg: 'Bad request'
                 });
             }
-
-            User.findOne({
-                email: req.body.counterparty
-            }).then(doc => {
+            User.findOne({email: req.body.counterparty}).then(doc => {
                 return new Promise((resolve, reject) => {
                     if (!doc) { // create user with status 'invited'
                         new User({
@@ -401,18 +398,18 @@ module.exports = web3 => {
             }).then(user => {
                 let data = {
                     _id: new mongoose.Types.ObjectId(),
-                    name: req.body.name,
-                    sum: req.body.sum,
-                    coin: req.body.coin.toUpperCase()
+                    name: stringLodash.escape(req.body.name),
+                    sum: stringLodash.escape(req.body.sum),
+                    coin: stringLodash.escape(req.body.coin.toUpperCase())
                 };
                 if (req.body.role === 'seller') {
                     data.seller = req.user._id;
                     data.buyer = user._id;
-                    data.sellerConditions = req.body.conditions;
+                    data.sellerConditions = stringLodash.escape(req.body.conditions);
                 } else {
                     data.seller = user._id;
                     data.buyer = req.user._id;
-                    data.buyerConditions = req.body.conditions;
+                    data.buyerConditions = stringLodash.escape(req.body.conditions);
                 }
                 return new Deal(data).save();
             }).then(result => {
@@ -459,12 +456,7 @@ module.exports = web3 => {
         });
     });
 
-
-    router.post('/exchange', 
-        passport.authenticate('jwt', {
-            session: false
-        }), 
-        (req, res) => {
+    router.post('/exchange', passport.authenticate('jwt', {session: false}), (req, res) => {
             if (req.user.type !== 'client') {
                 return res.status(403).json({
                     error: "Forbidden"
@@ -508,7 +500,9 @@ module.exports = web3 => {
                             sum: req.body.sum,
                             coin: exchange.coin.toUpperCase(),
                             type: 'exchange',
-                            exchange: exchange._id
+                            exchange: exchange._id,
+                            rate: exchange.rate,
+                            currency: exchange.currency,
                         };
 
                         owner = exchange.owner;
@@ -556,15 +550,12 @@ module.exports = web3 => {
                     });
                 }
             )
-        }
-    );
+        });
 
-    router.post('/cancel/:id', passport.authenticate('jwt', {
-        session: false
-    }), (req, res) =>  {
+    router.post('/cancel/:id', passport.authenticate('jwt', {session: false}), (req, res) =>  {
         Deal.findOne({
             dId: req.params.id
-        }).populate('seller', ['-password', '-wallet']).populate('buyer', ['-password', '-wallet']).populate('messages')
+        }).populate('seller', ['_id', 'username']).populate('buyer', ['_id', 'username']).populate('messages')
             .then(doc => {
                 if (!doc) {
                     return res.status(404).json({
@@ -590,5 +581,6 @@ module.exports = web3 => {
                 return res.status(500).json(err);
             });
     });
+
     return router;
 };

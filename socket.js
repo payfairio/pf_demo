@@ -271,7 +271,7 @@ const getUsersFromRoom = (clients, room) => {
         }
     }
     return result;
-}
+};
 
 const createAndSendNotification = async (notification, io) => {
     notification = await new Notification(notification).save(); // create notification
@@ -286,7 +286,7 @@ const createAndSendNotification = async (notification, io) => {
             io.to(client).emit('notification', notification); // send notification to all clients (tabs)
         }
     }
-}
+};
 
 module.exports = (server, app) => {
     const io = require('socket.io')(server);
@@ -324,9 +324,9 @@ module.exports = (server, app) => {
         require('./socket/dispute')(client, io);
 
         client.on('join_chat',  data => {
-            Deal.findOne({dId: data.deal_id}).populate({path: 'messages', populate: [{path: 'sender', select: ['-password', '-wallet']}, {path: 'attachments'}]})
-                .populate({path: 'seller', select: ['-password', '-wallet']})
-                .populate({path: 'buyer', select: ['-password', '-wallet']})
+            Deal.findOne({dId: data.deal_id}).populate({path: 'messages', populate: [{path: 'sender', select: ['_id', 'username']}, {path: 'attachments'}]})
+                .populate({path: 'seller', select: ['_id', 'username']})
+                .populate({path: 'buyer', select: ['_id', 'username']})
                 .then (deal => {
                     if (!deal) {
                         return;
@@ -400,10 +400,12 @@ module.exports = (server, app) => {
 
         client.on('logout', () => {
             const logoutClients = clients[client.decoded_token._id];
+            console.log('logoutClients', logoutClients);
             if (logoutClients) {
                 for (let id of logoutClients) {
                     io.to(id).emit('refresh');
                 }
+
             }
         });
 

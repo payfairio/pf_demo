@@ -1,13 +1,14 @@
 <template>
     <div id="app">
         <div class="wrap">
-            <div class="demo-topbar">This is just a demo on the ropsten testnet. Please do not use this app for real trades. <a href="https://ropsten.etherscan.io">etherscan for ropsten</a> <br>
-                For technical reasons, replenishment of the balance is made once every 12 hours</div>
+            <div class="demo-topbar">This is just a demo on the ropsten testnet. Please do not use this app for real trades. <a href="https://ropsten.etherscan.io">etherscan for ropsten</a> </div>
             <b-navbar toggleable="md" type="dark" variant="gray">
                 <b-navbar-brand :to="'/'"><img :src="$config.staticUrl+'/images/pfr_logo.svg'" alt="PayFair"></b-navbar-brand>
 
                 <b-nav-toggle target="nav_collapse"></b-nav-toggle>
                 <b-collapse is-nav id="nav_collapse">
+                    <b-nav-item v-if="$auth.check()" :to="{name: 'suggestions', path: '/'}">Suggestions</b-nav-item>
+
                     <b-nav is-nav-bar class="ml-auto">
                         <b-nav-item v-if="false && $auth.check()" v-on:click="showNotifications" class="ntf"><span id="notify">{{this.notifications.length}}</span></b-nav-item>
 
@@ -91,7 +92,7 @@
 
                     <router-view></router-view>
                 </div>
-                <div class="container" v-if="!$auth.ready() || (!socketReady && $auth.check())">
+                <div v-if="!$auth.ready() || (!socketReady && $auth.check())">
                     Loading ...
                 </div>
             </div>
@@ -107,7 +108,7 @@
             </div>
         </footer>
 
-        <div class="loader-wrap" v-if="loading || (!$auth.ready() || (!socketReady && $auth.check()))">
+        <div class="loader-wrap" v-if="loading">
             <pulse-loader :loading="loading" ></pulse-loader>
         </div>
     </div>
@@ -124,6 +125,8 @@
 
         data: function () {
             return {
+                loading: false,
+
                 textArea_form:{
                     text:''
                 },
@@ -227,7 +230,7 @@
                 }
 
                 this.$http.post('/wallet/addConfirmWallet', {address: address, sig: sig}).then( function (res) {
-                    vm.$swal('Succes', 'success', 'success');
+                    vm.$swal('Succes', 'Your Payfair Trust node has been activated', 'success');
                 }, function (err) {
                     vm.$swal('Error', 'There was a problem verifying your wallet', 'error');
                     console.log(err);

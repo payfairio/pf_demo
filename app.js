@@ -53,6 +53,8 @@ app.use('/api/attachments', require('./routes/attachments'));
 app.use('/api/blog', require('./routes/blog')(sequelize));
 app.use('/api/coins', require('./routes/coins'));
 
+app.use('/resetPwd', require('./routes/resetPassword'));
+
 // catch 404 and forward to error handler
 app.use((req, res, next) => {
   let err = new Error('Not Found');

@@ -1,11 +1,26 @@
 <template>
     <div class="deal-window">
-        <div class="container">
+        <div class="container" v-if="$auth.user().username === deal.seller.username || $auth.user().username === deal.buyer.username">
             <h1>{{deal.name}}</h1>
-            <div class="deal-info">
-                Status: {{deal.status}} <br>
-                Sum: <b>{{deal.sum}}{{deal.coin.toUpperCase()}}</b> <button class="btn btn-sm btn-primary" v-if="deal.status === 'new'" @click="changeSumClick">change</button>
-            </div>
+            <b-row>
+                <b-col md="3">
+                    <div>
+                        Status: {{deal.status}} <br>
+                        Sum: <b>{{deal.sum}} {{deal.coin.toUpperCase()}}</b> <br>
+                        <button class="btn btn-sm btn-primary" v-if="deal.status === 'new'" @click="changeSumClick">Change sum</button>
+                    </div>
+                    <div v-if = "deal.type === 'exchange'">
+                        Rate: <b>{{+deal.rate}} {{deal.currency}}</b> <br>
+                        <button class="btn btn-sm btn-primary" v-if="deal.status === 'new'" @click="changeRateClick">Change rate</button>
+                    </div>
+                </b-col>
+                <b-col md="6" v-if="deal.type === 'exchange'">
+                    <div>
+                        Total sum of the deal ≈ {{+deal.sum.toFixed(8)}} ({{deal.coin.toUpperCase()}}) * {{+deal.rate.toFixed(2)}} ({{deal.currency}}) ≈ <b>{{+(deal.sum * deal.rate).toFixed(8)}}</b> ({{deal.currency}}) <br>
+                        Commission ≈ <b>{{+(deal.sum / 100).toFixed(8)}}</b> ({{deal.coin.toUpperCase()}})<br>
+                    </div>
+                </b-col>
+            </b-row>
             <hr>
             <b-row>
                 <b-col md="3">
@@ -96,7 +111,7 @@
                 </b-col>
                 <b-col md="3">
                     <div class="profile-card">
-                        Counterparty: <router-link v-if="counterparty._id" :to="{name: 'user-by-id', params: {id: counterparty._id}}">{{counterparty.username ? counterparty.username : counterparty.email}}</router-link><br>
+                        Counterparty: <router-link v-if="counterparty._id" :to="{name: 'user-by-id', params: {id: counterparty._id}}">{{counterparty.username ? counterparty.username : 'hidden'}}</router-link><br>
                         Role: {{counterPartyRole}}<br>
                         <img :src="counterparty.profileImg">
                         <!-- <div class="rating">
@@ -171,17 +186,29 @@
         
         <!-- Modal Sum Component -->
         <b-modal v-model="sumModal" :title="'Deal sum'">
-            <p>Current sum: {{deal.sum}}ETH</p>
+            <p>Current sum: {{deal.sum}} {{deal.coin.toUpperCase()}}</p>
             <b-form-input type="number" step="any" v-model="editedSum"></b-form-input>
             <div slot="modal-footer" class="w-100">
                 <b-btn size="sm" class="float-right" @click="submitSum" variant="success">Save</b-btn>
                 <b-btn size="sm" class="float-right" @click="sumModal = false">Cancel</b-btn>
             </div>
         </b-modal>
+
+        <!-- Modal Rate Component -->
+        <b-modal v-model="rateModal" :title="'Deal rate'">
+            <p>Current rate: {{deal.rate}} {{deal.currency}}</p>
+            <b-form-input type="number" step="any" v-model="editedRate"></b-form-input>
+            <div slot="modal-footer" class="w-100">
+                <b-btn size="sm" class="float-right" @click="submitRate" variant="success">Save</b-btn>
+                <b-btn size="sm" class="float-right" @click="rateModal = false">Cancel</b-btn>
+            </div>
+        </b-modal>
     </div>
 </template>
+
 <script>
     export default {
+
         name: 'Deal',
         props: ['id'],
         created: function () {
@@ -208,17 +235,21 @@
                 deal: {
                     _id: '',
                     name: '',
-                    sum: '',
-                    status: '', // статус сделки, новая, подтверждены условия/в процессе, завершенная, спорная
+                    sum: 0,
+                    status: '', // статус сделки, новая, подтверждены условия/в процессе, завершенная, спорная, отменена
                     acceptedBySeller: false,
                     acceptedByBuyer: false,
-                    seller: null,
-                    buyer: null,
-                    coin: 'PFR'
+                    seller: '',
+                    buyer: '',
+                    coin: 'PFR',
+                    rate: 0,
+                    type: '', //exchange, custom
+                    currency: 0,
                 },
                 form: {
                     text: ''
                 },
+                rateModal: false,
                 sumModal: false,
                 conditionsModal: false,
                 /*sellerConditions:{
@@ -232,6 +263,7 @@
                     editedText: ''
                 },
                 editedSum: 0,
+                editedRate: 0,
                 conditionsEdition: false,
                 // files upload
                 chunkSize: 1024 * 100,
@@ -259,6 +291,10 @@
                 }
                 this.counterparty = data.counterparty;
                 this.deal = data.deal;
+                if ((!this.deal.sum || !this.deal.rate) && this.deal.type === 'exchange'){
+                    this.deal.sum = 0;
+                    this.deal.rate = 0;
+                }
                 if (!this.counterparty.profileImg) {
                     this.counterparty.profileImg = this.$config.staticUrl+'/images/default-user-img.png';
                 } else {
@@ -287,9 +323,14 @@
                 // reset data
                 this.$socket.emit('leave_chat', {deal_id: this.id});
                 this.$socket.emit('join_chat', {deal_id: this.id});
-                this.$swal('Success', 'Deal sum changed. But it must be accepted by your counterparty', 'success');
+                this.$swal('Success', 'Deal sum changed.', 'success');
             },
-
+            changeDealRate: function (data) {
+                // reset data
+                this.$socket.emit('leave_chat', {deal_id: this.id});
+                this.$socket.emit('join_chat', {deal_id: this.id});
+                this.$swal('Success', 'Deal rate changed.', 'success');
+            },
             dealConditionsAcceptedWithNotice: function () {
                 this.$socket.emit('leave_chat', {deal_id: this.id});
                 this.$socket.emit('join_chat', {deal_id: this.id});
@@ -341,11 +382,11 @@
 
             },
 
-            dealCanseled: function (data) {
+            dealCanceled: function (data) {
                 // reset data
                 this.$socket.emit('leave_chat', {deal_id: this.id});
                 this.$socket.emit('join_chat', {deal_id: this.id});
-                this.$swal('Warning', 'Deal canseled', 'warning');
+                this.$swal('Warning', 'Deal cancelled', 'warning');
             }
         },
         computed: {
@@ -499,7 +540,7 @@
             },
             submitSum: function () {
                 const vm = this;
-                if (confirm('Are you sure that you want to change deal sum')) {
+                if (confirm('Are you sure that you want to change deal SUM')) {
                     let data = {
                         deal_id: vm.id,
                         sum: vm.editedSum
@@ -509,6 +550,24 @@
 
                 }
             },
+
+            changeRateClick: function () {
+                this.rateModal = true;
+                this.editedRate = this.deal.rate;
+            },
+            submitRate: function () {
+                const vm = this;
+                if (confirm('Are you sure that you want to change deal RATE')) {
+                    let data = {
+                        deal_id: vm.id,
+                        rate: vm.editedRate
+                    };
+                    vm.$socket.emit('set_deal_rate', data);
+                    vm.rateModal = false;
+
+                }
+            },
+
             //
             acceptDeal: function () {
                 const vm = this;
@@ -783,6 +842,9 @@
         margin-left:5px;
     }
 
+    .deal-info {
+
+    }
 
     .img-deal {
         max-width: 70%;
@@ -801,6 +863,9 @@
     }
     .buy-sel-conditions .btn-sm{
         margin-top: 5px;
+    }
+    .buy-sel-conditions p {
+        overflow-wrap: break-word;
     }
     .rating span{
         display: none;

@@ -24,7 +24,7 @@
                             <b-form-input 
                                 id="sum" 
                                 step="any" 
-                                v-model="sum" 
+                                v-model="sum"
                                 :state="isValid('sum')"
                             >
                             </b-form-input>
@@ -63,6 +63,16 @@
                         </div>
                         <b-pagination :total-rows="totalRows" :per-page="perPage" v-model="currentPage" @input="getReview" />
                     </b-card>
+                </b-col>
+            </b-row>
+            <b-row>
+                <b-col sm="12" md="7">
+                </b-col>
+
+                <b-col sm="12" md="5">
+                    <div class="wel-inner text-center">
+                        <a style="font-weight: bolder; font-size: large">Total sum of the deal = {{+(sum * rate).toFixed(8)}}</a>
+                    </div>
                 </b-col>
             </b-row>
         </div>
@@ -122,7 +132,6 @@ export default {
                 vm.status = exch.status;
                 vm.tradeType = exch.tradeType;
                 vm.paymentTypeDetail = exch.paymentTypeDetail;
-
                 vm.reviews = response.data.reviews;
                 if (vm.reviews.length > 0){
                     for (let i in vm.reviews){

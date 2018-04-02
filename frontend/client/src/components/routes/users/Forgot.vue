@@ -85,7 +85,7 @@
                 const vm = this;
                 e.preventDefault();
                 vm.errorMsg = '';
-                vm.$http.post('/users/reset/', {email: vm.form.email}).then(function (response) {
+                vm.$http.post('/users/reset/', {email: vm.form.email, type: 'client'}).then(function (response) {
                     vm.$swal('Success', 'Check your email', 'success');
                 }).catch(function (err) {
                     if (err.response.status === 400) {

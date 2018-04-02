@@ -186,8 +186,8 @@
                     .get('/users/notifications')
                     .then(function (response) {
                     vm.notifications = response.data;
-                    vm.uncheckedNotifications = 0;
-                    vm.notifications.map((n) => !n.viewed ? vm.uncheckedNotifications++ : false);
+                    //vm.uncheckedNotifications = 0;
+                    //vm.notifications.map((n) => !n.viewed ? vm.uncheckedNotifications++ : false);
                 }, function (err) {
                     console.log(err);
                 });

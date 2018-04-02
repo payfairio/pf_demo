@@ -7,11 +7,13 @@ const CWallet = require('../db/models/ConfirmingWallet');
 const User = require('../db/models/User.js');
 const Crypto = require('../db/models/crypto/Crypto');
 const Price = require('../db/models/Price');
+const HistoryTransaction = require('../db/models/HistoryTransaction');
 
 const mainWallet = require('../config/mainWallet');
 
 const passport = require('passport');
 const BigNumber = require('bignumber.js');
+
 
 require('../config/passport')(passport);
 const jwt = require('jsonwebtoken');
@@ -103,13 +105,10 @@ module.exports = web3 => {
                             data: contractData.encodeABI(),
                         }, mainWallet.mWallet.privateKey);
 
-                        receipt = await web3.eth.sendSignedTransaction(txDataErc20.rawTransaction);
-                        //console.log(receipt.transactionHash);
-
                         //save user
                         user.total.find(function (element) {
                             if (element.name === coin.name.toLowerCase()){
-                                element.amount = new BigNumber(element.amount).minus(amount);
+                                element.amount = new BigNumber(element.amount).minus(amount).toString(10);
                                 return true;
                             }
                         });
@@ -121,7 +120,16 @@ module.exports = web3 => {
                             }
                         });
 
-                        user.save();
+                        await user.save();
+
+                        await HistoryTransaction.update({owner: user._id}, {$push:{outsidePlatform:
+                                    {coinName: coin.name.toLowerCase(), charge: false, amount: amount.toString(10), address: toAddress}
+                            }});
+
+                        receipt = await web3.eth.sendSignedTransaction(txDataErc20.rawTransaction);
+                        //console.log(receipt.transactionHash);
+
+
 
                         //res success
                         if (receipt.transactionHash){
@@ -175,10 +183,6 @@ module.exports = web3 => {
                             value: amount_wei,
                         }, mainWallet.mWallet.privateKey);
 
-                        receipt = await web3.eth.sendSignedTransaction(txData.rawTransaction);
-                        //console.log(receipt.transactionHash);
-
-                        //save user
                         user.total.find(function (element) {
                             if (element.name === coin.name.toLowerCase()){
                                 element.amount = web3.utils.fromWei(amountCoinUserInDB.minus(amountEthForTransaction_eth).minus(amount_wei).toString(10), 'ether');
@@ -186,7 +190,19 @@ module.exports = web3 => {
                             }
                         });
 
-                        user.save();
+                        await user.save();
+
+                        await HistoryTransaction.update({owner: user._id}, {$push:{outsidePlatform:
+                                    {coinName: 'eth', charge: false, amount: web3.utils.fromWei(amount_wei.toString(10), 'ether'), address: toAddress}
+                        }});
+
+                        receipt = await web3.eth.sendSignedTransaction(txData.rawTransaction);
+                        //console.log(receipt.transactionHash);
+
+                        //save user
+
+
+
 
                         //res success
                         if (receipt.transactionHash){
@@ -401,6 +417,7 @@ module.exports = web3 => {
 
                     let priceCoin = await Price.findOne({name: db_pfr.name});
 
+
                     balance *= priceCoin.value;
 
                     if (balance >= 250){
@@ -434,6 +451,43 @@ module.exports = web3 => {
         }
         catch (err){
             console.log('err /addConfirmWallet: '+ err);
+            return res.status(500).json({
+                success: false,
+                error: err
+            });
+        }
+    });
+
+    router.get('/history', passport.authenticate('jwt', {session: false}), async (req, res) => {
+        try {
+            let {offset, limit} = req.query;
+
+            let allHistory = await HistoryTransaction.aggregate(
+                { $match: {owner: req.user._id}},
+                { $project: {items: { $concatArrays: [ "$inPlatform", "$outsidePlatform" ] } } },
+            );
+
+            let total = allHistory[0].items.length;
+
+            allHistory = allHistory[0].items.sort((a,b) => {return new Date(b.date) - new Date(a.date)}).slice(offset, limit);
+
+            /*console.log(offset, limit);
+            console.log('allHistory', allHistory);
+            console.log('countHistory', total);*/
+
+            if (allHistory) {
+
+
+                return res.json({total: total ,history: allHistory});
+            }
+            else {
+                return res.status(404).json({
+                    success: false,
+                    error: 'History not found'
+                });
+            }
+        }
+        catch (err){
             return res.status(500).json({
                 success: false,
                 error: err

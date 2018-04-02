@@ -27,7 +27,7 @@ Vue.use(VueBreadcrumbs);
 Vue.router = router;
 
 Vue.use(VueAxios, axios);
-Vue.axios.defaults.baseURL = config.backendUrl;  // todo: вынести в настройки
+Vue.axios.defaults.baseURL = config.backendUrl;
 //Vue.use(BootstrapVue);
 // костыль до обновы бутстрап-вью
 let originalVueComponent = Vue.component;

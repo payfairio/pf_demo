@@ -61,6 +61,10 @@ const User = new Schema({
             omg: 0
         }
     },
+    historyTransaction:{
+        type: Schema.Types.ObjectId,
+        ref: 'HistoryTransaction'
+    },
     online: {
         status: {
             type: Boolean,
@@ -76,7 +80,10 @@ const User = new Schema({
     },
     changePwdCode: {
         type: String
-    }
+    },
+    lastDateResetPassword:{
+        type: Date,
+    },
 });
 
 
@@ -145,11 +152,13 @@ User.methods.sendMailReset = function () {
     const _user = this;
     return new Promise(function (resolve, reject) {
         let resetCode = crypto.createHash('md5').update(Date.now+'_'+_user._id).digest("hex");
+
         const url = _user.type === 'client'
             ? config.frontUrl 
             : _user.type === 'escrow'
                 ? config.escrowUrl
                 : config.trustUrl;
+
         return mailClient.transmissions.send({
             options: {
                 transactional: true
@@ -158,7 +167,7 @@ User.methods.sendMailReset = function () {
                 from: 'noreply@mail.payfair.io',
                 subject: 'Reset password',
                 html: '<html><body>'+
-                '<p>Follow by <a href="' + url + '/reset/' + resetCode + '">link</a> for password reset</p>' +
+                '<p>Follow by <a href="' + config.backendUrl + '/resetPwd/' + resetCode + '">link</a> for password reset</p>' +
                 '</body></html>'
             },
             recipients: [

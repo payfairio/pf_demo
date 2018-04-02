@@ -43,6 +43,7 @@
                             <b-button v-if="balance[active_currency] != 0" type="submit" variant="primary">Send</b-button> <span v-if="sending"><img :src="$config.staticUrl+'/images/loading.gif'"> Transaction pending</span>
                         </b-form>
                     </b-card>
+
                 </b-col>
             </b-row>
 
@@ -64,6 +65,7 @@
 
                 <b-col md="8">
                     <b-card :header="'Specify a new wallet'" class="send">
+                        <pre>Your signed wallet: {{confirmingWallet}}</pre>
                         <b-form @submit="addConfirmWallet">
                             <b-form-group id="sigInputGroup" label="Signature" label-for="Signature">
                                 <b-form-textarea id="sig" placeholder="Here must be your signature" :rows="8" v-model="textArea_form.text"></b-form-textarea>
@@ -104,6 +106,7 @@ export default {
                 amount: ''
             },
 
+            confirmingWallet: 'Not specified',
             active_currency: 'pfr',
             balance: {},
             address: '',
@@ -181,7 +184,7 @@ export default {
                 }
             }
             this.$http.post('/wallet/addConfirmWallet', {address: address, sig: sig}).then( function (res) {
-                vm.$swal('Succes', 'success', 'success');
+                vm.$swal('Succes', 'Your Payfair Trust node has been activated', 'success');
                 vm.textArea_form.text = '';
             }, function (err) {
                 vm.$swal('Error', 'There was a problem verifying your wallet', 'error');
@@ -190,16 +193,18 @@ export default {
         },
 
         updateBalance: function () {
-            const balances = this.$auth.user().balances;
-            const holds = this.$auth.user().holds;
+            let currUser = this.$auth.user();
+
+            const balances = currUser.balances;
+            const holds = currUser.holds;
             for (let i in balances) {
                 if (!this.balance.hasOwnProperty(i)) {
                     this.balance[i] = {};
                 }
                 this.balance[i].total = balances[i];
             }
-
-            this.address = this.$auth.user().address;
+            this.confirmingWallet = currUser.confirmingWallet.address;
+            this.address = currUser.address;
         },
         isValid: function (key) {
             return this.errors.hasOwnProperty(key) ? 'invalid' : '';

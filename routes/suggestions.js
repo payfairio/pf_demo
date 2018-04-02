@@ -107,7 +107,8 @@ router.post('/create', passport.authenticate('jwt', {session: false}), (req, res
             }
 
             Suggestions.find({
-                status: statuses[0]
+                status: statuses[0],
+                author: req.user._id,
             }).then(docs => {
                 if (docs.length >= max_suggestion_per_user){
                     throw {e_code: 400, msg: "You can have only " + max_suggestion_per_user + " active suggestions"};

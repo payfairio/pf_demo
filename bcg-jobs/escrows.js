@@ -37,7 +37,7 @@ module.exports = io => {
                             return escrow.escrow;
                         });
 
-                        let escrows = await User.find({ // find escrows not in deal
+                        let escrows = await User.find({// find escrows not in deal
                             $and: [
                                 {type: 'escrow'},
                                 {_id: {$nin: used_ids}}
@@ -77,4 +77,4 @@ module.exports = io => {
             console.log(err);
         }
     }, 1000 * settings.time_to_check);
-}
+};

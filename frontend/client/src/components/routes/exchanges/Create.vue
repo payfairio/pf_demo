@@ -1,9 +1,9 @@
 <template>
     <div class="exchange">
-        <div class="container">
-            <b-row align-h="center">
+        <div class="container" v-if="form.owner.username === $auth.user().username || manage === false">
+            <b-row  align-h="center">
                 <b-col sm="12" md="9">
-                    <b-card :header="manage ? 'Exchange #'+id : 'Create new exchange advertisment'"
+                    <b-card :header="manage ? 'Exchange #'+id : 'Create a new exchange advertisement'"
                             align="left">
                         <b-alert variant="danger"
                                  dismissible
@@ -14,10 +14,10 @@
                         <b-form @submit="onSubmit">
                             <b-row>
                                 <b-col sm="12">
-                                   <h4>Trade type: {{manage ? form.tradeType : ''}}</h4>
+                                   <h4>Trade type: {{manage ? form.tradeType : '' }}</h4>
                                     <b-form-radio-group v-if="!manage" name="tradeType" v-model="form.tradeType">
-                                        <b-form-radio value="sell">Sell your coins</b-form-radio>
-                                        <b-form-radio value="buy">Buy coins</b-form-radio>
+                                        <b-form-radio value="sell">Sell Coins</b-form-radio>
+                                        <b-form-radio value="buy">Buy Coins</b-form-radio>
                                     </b-form-radio-group>
                                     <hr>
                                 </b-col>
@@ -78,8 +78,8 @@
                                     </b-form-group>
                                 </b-col>
                             </b-row>
-                            <b-button type="submit" variant="primary">{{manage ? 'Edit' : 'Create'}}</b-button>
-                            <b-button v-if="manage" :disabled="(form.status == 'closed')" variant="danger" @click="closeExch">Close</b-button>
+                            <b-button type="submit"  variant="primary" :disabled="(form.status === 'closed')">{{manage ? 'Edit' : 'Create'}}</b-button>
+                            <b-button v-if="manage" :disabled="(form.status === 'closed')" variant="danger" @click="closeExch">Close</b-button>
                         </b-form>
                     </b-card>
                 </b-col>
@@ -93,6 +93,7 @@
         props: ['id'],
         data: function () {
             return {
+                userExchange: this.$props.id,
                 manage: !!this.$props.id,
                 form: {
                     tradeType: '',
@@ -103,9 +104,11 @@
                     rate: 0,
                     conditions: '',
                     limits: {
-                        min: 5,
-                        max: 1,
-                    }
+                        min: 1,
+                        max: 10,
+                    },
+                    status: '',
+                    owner: ''
                 },
                 coinVariants: [],
                 paymentVariants: [
@@ -160,9 +163,10 @@
                 vm.errorMsg = '';
                 if (this.manage){
                     let exch = {
-                        paymentTypeDetail: this.form.paymentTypeDetail,
-                        rate: this.form.rate,
-                        conditions: this.form.conditions,
+                        paymentTypeDetail: vm.form.paymentTypeDetail,
+                        rate: vm.form.rate,
+                        conditions: vm.form.conditions,
+                        limits: vm.form.limits,
                     };
 
                     this.$http.post('/exchanges/edit/' + this.id, exch).then(response => {
