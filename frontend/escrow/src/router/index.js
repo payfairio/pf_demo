@@ -4,6 +4,7 @@ import Router from 'vue-router'
 import Login from '@/components/routes/users/Login'
 import Register from '@/components/routes/users/Register'
 
+import View_all_notifications from '@/components/routes/users/View_all_notifications'
 
 import Profile from '@/components/routes/users/Profile'
 
@@ -107,6 +108,15 @@ export default new Router({
             path: '/reset/:code',
             name: 'resetPasswordCode',
             component: ResetPassword,
+            props: true
+        },
+        {
+            path: '/view_all_notifications',
+            name: 'view_all_notifications',
+            meta: {
+                auth: true
+            },
+            component: View_all_notifications,
             props: true
         },
     ]

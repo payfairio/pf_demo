@@ -4,7 +4,7 @@
         <h1 v-else>You have {{ notifications.length }} notifications</h1>
         <ul id="list_notifications">
             <li class="new_item" v-for="notification in notifications" v-if="!notification.viewed">
-                <b-dropdown-item  v-bind:key="notification._id" @click="$router.push({name: 'deal', params: {id: notification.deal.dId}})">
+                <b-dropdown-item  v-bind:key="notification._id" @click="$router.push({name: 'dispute', params: {id: notification.deal.dId}})">
                         <div  :class="'title new'">
                         {{getNotificationTitle(notification)}}
                         <div class="time">
@@ -18,7 +18,7 @@
                 </b-dropdown-item>
             </li>
             <li v-for="notification in notifications" v-if="notification.viewed">
-                <div  v-bind:key="notification._id" @click="$router.push({name: 'deal', params: {id: notification.deal.dId}})">
+                <div  v-bind:key="notification._id" @click="$router.push({name: 'dispute', params: {id: notification.deal.dId}})">
                     <div  :class="'title'">
                         {{getNotificationTitle(notification)}}
                         <div class="time">
@@ -50,54 +50,37 @@
                 date = new Date(date);
                 return new Date().toLocaleDateString() === date.toLocaleDateString();
             },
-
             getNotifications: function () {
                 const vm = this;
                 this.$http
                     .get('/users/notifications')
                     .then(function (response) {
-                    vm.notifications = response.data;
-                    //vm.uncheckedNotifications = 0;
-                    //vm.notifications.map((n) => !n.viewed ? vm.uncheckedNotifications++ : false);
-                }, function (err) {
-                    console.log(err);
-                });
+                        vm.notifications = response.data;
+                        vm.uncheckedNotifications = 0;
+                        vm.notifications.map((n) => !n.viewed ? vm.uncheckedNotifications++ : false);
+                    }, function (err) {
+                        console.log(err);
+                    });
             },
             getNotificationTitle: function (notification) {
                 let titles = {
-                    newDeal: 'New deal',
+                    dispute: "New Dispute",
                     message: 'New message',
-                    dealFromExchange: 'New deal',
-                    changeDealConditions: 'New conditions',
-                    dealConditionsAccepted: 'Conditions accepted',
-                    changeDealSum: 'Deal sum changed',
-                    dealCompleted: 'Deal completed'
+                    disputeTimesOut: 'Times out'
                 };
                 return titles[notification.type];
             },
             getNotificationText: function (notification) {
                 let result = '';
                 switch (notification.type) {
-                    case 'newDeal' : {
-                        result = 'You have new deal: ' + notification.deal.name
+                    case 'dispute': {
+                        result = `You need to resolve dispute in deal: ${notification.deal.name}`
                     } break;
                     case 'message' : {
                         result = 'You have ' + notification.notifications + ' unread messages in deal ' + notification.deal.name
                     } break;
-                    case 'dealFromExchange' : {
-                        result = notification.sender.username + ' responded to your ' + notification.deal.exchange.tradeType +' - ' + notification.deal.name
-                    } break;
-                    case 'changeDealConditions' : {
-                        result = notification.sender.username + ' changed conditions in deal ' + notification.deal.name
-                    } break;
-                    case 'dealConditionsAccepted' : {
-                        result = notification.sender.username + ' accepted conditions in deal ' + notification.deal.name
-                    } break;
-                    case 'changeDealSum' : {
-                        result = notification.sender.username + ' change deal sum to ' + notification.deal.sum + ' ' + notification.deal.coin + ' in deal ' + notification.deal.name
-                    } break;
-                    case 'dealCompleted' : {
-                        result = notification.deal.name + ' was completed';
+                    case 'disputeTimesOut': {
+                        result = `Times to resolve dispute is out in deal: ${notification.deal.name}`
                     } break;
                 }
                 return result;

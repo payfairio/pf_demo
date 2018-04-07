@@ -65,7 +65,7 @@
 
                 <b-col md="8">
                     <b-card :header="'Specify a new wallet'" class="send">
-                        <pre>Your signed wallet: {{confirmingWallet}}</pre>
+                        <pre>Your signed wallet: {{trustWallet}}</pre>
                         <b-form @submit="addConfirmWallet">
                             <b-form-group id="sigInputGroup" label="Signature" label-for="Signature">
                                 <b-form-textarea id="sig" placeholder="Here must be your signature" :rows="8" v-model="textArea_form.text"></b-form-textarea>
@@ -106,7 +106,7 @@ export default {
                 amount: ''
             },
 
-            confirmingWallet: 'Not specified',
+            trustWallet: 'Not specified',
             active_currency: 'pfr',
             balance: {},
             address: '',
@@ -203,7 +203,7 @@ export default {
                 }
                 this.balance[i].total = balances[i];
             }
-            this.confirmingWallet = currUser.confirmingWallet.address;
+            this.trustWallet = currUser.trustWallet.address;
             this.address = currUser.address;
         },
         isValid: function (key) {

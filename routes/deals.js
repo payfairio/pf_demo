@@ -5,6 +5,7 @@ const User = require('../db/models/User.js');
 const Deal = require('../db/models/Deal.js');
 const Exchange = require('../db/models/Exchange.js');
 const Notification = require('../db/models/Notification.js');
+const Price = require('../db/models/Price.js');
 
 const stringLodash = require('lodash/string');
 
@@ -212,6 +213,50 @@ module.exports = web3 => {
                 return res.json(error);
             });
         });
+    });
+
+    router.get('/stats', passport.authenticate('jwt', { session: false }), async (req, res) => {
+        try {
+            if (req.user.type !== 'trust' || req.user.status !== 'active'){
+                return res.status(403).json({success: false, message: 'Access denied'});
+            }
+
+            const deals = await Deal.find().sort({ created_at: 1 });
+            const price = await Price.find();
+
+            let iter = 0;
+            let hr24 = [];
+            let all = [];
+            let sum = 0;
+            let volume = 0;
+            for (let deal of deals) {
+                if (deal.status === "completed") {
+                    let value = price.find(function (element) {
+                        return (element.name.toUpperCase() === deal.coin.toUpperCase());
+                    }).value;
+
+                    let temp = { coin: deal.coin, sum: deal.sum, volume: deal.sum * value };
+                    if (new Date(deal.created_at) > new Date(new Date().getTime() - (1000 * 60 * 60 * 24 * 1))) {
+                        hr24.push(temp);
+                    }
+                    if (new Date(deal.created_at) > new Date(new Date().getTime() - (1000 * 60 * 60 * 24 * (1 + iter)))) {
+                        sum += deal.sum;
+                        volume += deal.sum * value;
+                    } else {
+                        iter++;
+                        all.push({ sum: sum, volume: volume });
+                        sum = deal.sum;
+                        volume = deal.sum * value;
+                    }
+                }
+            }
+            all.push({ sum: sum, volume: volume });
+
+            return res.json({ hr24: hr24, all: all });
+        } catch (err) {
+            console.log(err);
+            return res.status(500).json(err);
+        }
     });
 
     router.get('/dispute', passport.authenticate('jwt', {session: false}), (req, res) => {

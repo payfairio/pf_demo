@@ -244,7 +244,7 @@ module.exports = web3 => {
 
     router.post('/checkWallet', passport.authenticate('jwt', {session: false}), async (req, res) => {
         try {
-            let user = await User.findOne({username: req.user.username}).select("-password");
+            let user = await User.findOne({username: req.user.username}).populate('trustWallet').select("-password");
 
             if (user.length === 0 || user === undefined || user === null){
                 throw {};
@@ -252,9 +252,8 @@ module.exports = web3 => {
 
             switch (user.type){
                 case 'trust':
-                    let address = await User.findOne({$and: [{username: req.user.username}, {trustWallet: { $exists: true }}]}).populate('trustWallet').select({trustWallet: 1});
 
-                        if (address === null){
+                        if (user.trustWallet === '' || user.trustWallet === undefined) {
                             user.status = "unverified";
                             await user.save();
 
@@ -263,25 +262,26 @@ module.exports = web3 => {
                                 error: 'wallet not found'
                             });
                         }
-                        else if (address.trustWallet === null) {
-                            user.status = "unverified";
-                            await user.save();
 
-                            return res.status(400).json({
-                                success: false,
-                                error: 'wallet not found'
-                            });
-                        }
+                        let trustWallet = await CWallet.findOne({_id: user.trustWallet});
 
                         let db_pfr = await Crypto.findOne({$and: [{name: 'PFR'}, {active: true}]});
 
+                        let coinDecimal = new BigNumber('10').pow(db_pfr.decimals);
+
                         let contract = new web3.eth.Contract(require('../abi/pfr/Token.json'), db_pfr.address);
 
-                        let balance = await contract.methods.balanceOf(address.trustWallet.address).call() * Math.pow(10, db_pfr.decimals);
+                        let balance = new BigNumber(await contract.methods.balanceOf(trustWallet.address).call()).dividedBy(coinDecimal);
 
-                        if (balance >= 10000){
+
+
+                        trustWallet.balancePfr = balance.toString(10);
+                        trustWallet.countNode = balance.idiv(10000).toString(10);
+
+                        if (balance.comparedTo(10000) > -1){
                             user.status = "active";
                             await user.save();
+                            await trustWallet.save();
                             return res.json({
                                 success: true,
                             });
@@ -289,6 +289,7 @@ module.exports = web3 => {
                         else {
                             user.status = "unverified";
                             await user.save();
+                            await trustWallet.save();
 
                             return res.status(400).json({
                                 success: false,
@@ -342,11 +343,15 @@ module.exports = web3 => {
                     if (encrAddress.toLowerCase() === address){
                         let db_pfr = await Crypto.findOne({$and: [{name: 'PFR'}, {active: true}]});
 
+                        let coinDecimal = new BigNumber('10').pow(db_pfr.decimals);
+
                         let contract = new web3.eth.Contract(require('../abi/pfr/Token.json'), db_pfr.address);
 
-                        let balance = await contract.methods.balanceOf(address).call() * Math.pow(10, db_pfr.decimals);
+                        let balance = new BigNumber(await contract.methods.balanceOf(address).call()).dividedBy(coinDecimal);
 
-                        if (balance >= 10000){
+                        let trustWallet = await CWallet.findOne({_id: user.trustWallet});
+
+                        if (balance.comparedTo(10000) > -1 ){
                             let currwal = await CWallet.find({address: address});
 
                             if (currwal.length !== 0) {
@@ -356,12 +361,14 @@ module.exports = web3 => {
                                 });
                             }
 
-                            /*let confirmWallet = await new CWallet({
-                                address: address,
-                            }).save();*/
-                            let confWalletCurrUser = await CWallet.findOne({_id: user.trustWallet._id});
-                            confWalletCurrUser.address = address;
-                            await confWalletCurrUser.save();
+
+
+                            trustWallet.address = address;
+                            trustWallet.date = Date.now();
+                            trustWallet.balancePfr = balance.toString(10);
+                            trustWallet.countNode = balance.idiv(10000).toString(10);
+
+                            await trustWallet.save();
 
                             user.status = "active";
                             await user.save();
@@ -372,16 +379,27 @@ module.exports = web3 => {
 
                         }
                         else {
-                            if (user.trustWallet.address !== null){
-                                let balanceCurrAccount = await contract.methods.balanceOf(user.trustWallet.address).call() * Math.pow(10, db_pfr.decimals);
+                            if (user.trustWallet.address !== ''){
 
-                                if (balanceCurrAccount < 10000){
+
+                                let balanceCurrAccount = new BigNumber(await contract.methods.balanceOf(user.trustWallet.address).call()).dividedBy(coinDecimal);
+
+                                if (balanceCurrAccount.comparedTo(10000) < 0){
                                     user.status = "unverified";
+                                    trustWallet.balancePfr = balanceCurrAccount.toString(10);
+                                    trustWallet.countNode = balanceCurrAccount.idiv(10000).toString(10);
+
+                                    trustWallet.save();
                                     await user.save();
                                 }
                             }
                             else {
                                 user.status = "unverified";
+
+                                trustWallet.balancePfr = '0';
+                                trustWallet.countNode = '0';
+
+                                await trustWallet.save();
                                 await user.save();
                             }
 

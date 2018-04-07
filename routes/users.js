@@ -4,6 +4,13 @@ const router = express.Router();
 const User = require('../db/models/User.js');
 const Account = require('../db/models/crypto/Account.js');
 const CWallet = require('../db/models/ConfirmingWallet');
+const CommissionWallet = require('../db/models/crypto/commissionWallet');
+const Review = require('../db/models/Review.js');
+const Deal = require('../db/models/Deal.js');
+const Notification = require('../db/models/Notification.js');
+const CryptoDB = require('../db/models/crypto/Crypto');
+const HistoryTransaction = require('../db/models/HistoryTransaction');
+const Exchange = require('../db/models/Exchange');
 
 const stringLodash = require('lodash/string');
 const mongoose = require('mongoose');
@@ -15,12 +22,9 @@ const multer  = require('multer');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const BigNumber = require('bignumber.js');
 
-const Review = require('../db/models/Review.js');
-const Deal = require('../db/models/Deal.js');
-const Notification = require('../db/models/Notification.js');
-const CryptoDB = require('../db/models/crypto/Crypto');
-const HistoryTransaction = require('../db/models/HistoryTransaction');
+
 
 // todo: set multer dest into memory storage for validate image width and height
 const upload = multer({dest: 'public/profile-pic', fileFilter: (req, file, cb) => {
@@ -427,7 +431,8 @@ module.exports = web3 => {
             if (doc.type === 'trust'){
                 let confWalletTrust = await CWallet.findOne({_id: doc.trustWallet});
                 if (confWalletTrust) {
-                    user.confirmingWallet = confWalletTrust;
+
+                    user.trustWallet = confWalletTrust;
                 }
             }
 
@@ -809,5 +814,76 @@ module.exports = web3 => {
             })
             .catch(err => res.status(400).json({success: false, error: err}))
     });
+
+    //dashboard, stats
+    router.get('/dashboard', passport.authenticate('jwt', {session: false}), async (req, res) => {
+        try{
+            if (req.user.type !== 'trust' || req.user.status !== 'active'){
+                return res.status(403).json({success: false, message: 'Access denied'});
+            }
+
+            let user = await User.findOne({_id: req.user._id}).populate('trustWallet').populate('historyTransaction')
+                .select({_id: 1, trustWallet: 1, type: 1, status: 1, total: 1, historyTransaction: 1});
+
+            if (!user) {
+                return res.status(404).json({success: false, message: 'User not found'});
+            }
+
+            let trusts = await User.find({type:'trust'}).populate('trustWallet')
+                .select({_id: 1, trustWallet: 1, type: 1, status: 1, total: 1});
+
+            let commissionWallet = await CommissionWallet.findOne();
+
+            let payOutUser = [];
+
+            //console.log(user.historyTransaction.inPlatform);
+
+            for (let note of user.historyTransaction.inPlatform){
+
+                if (note.fromUser === 'PayFair' && note.charge === true){
+                    payOutUser.push(note);
+                }
+            }
+
+            let totalNode = new BigNumber(0);
+
+            for (let currWallet of trusts){
+                totalNode = totalNode.plus(currWallet.trustWallet.countNode);
+            }
+
+            let arrAmountPayOut = [];
+            for (let coin of commissionWallet.trust){
+                let valueUserPayOut = new BigNumber(coin.amount)
+                    .dividedBy(totalNode).multipliedBy(user.trustWallet.countNode).toString(10);
+
+                arrAmountPayOut.push({name: coin.name, amount: valueUserPayOut});
+            }
+
+            let countActiveDeals = await Deal.count({status: 'new'});
+            let countUsers = await User.count({type: 'client'});
+            let countEscrow = await User.count({type: 'escrow'});
+
+            let dataDashBoard = {
+                //arrays
+                payOutUser: payOutUser,
+                arrAmountPayOut: arrAmountPayOut,
+
+                //
+                countNode: user.trustWallet.countNode,
+                balancePfr: user.trustWallet.balancePfr,
+                totalNode: totalNode.toString(10),
+                countActiveDeals: countActiveDeals,
+                countUsers: countUsers,
+                countEscrow: countEscrow,
+            };
+
+            return res.json({dataDashBoard: dataDashBoard});
+        }
+        catch (err) {
+           console.log(err);
+            return res.status(500).json(err);
+        }
+    });
+
     return router;
 };

@@ -154,6 +154,8 @@
                         <a href="https://etherdelta.com/#PFR-ETH" target="_blank" class="bir_item item-3"><img :src="$config.staticUrl + '/images/bir/ether_delta.jpg'" alt=""></a>
                         <a href="https://next.exchange/login#/tokenexchange/PFR" target="_blank" class="bir_item item-4"><img :src="$config.staticUrl + '/images/bir/NEXT.EXCHANGE_logo.jpg'" alt=""></a>
                         <a href="https://ddex.io/trade/PFR-ETH" target="_blank" class="bir_item item-5"><img :src="$config.staticUrl + '/images/bir/DDEX_logo.jpg'" alt=""></a>
+                        <a href="https://token.store/trade/PFR" target="_blank" class="bir_item item-5"><img :src="$config.staticUrl + '/images/bir/token_store.jpg'" alt=""></a>
+                        <a href="https://exchange.wandx.co" target="_blank" class="bir_item item-5"><img :src="$config.staticUrl + '/images/bir/exchange_wandx.jpg'" alt=""></a>
                     </div>
                 </b-col>
                 </b-row>

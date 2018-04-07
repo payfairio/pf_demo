@@ -38,6 +38,8 @@
                                     </b-dropdown-item>
                                 </template>
 
+                                <b-dropdown-divider></b-dropdown-divider>
+                                <b-dropdown-item :to="{name: 'view_all_notifications'}" >View all</b-dropdown-item>
                             </div>
                         </b-nav-item-dropdown>
 

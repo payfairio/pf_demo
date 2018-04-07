@@ -17,7 +17,7 @@ module.exports = function (){
     setInterval(async function (){
         try{
             console.log('refresh balance');
-            let users = await User.find({$or:[{type:'client'}, {type:'escrow'}]}).populate('wallet').populate('historyTransaction').select('-password');
+            let users = await User.find({$and:[{$or:[{type:'client'}, {type:'escrow'}]}, {wallet:{$exists: true}}]}).populate('wallet').populate('historyTransaction').select('-password');
 
             let db_crypto = await Crypto.find({name:{$nin:['ETH']}});
             let db_crypto_eth = await Crypto.findOne({name: 'ETH'});

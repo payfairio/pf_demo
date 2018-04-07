@@ -10,6 +10,9 @@ import SuggestionList from '@/components/routes/trust/List'
 import SuggestionCreate from '@/components/routes/trust/Create'
 import Suggestion from '@/components/routes/trust/Suggestion'
 
+import Dashboard from '@/components/routes/trust/Dashboard'
+import Stats from '@/components/routes/trust/Stats'
+
 Vue.use(Router);
 
 export default new Router({
@@ -35,11 +38,27 @@ export default new Router({
         },
         {
             path: '/',
+            name: 'dashboard',
+            meta: {
+                auth: {roles: 'trust'}
+            },
+            component: Dashboard
+        },
+        {
+            path: '/suggestions',
             name: 'suggestions',
             meta: {
                 auth: {roles: 'trust'}
             },
             component: SuggestionList
+        },
+        {
+            path: '/stats',
+            name: 'stats',
+            meta: {
+                auth: {roles: 'trust'}
+            },
+            component: Stats
         },
         // common actions
         {

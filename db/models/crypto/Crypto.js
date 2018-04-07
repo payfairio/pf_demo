@@ -20,7 +20,7 @@ const Crypto = new Schema({
     active: {
         type: Boolean
     },
-})
+});
 
 
 

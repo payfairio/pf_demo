@@ -1,9 +1,10 @@
-
+const config = require('../config/database');
 const mongoose = require('mongoose');
 mongoose.Promise = global.Promise;
 mongoose.connect(config.database, {
     useMongoClient: true
 });
+
 
 const User = require('../db/models/User.js');
 const History = require('../db/models/HistoryTransaction');

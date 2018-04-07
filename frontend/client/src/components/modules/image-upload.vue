@@ -138,7 +138,7 @@
             },
             getSize: function (e) {
                 if (this.width > e.target.naturalWidth || this.height > e.target.naturalHeight) {
-                    this.error = 'Минимальный размер картинки - '+this.width+'X'+this.height;
+                    this.error = 'Min size picture - '+this.width+'X'+this.height;
                     this.image = '';
                     return false;
                 }

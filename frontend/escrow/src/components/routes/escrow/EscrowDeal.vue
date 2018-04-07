@@ -309,4 +309,9 @@
     .deal-actions {
         text-align: center;
     }
+
+    .deal-actions div div {
+        overflow: auto;
+        max-height: 100px;
+    }
 </style>

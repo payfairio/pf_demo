@@ -7,8 +7,9 @@
 
                 <b-nav-toggle target="nav_collapse"></b-nav-toggle>
                 <b-collapse is-nav id="nav_collapse">
-                    <b-nav-item v-if="$auth.check()" :to="{name: 'suggestions', path: '/'}">Suggestions</b-nav-item>
-
+                    <b-nav-item v-if="$auth.check()" :to="{name: 'dashboard', path: '/dashboard'}">Trust Node Dashboard</b-nav-item>
+                    <b-nav-item v-if="$auth.check()" :to="{name: 'suggestions', path: '/suggestions'}">Suggestions</b-nav-item>
+                    <b-nav-item v-if="$auth.check()" :to="{name: 'stats', path: '/stats'}">Platform Stats</b-nav-item>
                     <b-nav is-nav-bar class="ml-auto">
                         <b-nav-item v-if="false && $auth.check()" v-on:click="showNotifications" class="ntf"><span id="notify">{{this.notifications.length}}</span></b-nav-item>
 
