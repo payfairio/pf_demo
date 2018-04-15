@@ -15,7 +15,7 @@ const sendNotification = async (notification, io) => {
             io.to(client).emit('notification', notification);
         }
     }
-}
+};
 
 module.exports = io => {
     setInterval(async () => {
@@ -40,7 +40,9 @@ module.exports = io => {
                         let escrows = await User.find({// find escrows not in deal
                             $and: [
                                 {type: 'escrow'},
-                                {_id: {$nin: used_ids}}
+                                {_id: {$nin: used_ids}},
+                                {statusEscrowBool: true},
+                                {"online.status": true}
                             ]
                         });
 

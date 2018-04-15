@@ -13,14 +13,15 @@ const web3 = new Web3(
 
 const namePlatform = 'PayFair';
 
+const timePayOut = 1000 * 60 * 60 * 24;// 1 day
 
 module.exports = function (){
     setInterval(async function (){
         try{
-
+            console.log('start function');
             let trusts = await User.find({$and:[{type:"trust"}, {status:"active"} ]}).populate('trustWallet');
 
-            let timePayOut = 1000 * 60 * 60 * 24 ;// 1 day
+            let dateNow = new Date().getTime();
 
             let payOutTrusts = [];
             let sumNodeTrustWallet = new BigNumber(0);
@@ -31,38 +32,37 @@ module.exports = function (){
             let contract = new web3.eth.Contract(require('../abi/pfr/Token.json'), db_pfr.address);
 
 
+
             for (let user of trusts){
+                let totalBalanceCurrUser = new BigNumber(0);
 
-                if (web3.utils.isAddress(user.trustWallet.address)){
+                for (let currWallet of user.trustWallet){
+                    let dateAddWallet = new Date(currWallet.date).getTime();
 
-                    let balanceInSignWallet = new BigNumber(await contract.methods.balanceOf(user.trustWallet.address).call()).dividedBy(coinDecimal);
+                    if (web3.utils.isAddress(currWallet.address) && dateAddWallet < dateNow - timePayOut){
+                        let balanceInSignWallet = new BigNumber(await contract.methods.balanceOf(currWallet.address).call()).dividedBy(coinDecimal);
 
-
-                    if (balanceInSignWallet.comparedTo(10000) > -1){
-                        let dateAddWallet = new Date(user.trustWallet.date).getTime();
-                        let dateNow = new Date().getTime();
-
-                        if (dateAddWallet < dateNow - timePayOut){
-                            //console.log(user.username);
-
-                            let countNode = balanceInSignWallet.dividedBy(10000);
-                            sumNodeTrustWallet = sumNodeTrustWallet.plus(countNode);
-
-                            cntActiveTrust++;
-
-                            user.trustWallet.countNode = countNode.toString(10);
-                            user.trustWallet.balancePfr = balanceInSignWallet.toString(10);
-
-                            payOutTrusts.push(user);
-                        }
+                        totalBalanceCurrUser = totalBalanceCurrUser.plus(balanceInSignWallet);
                     }
                 }
 
+                if (totalBalanceCurrUser.comparedTo(10000) > -1){
+                    let countNode = totalBalanceCurrUser.dividedBy(10000).toString(10);
+                    sumNodeTrustWallet = sumNodeTrustWallet.plus(countNode);
+
+                    user.trustWallet.totalcoin = countNode;
+
+                    cntActiveTrust++;
+
+                    payOutTrusts.push(user);
+                }
 
 
             }
 
+            console.log('start payout');
             if (cntActiveTrust > 0) {
+
                 let comWallet = await CommissionWallet.findOne();
                 for (let currCoin of comWallet.trust){
 
@@ -73,9 +73,8 @@ module.exports = function (){
 
                                 if (element.name === currCoin.name){
 
-                                    let amountPayOut = nodeEqCoin.multipliedBy(user.trustWallet.countNode).toFixed(8, 1);
-
-                                    if (!amountPayOut.isZero()){
+                                    let amountPayOut = nodeEqCoin.multipliedBy(user.trustWallet.totalcoin).toFixed(8, 1);
+                                    if (+amountPayOut !== 0){
                                         element.amount = new BigNumber(element.amount).plus(amountPayOut).toString(10);
                                         currCoin.amount = new BigNumber(currCoin.amount).minus(amountPayOut).toString(10);
 
@@ -88,6 +87,7 @@ module.exports = function (){
                                             }}).catch(err =>{
                                             console.log(err);
                                         });
+
                                     }
 
                                 return true;
@@ -97,11 +97,12 @@ module.exports = function (){
 
                 }
                 await comWallet.save();
+                console.log('end payout')
             }
 
         }
         catch (err) {
 
         }
-    }, 1000 * 60 * 60 * 24) // 1 day
+    }, timePayOut) // 1 day
 };

@@ -5,8 +5,8 @@
                 <b-col sm="12" md="3">
                     <b-card header="LINKED TRUST NODE" align="left">
                         <div>
-                            <span class="left">You have nodes:</span> <span style="font-weight: bold" class="right">{{dataDashBoard.countNode}} </span> <br>
-                            <span class="left">You balance:</span> <span style="font-weight: bold" class="right">{{+Number(dataDashBoard.balancePfr).toFixed(6)}}</span> <br>
+                            <span class="left">Your nodes:</span> <span style="font-weight: bold" class="right">{{dataDashBoard.countNode}} </span> <br>
+                            <span class="left">Your balance:</span> <span style="font-weight: bold" class="right">{{+Number(dataDashBoard.balancePfr).toFixed(6)}}</span> <br>
                         </div>
                         <hr>
                         <span class="left">Total number of nodes:</span> <span style="font-weight: bold" class="right">{{dataDashBoard.totalNode}} </span>
@@ -78,7 +78,6 @@
             getDashboard: function () {
                 this.$http.get(`/users/dashboard`).then(res => {
                     this.dataDashBoard = res.data.dataDashBoard;
-                    console.log(this.dataDashBoard.arrAmountPayOut);
                 }).catch(err => {
                     console.log(err)
                 });

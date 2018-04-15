@@ -125,11 +125,13 @@ const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
                     from_user.total.find(function (element) {
                         if (element.name === db_crypto.name.toLowerCase()){
                             element.amount = new BigNumber(element.amount).minus(sumBN).toString(10);
+                            element.holds = new BigNumber(element.holds).minus(sum).toString(10);
                             return true;
                         }
                     });
-                    from_user.holds[coin.toLowerCase()] -= parseFloat(sum);
-                    from_user.markModified('holds.'+coin.toLowerCase());
+
+                    await to_user.save();
+                    await from_user.save();
 
                     await HistoryTransaction.update({owner: to_user._id}, {$push:{ inPlatform:
                                 {fromUser: from_user.username, toUser:to_user.username, coinName: db_crypto.name.toLowerCase(), charge: true, amount: sumBN.minus(comSum).toString(10), dId: deal.dId}
@@ -138,11 +140,6 @@ const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
                     await HistoryTransaction.update({owner: from_user._id}, {$push:{ inPlatform:
                                 {fromUser: from_user.username, toUser: to_user.username, coinName: db_crypto.name.toLowerCase(), charge: false, amount: sumBN.toString(10), dId: deal.dId}
                         }});
-
-                    await to_user.save();
-                    await from_user.save();
-
-
 
                     return true;
                 case 'eth':
@@ -155,11 +152,11 @@ const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
                     from_user.total.find(function (element) {
                         if (element.name === db_crypto.name.toLowerCase()){
                             element.amount = new BigNumber(element.amount).minus(sumBN).toString(10);
+                            element.holds = new BigNumber(element.holds).minus(sum).toString(10);
                             return true;
                         }
                     });
-                    from_user.holds.eth -= parseFloat(sum);
-                    from_user.markModified('holds.eth');
+
                     await to_user.save();
                     await from_user.save();
 
@@ -188,7 +185,8 @@ module.exports = (client, io) => {
             let deal = await getDealBydId(data.deal_id);
         
             let role = deal.getUserRole(client.decoded_token._id); // get user role in deal
-            if (deal && role) {
+
+            if (deal && (role === 'seller' || role === 'buyer')) {
                 let sender = client.decoded_token._id,
                     created_at = new Date(),
                     type = 'message',
@@ -224,12 +222,58 @@ module.exports = (client, io) => {
 
                 /* Send notification to last escrow */
                 if (lastEscrow && !lastEscrow.decision && (!clients[lastEscrow.escrow] || !checkUserInRoom(clients[lastEscrow.escrow], roomClients))) {
-                    notification = {
+                    let notification = {
                         sender: sender,
                         user: lastEscrow.escrow,
                         deal: deal._id,
                         type: 'message',
                         text: data.text
+                    };
+                    createAndSendNotification(notification, io);
+                }
+
+                data.sender = client.decoded_token;
+                data.created_at = created_at;
+                data.type = type;
+                io.in(deal._id.toString()).emit('message', data);
+            }
+            if (deal && (role === 'escrow')){
+                let sender = client.decoded_token._id,
+                    created_at = new Date(),
+                    type = 'escrow',
+                    roomClients = io.sockets.adapter.rooms[deal._id].sockets;
+
+                let message = await new Message({ // create message
+                    sender: sender,
+                    text: data.text,
+                    deal: deal._id,
+                    type: type,
+                    viewed: getUsersFromRoom(clients, roomClients)
+                }).save();
+
+                deal.messages.push(message);
+                await deal.save();
+
+                //send notification to buyer
+                if (!clients[deal.buyer._id] || !checkUserInRoom(clients[deal.buyer._id], roomClients)) {
+                    let notification = {
+                        sender: sender,
+                        user: deal.buyer._id,
+                        deal: deal._id,
+                        type: 'message',
+                        text: data.text,
+                    };
+                    createAndSendNotification(notification, io);
+                }
+
+                //send norification to buyer
+                if (!clients[deal.seller._id] || !checkUserInRoom(clients[deal.seller._id], roomClients)) {
+                    let notification = {
+                        sender: sender,
+                        user: deal.seller._id,
+                        deal: deal._id,
+                        type: 'message',
+                        text: data.text,
                     };
                     createAndSendNotification(notification, io);
                 }
@@ -280,7 +324,7 @@ module.exports = (client, io) => {
                     case 'erc20':
                         buyer.total.find(function (element) {
                             if (element.name === db_crypto.name.toLowerCase()){
-                                if (new BigNumber(element.amount).minus(new BigNumber(buyer.holds[coin])).comparedTo(new BigNumber(deal.sum)) === -1){
+                                if (new BigNumber(element.amount).minus(element.holds).comparedTo(new BigNumber(deal.sum)) === -1){
                                     notEnoughMoney = true;
                                 }
                             }
@@ -290,7 +334,7 @@ module.exports = (client, io) => {
                     case 'eth':
                         buyer.total.find(function (element) {
                             if (element.name === db_crypto.name.toLowerCase()){
-                                if (new BigNumber(element.amount).minus(new BigNumber(buyer.holds[coin])).comparedTo(new BigNumber(deal.sum)) === -1){
+                                if (new BigNumber(element.amount).minus(element.holds).comparedTo(new BigNumber(deal.sum)) === -1){
                                     notEnoughMoney = true;
                                 }
                             }
@@ -322,15 +366,19 @@ module.exports = (client, io) => {
                         deal.status = 'new';
                         deal.acceptedByBuyer = false;
                     }
-                };
+                }
 
                 if (deal.acceptedBySeller && deal.acceptedByBuyer && !notEnoughMoney) {
                     deal.status = 'accepted';
-                };
+                }
 
                 if (deal.status === 'accepted') {
-                    buyer.holds[coin] += parseFloat(deal.sum);
-                    buyer.markModified('holds.' + coin);
+                    buyer.total.find(function (element) {
+                        if (element.name === coin.toLowerCase()){
+                            element.holds = new BigNumber(element.holds).plus(deal.sum).toString(10);
+                        }
+                    });
+
                     await buyer.save();
                         
                     messages.push({

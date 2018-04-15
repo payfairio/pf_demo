@@ -36,31 +36,29 @@ const User = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'Account'
     },
-    trustWallet: {
+    trustWallet: [{
         type: Schema.Types.ObjectId,
         ref: 'ConfirmingWallet'
-    },
+    }],
     total:[{
         coin:{
             type: Schema.Types.ObjectId,
             ref: 'Crypto'
         },
         name:{
-            type: String
+            type: String,
+            default: null
         },
         amount: {
             type: String,
             default: '0'
+        },
+        holds: {
+            type: String,
+            default: '0'
         }
     }],
-    holds: {
-        type: Object,
-        default: {
-            eth: 0,
-            pfr: 0,
-            omg: 0
-        }
-    },
+
     historyTransaction:{
         type: Schema.Types.ObjectId,
         ref: 'HistoryTransaction'

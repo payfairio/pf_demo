@@ -5,7 +5,9 @@ const User = require('../db/models/User.js');
 const Deal = require('../db/models/Deal.js');
 const Exchange = require('../db/models/Exchange.js');
 const Notification = require('../db/models/Notification.js');
+const Crypto = require('../db/models/crypto/Crypto');
 const Price = require('../db/models/Price.js');
+const BigNumber = require('bignumber.js');
 
 const stringLodash = require('lodash/string');
 
@@ -23,13 +25,26 @@ router.use(validator({
     customValidators: {
         checkOnBelongToLimits: (sum) => {
             return new Promise((resolve, reject) => {
-                Exchange.findOne({_id: req_body.exchange}, function(err, doc){
+                Exchange.findOne({ _id: req_body.exchange }, async function (err, doc) {
                     if (err) {
                         reject();
                     } else if ((sum >= doc.limits.min) && (sum <= doc.limits.max)) {
-                        resolve();
+                        let decimals = 0;
+                        if (doc.coin.toUpperCase() !== "ETH") {
+                            await Crypto.findOne({ name: doc.coin.toUpperCase() }).then(crypto => {
+                                decimals = crypto.decimals;
+                            });
+                        } else {
+                            decimals = 10;
+                        }
+                        let dec = new BigNumber(1).dividedBy(new BigNumber(10).pow(decimals - 3));
+
+                        if (new BigNumber(sum).comparedTo(dec) > -1 ) {
+                            resolve();
+                        } else {
+                            reject();
+                        }
                     } else {
-                        console.log('reject');
                         reject();
                     }
                 });
@@ -217,40 +232,33 @@ module.exports = web3 => {
 
     router.get('/stats', passport.authenticate('jwt', { session: false }), async (req, res) => {
         try {
-            if (req.user.type !== 'trust' || req.user.status !== 'active'){
-                return res.status(403).json({success: false, message: 'Access denied'});
+            if (req.user.type !== 'trust' || req.user.status !== 'active') {
+                return res.status(403).json({ success: false, message: 'Access denied' });
             }
 
-            const deals = await Deal.find().sort({ created_at: 1 });
+            const deals = await Deal.find({ $and: [{ status: "completed" }, { type: "exchange" }] }).sort({ created_at: 1 });
             const price = await Price.find();
 
-            let iter = 0;
             let hr24 = [];
             let all = [];
-            let sum = 0;
-            let volume = 0;
-            for (let deal of deals) {
-                if (deal.status === "completed") {
-                    let value = price.find(function (element) {
-                        return (element.name.toUpperCase() === deal.coin.toUpperCase());
-                    }).value;
-
-                    let temp = { coin: deal.coin, sum: deal.sum, volume: deal.sum * value };
-                    if (new Date(deal.created_at) > new Date(new Date().getTime() - (1000 * 60 * 60 * 24 * 1))) {
-                        hr24.push(temp);
-                    }
-                    if (new Date(deal.created_at) > new Date(new Date().getTime() - (1000 * 60 * 60 * 24 * (1 + iter)))) {
-                        sum += deal.sum;
-                        volume += deal.sum * value;
-                    } else {
-                        iter++;
-                        all.push({ sum: sum, volume: volume });
-                        sum = deal.sum;
-                        volume = deal.sum * value;
-                    }
+            let start = 0;
+            if (deals.length > 0) {
+                start = deals[0].created_at;
+                let diff = Math.ceil((deals[deals.length - 1].created_at - start) / 1000 / 60 / 60 / 24);
+                
+                for (let i = 0; i <= diff; ++i) {
+                    all.push({ sum: 0, volume: 0 });
                 }
             }
-            all.push({ sum: sum, volume: volume });
+
+            for (let deal of deals) {
+                if (new Date(deal.created_at) > new Date(new Date().getTime() - (1000 * 60 * 60 * 24 * 1))) {
+                    hr24.push({ coin: deal.coin, sum: deal.sum, volume: deal.sum * deal.rate });
+                }
+                let it = ((deal.created_at - start) / 1000 / 60 / 60 / 24).toFixed();                
+                all[it].sum += deal.sum;
+                all[it].volume += deal.sum * deal.rate;
+            }
 
             return res.json({ hr24: hr24, all: all });
         } catch (err) {
@@ -346,159 +354,190 @@ module.exports = web3 => {
             });
     });
 
-    router.post('/create', passport.authenticate('jwt', {session: false}), (req, res) => {
-        if (req.user.type !== 'client') {
-            return res.status(403).json({
-                error: "Forbidden"
-            });
-        }
-        req.checkBody('counterparty', 'Not allowed to add yourself as counterparty').not().equals(req.user.email);
-        req.checkBody({
-            role: {
-                notEmpty: {
-                    errorMessage: 'Role is required'
-                }
-            },
-            coin: {
-                notEmpty: {
-                    errorMessage: 'Currency is required'
-                },
-                isIn: {
-                    options: [['PFR', 'ETH', 'OMG']],
-                    errorMessage: 'Wrong currency'
-                }
-            },
-            name: {
-                notEmpty: {
-                    errorMessage: 'Deal name is required'
-                }
-            },
-            counterparty: {
-                notEmpty: {
-                    errorMessage: 'Counterparty is required'
-                },
-                isEmail: {
-                    errorMessage: 'Counterparty email is invalid'
-                }
-            },
-            conditions:{
-                isLength: {
-                    options: {
-                        max: 700
-                    },
-                    errorMessage: 'Too many characters (maximum 700)'
-                }
-            },
-            sum: {
-                notEmpty: {
-                    errorMessage: 'Sum is required'
-                },
-                matches: {
-                    options: /^([0-9]+[.])?[0-9]+$/i,
-                    errorMessage: 'Wrong sum. Use only digits and one dot'
-                }
-            },
-        });
-        req.getValidationResult().then(result => {
-            if (result.array().length > 0) {
-                return res.status(400).json({
-                    success: false,
-                    errors: result.mapped(),
-                    msg: 'Bad request'
+    router.post('/create', passport.authenticate('jwt', { session: false }), async (req, res) => {
+        try {
+            if (req.user.type !== 'client') {
+                return res.status(403).json({
+                    error: "Forbidden"
                 });
             }
-            User.findOne({email: req.body.counterparty}).then(doc => {
-                return new Promise((resolve, reject) => {
-                    if (!doc) { // create user with status 'invited'
-                        new User({
-                            _id: new mongoose.Types.ObjectId(),
-                            email: req.body.counterparty,
-                            type: 'client',
-                            status: 'invited'
-                        }).save((err, user) => {
-                            if (err) {
-                                reject(err);
-                            }
-                            resolve(user);
-                        });
-                    } else { // there is active or already invited user
-                        resolve(doc);
+
+            let arrNameCoins = [];
+
+            let arrCoin = await Crypto.find({});
+
+            for (let coin of arrCoin) {
+                arrNameCoins.push(coin.name);
+            }
+
+            req.checkBody('counterparty', 'Not allowed to add yourself as counterparty').not().equals(req.user.email);
+            req.checkBody({
+                role: {
+                    notEmpty: {
+                        errorMessage: 'Role is required'
                     }
-                });
-            }).then(user => {
-                return new Promise((resolve, reject) => {
-                    if (user.status === 'invited') {
-                        user.sendMailInviteNotification({
-                            name: req.body.name,
-                            email: req.user.email
-                        }).then(mailData => {
-                            resolve(user);
-                        }).catch(err => {
-                            reject(err);
-                        });
-                    } else {
-                        resolve(user);
+                },
+                coin: {
+                    notEmpty: {
+                        errorMessage: 'Currency is required'
+                    },
+                    isIn: {
+                        options: [arrNameCoins], //['PFR', 'ETH', 'OMG']
+                        errorMessage: 'Wrong currency'
                     }
-                });
-            }).then(user => {
-                let data = {
-                    _id: new mongoose.Types.ObjectId(),
-                    name: stringLodash.escape(req.body.name),
-                    sum: stringLodash.escape(req.body.sum),
-                    coin: stringLodash.escape(req.body.coin.toUpperCase())
-                };
-                if (req.body.role === 'seller') {
-                    data.seller = req.user._id;
-                    data.buyer = user._id;
-                    data.sellerConditions = stringLodash.escape(req.body.conditions);
-                } else {
-                    data.seller = user._id;
-                    data.buyer = req.user._id;
-                    data.buyerConditions = stringLodash.escape(req.body.conditions);
+                },
+                name: {
+                    notEmpty: {
+                        errorMessage: 'Deal name is required'
+                    }
+                },
+                counterparty: {
+                    notEmpty: {
+                        errorMessage: 'Counterparty is required'
+                    },
+                    isEmail: {
+                        errorMessage: 'Counterparty email is invalid'
+                    }
+                },
+                conditions: {
+                    isLength: {
+                        options: {
+                            max: 700
+                        },
+                        errorMessage: 'Too many characters (maximum 700)'
+                    }
+                },
+                sum: {
+                    notEmpty: {
+                        errorMessage: 'Sum is required'
+                    },
+                    matches: {
+                        options: /^([0-9]+[.])?[0-9]+$/i,
+                        errorMessage: 'Wrong sum. Use only digits and one dot'
+                    }
+                },
+            });
+            req.getValidationResult().then(async result => {
+                if (result.array().length > 0) {
+                    return res.status(400).json({
+                        success: false,
+                        errors: result.mapped(),
+                        msg: 'Bad request'
+                    });
                 }
-                return new Deal(data).save();
-            }).then(result => {
-                const notification = {
-                    sender: req.user._id,
-                    user: req.body.role === 'seller' ? result.buyer : result.seller,
-                    deal: result._id,
-                    type: 'newDeal',
-                    text: result.name,
-                };
 
-                return new Notification(notification).save();
-            }).then(notification => {
-                Notification.findById(notification._id)
-                    .populate('deal')
-                    .populate('sender', 'username')
-                    .then(notification => {
-                        const io = req.app.io;
-                        const clients = io.clients[notification.user];
+                let decimals = 0;
+                if (req.body.coin.toUpperCase() !== "ETH") {
+                    await Crypto.findOne({ name: req.body.coin.toUpperCase() }).then(crypto => {
+                        decimals = crypto.decimals;
+                    });
+                } else {
+                    decimals = 10;
+                }
+                let dec = new BigNumber(1).dividedBy(new BigNumber(10).pow(decimals - 3));
 
-                        if (clients) {
-                            for (let client of clients) {
-                                io.to(client).emit('notification', notification);
-                                notification.viewed = true;
-                                notification.save();
-                            }
+                if (new BigNumber(req.body.sum).comparedTo(dec) === -1) {
+                    return res.status(403).json({ success: false, msg: 'Bad request' });
+                }
+
+                User.findOne({ email: req.body.counterparty }).then(doc => {
+                    return new Promise((resolve, reject) => {
+                        if (!doc) { // create user with status 'invited'
+                            new User({
+                                _id: new mongoose.Types.ObjectId(),
+                                email: req.body.counterparty,
+                                type: 'client',
+                                status: 'invited'
+                            }).save((err, user) => {
+                                if (err) {
+                                    reject(err);
+                                }
+                                resolve(user);
+                            });
+                        } else { // there is active or already invited user
+                            resolve(doc);
                         }
                     });
-
-                Deal.findById(notification.deal)
-                    .then(deal => {
-                        return res.json({
-                            success: true,
-                            deal: deal
-                        });
+                }).then(user => {
+                    return new Promise((resolve, reject) => {
+                        if (user.status === 'invited') {
+                            user.sendMailInviteNotification({
+                                name: req.body.name,
+                                email: req.user.email
+                            }).then(mailData => {
+                                resolve(user);
+                            }).catch(err => {
+                                reject(err);
+                            });
+                        } else {
+                            resolve(user);
+                        }
                     });
+                }).then(user => {
+                    let data = {
+                        _id: new mongoose.Types.ObjectId(),
+                        name: stringLodash.escape(req.body.name),
+                        sum: stringLodash.escape(req.body.sum),
+                        coin: stringLodash.escape(req.body.coin.toUpperCase())
+                    };
+                    if (req.body.role === 'seller') {
+                        data.seller = req.user._id;
+                        data.buyer = user._id;
+                        data.sellerConditions = stringLodash.escape(req.body.conditions);
+                    } else {
+                        data.seller = user._id;
+                        data.buyer = req.user._id;
+                        data.buyerConditions = stringLodash.escape(req.body.conditions);
+                    }
+                    return new Deal(data).save();
+                }).then(result => {
+                    const notification = {
+                        sender: req.user._id,
+                        user: req.body.role === 'seller' ? result.buyer : result.seller,
+                        deal: result._id,
+                        type: 'newDeal',
+                        text: result.name,
+                    };
 
-            }).catch(err => {
-                return res.status(500).json({
-                    success: false,
-                    error: err
+                    return new Notification(notification).save();
+                }).then(notification => {
+                    Notification.findById(notification._id)
+                        .populate('deal')
+                        .populate('sender', 'username')
+                        .then(notification => {
+                            const io = req.app.io;
+                            const clients = io.clients[notification.user];
+
+                            if (clients) {
+                                for (let client of clients) {
+                                    io.to(client).emit('notification', notification);
+                                    notification.viewed = true;
+                                    notification.save();
+                                }
+                            }
+                        });
+
+                    Deal.findById(notification.deal)
+                        .then(deal => {
+                            return res.json({
+                                success: true,
+                                deal: deal
+                            });
+                        });
+
+                }).catch(err => {
+                    return res.status(500).json({
+                        success: false,
+                        error: err
+                    });
                 });
             });
-        });
+        }
+        catch (err) {
+            console.log(err);
+            return res.status(500);
+        }
+
     });
 
     router.post('/exchange', passport.authenticate('jwt', {session: false}), (req, res) => {

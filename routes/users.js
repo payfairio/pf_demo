@@ -109,6 +109,10 @@ module.exports = web3 => {
                 notEmpty: {
                     errorMessage: 'Username is required'
                 },
+                matches:{
+                    options: /^[a-zA-Z0-9_-]{3,15}$/i,
+                    errorMessage: 'Wrong username. The username must be at least 3 and not more than 15 characters. Use letters, digits, - , _ '
+                },
                 isUsernameAvailable: {
                     errorMessage: 'This username is already taken'
                 }
@@ -255,17 +259,6 @@ module.exports = web3 => {
                         errorMessage: 'This username is already taken'
                     }
                 },
-                /*email: {
-                    notEmpty: {
-                        errorMessage: 'Email is required'
-                    },
-                    isEmail: {
-                        errorMessage: 'Invalid email'
-                    },
-                    isEmailAvailable: {
-                        errorMessage: 'This email is already taken'
-                    }
-                },*/
                 password: {
                     notEmpty: {
                         errorMessage: 'Password is required'
@@ -308,6 +301,7 @@ module.exports = web3 => {
                 password: hash(req.body.password),
                 type: req.body.type,
                 lastDateResetPassword: Date.now(),
+                total: [],
             });
 
             for (let i in db_cryptos) {
@@ -317,14 +311,6 @@ module.exports = web3 => {
                 };
                 user.total.push(currCoin);
             }
-
-            if (req.body.type === 'escrow'){
-                user.statusEscrowBool = false;
-            }
-
-            await user.save();
-
-            user = await user.sendMailVerification();
 
             // generate wallet (eth and erc20 only now)
             let newAccount = web3.eth.accounts.create();
@@ -344,17 +330,19 @@ module.exports = web3 => {
             });
             user.historyTransaction = historyTransactions._id;
 
-            await user.save();
+            //status escrow
+            if (req.body.type === 'escrow'){
+                user.statusEscrowBool = false;
+            }
 
             //generate trust Wallet
             if (user.type === 'trust'){
-                let TWallet = await new CWallet({
-                    address: null,
-                }).save();
-
-                user.trustWallet = TWallet._id;
-                await user.save();
+                user.trustWallet = [];
             }
+
+            await user.save();
+
+            user = await user.sendMailVerification();
 
             // generate jwt token
             let payload = {
@@ -408,8 +396,7 @@ module.exports = web3 => {
 
     router.get('/info', passport.authenticate('jwt', {session: false}), async (req, res) => {
         try {
-
-            const doc = await User.findById(req.user._id).populate('wallet').select("-password");
+            const doc = await User.findById(req.user._id).populate('trustWallet').populate('wallet').select("-password");
             if (!doc) {
                 return res.status(401).send({success: false, msg: 'Authentication failed. User not found.'});
             }
@@ -421,7 +408,7 @@ module.exports = web3 => {
                 type: doc.type,
                 status: doc.status,
                 profileImg: doc.profileImg,
-                holds: doc.holds
+                //holds: doc.holds
             };
 
             if (doc.type === 'escrow'){
@@ -429,11 +416,7 @@ module.exports = web3 => {
             }
 
             if (doc.type === 'trust'){
-                let confWalletTrust = await CWallet.findOne({_id: doc.trustWallet});
-                if (confWalletTrust) {
-
-                    user.trustWallet = confWalletTrust;
-                }
+                user.trustWallet = doc.trustWallet;
             }
 
             if (doc.status === 'unverified') {
@@ -447,17 +430,12 @@ module.exports = web3 => {
             }
 
             user.balances = {};
-            let db_crypto = await CryptoDB.find({active: true});
+            user.holds = {};
 
             // balance total
-            for (let i in db_crypto) {
-                let CoinName = db_crypto[i].name.toLowerCase();
-                doc.total.find(function (element) {
-                    if (element.name === db_crypto[i].name.toLowerCase()){
-                        user.balances[CoinName] = element.amount;
-                        return true;
-                    }
-                });
+            for (let currCoin of doc.total){
+                user.balances[currCoin.name] = +Number(currCoin.amount).toFixed(8);
+                user.holds[currCoin.name] = +Number(currCoin.holds).toFixed(8);
             }
 
             user.address = doc.wallet.address;
@@ -815,7 +793,7 @@ module.exports = web3 => {
             .catch(err => res.status(400).json({success: false, error: err}))
     });
 
-    //dashboard, stats
+    //dashboard
     router.get('/dashboard', passport.authenticate('jwt', {session: false}), async (req, res) => {
         try{
             if (req.user.type !== 'trust' || req.user.status !== 'active'){
@@ -829,39 +807,46 @@ module.exports = web3 => {
                 return res.status(404).json({success: false, message: 'User not found'});
             }
 
-            let trusts = await User.find({type:'trust'}).populate('trustWallet')
-                .select({_id: 1, trustWallet: 1, type: 1, status: 1, total: 1});
-
             let commissionWallet = await CommissionWallet.findOne();
 
             let payOutUser = [];
-
-            //console.log(user.historyTransaction.inPlatform);
-
             for (let note of user.historyTransaction.inPlatform){
-
                 if (note.fromUser === 'PayFair' && note.charge === true){
                     payOutUser.push(note);
                 }
             }
 
-            let totalNode = new BigNumber(0);
 
-            for (let currWallet of trusts){
-                totalNode = totalNode.plus(currWallet.trustWallet.countNode);
+            let allTrustWallets = await CWallet.find();
+            let totalNode = new BigNumber(0);
+            for (let currWallet of allTrustWallets){
+                totalNode = totalNode.plus(currWallet.balancePfr);
             }
+            totalNode = totalNode.idiv(10000);
+
+
+            let countNode = new BigNumber(0);
+            let balancePfr = new BigNumber(0);
+
+            for (let currWallet of user.trustWallet){
+                balancePfr = balancePfr.plus(currWallet.balancePfr);
+            }
+
+            countNode = balancePfr.idiv(10000);
+
 
             let arrAmountPayOut = [];
             for (let coin of commissionWallet.trust){
                 let valueUserPayOut = new BigNumber(coin.amount)
-                    .dividedBy(totalNode).multipliedBy(user.trustWallet.countNode).toString(10);
+                    .dividedBy(totalNode).multipliedBy(countNode).toFixed(8,1);
 
-                arrAmountPayOut.push({name: coin.name, amount: valueUserPayOut});
+                arrAmountPayOut.push({name: coin.name, amount: +valueUserPayOut});
             }
 
             let countActiveDeals = await Deal.count({status: 'new'});
             let countUsers = await User.count({type: 'client'});
             let countEscrow = await User.count({type: 'escrow'});
+
 
             let dataDashBoard = {
                 //arrays
@@ -869,8 +854,8 @@ module.exports = web3 => {
                 arrAmountPayOut: arrAmountPayOut,
 
                 //
-                countNode: user.trustWallet.countNode,
-                balancePfr: user.trustWallet.balancePfr,
+                countNode: countNode.toString(10),
+                balancePfr: balancePfr.toString(10),
                 totalNode: totalNode.toString(10),
                 countActiveDeals: countActiveDeals,
                 countUsers: countUsers,

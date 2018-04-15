@@ -16,6 +16,7 @@
                             <b>Created at:</b> {{suggestion.created_at | date}}<br>
                             <b>Likes: </b>{{suggestion.like.length}} <a v-if="suggestion.can_vote" href="#" v-on:click="like">[vote]</a><br>
                             <b>Dislikes: </b>{{suggestion.dislike.length}} <a v-if="suggestion.can_vote" href="#" v-on:click="dislike">[vote]</a><br>
+                            <a v-if="!suggestion.can_vote" href="#" v-on:click="changeVote">[Change vote]<br></a>
                             <b>Status: </b> {{suggestion.status}}
                         </p>
                     </b-card>
@@ -71,6 +72,14 @@
             },
             like: function(e){
                 this.vote(e, 1);
+            },
+            changeVote: function (e) {
+                e.preventDefault();
+                let _this = this;
+                let promise = this.$http.post('/suggestions/suggestion/' + this.id + '/changevote');
+                return promise.then(this.successResponse, function (err){
+                    console.log(err);
+                });
             },
             dislike: function(e){
                 this.vote(e, 0);

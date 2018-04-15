@@ -10,8 +10,8 @@
                 <img :src="image" v-on:load="getSize" :height="'100px'">
                 <div v-if="needCrop" class="crop-overlay" @mouseup="disableSelection" @mouseleave="disableSelection" @mousemove="updateRec">
                     <div class="crop-modal">
-                        <button v-on:click="cancelCrop" class="btn btn-warning">Отменить</button>
-                        <button v-on:click="clip" class="btn btn-primary">Обрезать</button>
+                        <button v-on:click="cancelCrop" class="btn btn-warning">Cancel</button>
+                        <button v-on:click="clip" class="btn btn-primary">Clip</button>
                         <hr>
                         <div class="crop-wrap">
                             <div class="image-for-crop">
@@ -138,7 +138,7 @@
             },
             getSize: function (e) {
                 if (this.width > e.target.naturalWidth || this.height > e.target.naturalHeight) {
-                    this.error = 'Минимальный размер картинки - '+this.width+'X'+this.height;
+                    this.error = 'Minimum picture size - '+this.width+'X'+this.height;
                     this.image = '';
                     return false;
                 }

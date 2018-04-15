@@ -3,6 +3,7 @@ const router = express.Router();
 
 const Exchange = require('../db/models/Exchange.js');
 const Review = require('../db/models/Review.js');
+const Crypto = require('../db/models/crypto/Crypto');
 
 const mongoose = require('mongoose');
 const passport = require('passport');
@@ -231,90 +232,105 @@ router.get('/:id', function(req, res){
         });
 });
 
-router.post('/create', passport.authenticate('jwt', {session: false}), (req, res) => {
+router.post('/create', passport.authenticate('jwt', {session: false}), async (req, res) => {
+    try{
+        if (req.user.type !== 'client') {
+            return res.status(403).json({error: "Forbidden"});
+        }
 
-    if (req.user.type !== 'client') {
-        return res.status(403).json({error: "Forbidden"});
+        let arrNameCoins = [];
+
+        let arrCoin = await Crypto.find({});
+
+        for (let coin of arrCoin){
+            arrNameCoins.push(coin.name);
+        }
+
+
+        req.checkBody({
+            tradeType: {
+                notEmpty: {
+                    errorMessage: 'Field is required'
+                }
+            },
+            coin: {
+                notEmpty: {
+                    errorMessage: 'Currency is required'
+                },
+                isIn: {
+                    options: [arrNameCoins], //['PFR', 'ETH', 'OMG']
+                    errorMessage: 'Wrong currency'
+                }
+            },
+            conditions:{
+                isLength: {
+                    options: {
+                        max: 700
+                    },
+                    errorMessage: 'Too many characters (maximum 700)'
+                }
+            },
+            paymentType: {
+                notEmpty: {
+                    errorMessage: 'Field is required'
+                }
+            },
+            paymentTypeDetail:{
+                isLength: {
+                    options: {
+                        max: 100
+                    },
+                    errorMessage: 'Too many characters (maximum 100)'
+                }
+            },
+            currency: {
+                notEmpty: {
+                    errorMessage: 'Field is required'
+                }
+            },
+            rate: {
+                notEmpty: {
+                    errorMessage: 'Field is required'
+                },
+                matches: {
+                    options: /^([0-9]+[.])?[0-9]+$/i,
+                    errorMessage: 'Wrong rate. Use only digits and one dot'
+                },
+            },
+            limits: {
+                checkRelation: {
+                    errorMessage: 'The minimum value is greater than the maximum'
+                }
+            }
+        });
+        req.getValidationResult().then(result => {
+            if (result.array().length > 0) {
+                return res.status(400).json({success: false, errors: result.mapped(), msg: 'Bad request'});
+            }
+            if (req.body.rate == 0) {
+                return res.status(400).json({success: false, errors: {rate: {location: 'body', msg: 'Rate must be more than zero', param: 'rate', value: 0}}, msg: 'Bad request'});
+            }
+            let ex = {
+                _id: new mongoose.Types.ObjectId(),
+                owner: req.user._id,
+                tradeType: stringLodash.escape(req.body.tradeType),
+                coin: req.body.coin,
+                paymentType: stringLodash.escape(req.body.paymentType),
+                paymentTypeDetail: stringLodash.escape(req.body.paymentTypeDetail),
+                currency: stringLodash.escape(req.body.currency),
+                rate: req.body.rate,
+                conditions: stringLodash.escape(req.body.conditions),
+                limits: req.body.limits
+            };
+            new Exchange(ex).save()
+                .then(result => res.json({success: true, exchange: result}))
+                .catch(err => res.status(500).json({success: false, error: err}));
+        });
     }
-    req.checkBody({
-        tradeType: {
-            notEmpty: {
-                errorMessage: 'Field is required'
-            }
-        },
-        coin: {
-            notEmpty: {
-                errorMessage: 'Currency is required'
-            },
-            isIn: {
-                options: [['PFR', 'ETH', 'OMG']],
-                errorMessage: 'Wrong currency'
-            }
-        },
-        conditions:{
-            isLength: {
-                options: {
-                    max: 700
-                },
-                errorMessage: 'Too many characters (maximum 700)'
-            }
-        },
-        paymentType: {
-            notEmpty: {
-                errorMessage: 'Field is required'
-            }
-        },
-        paymentTypeDetail:{
-            isLength: {
-                options: {
-                    max: 100
-                },
-                errorMessage: 'Too many characters (maximum 100)'
-            }
-        },
-        currency: {
-            notEmpty: {
-                errorMessage: 'Field is required'
-            }
-        },
-        rate: {
-            notEmpty: {
-                errorMessage: 'Field is required'
-            },
-            matches: {
-                options: /^([0-9]+[.])?[0-9]+$/i,
-                errorMessage: 'Wrong rate. Use only digits and one dot'
-            },
-        },
-        limits: {
-            checkRelation: {
-                errorMessage: 'The minimum value is greater than the maximum'
-            }
-        }
-    });
-    req.getValidationResult().then(result => {
-        if (result.array().length > 0) {
-            return res.status(400).json({success: false, errors: result.mapped(), msg: 'Bad request'});
-        }
-        if (req.body.rate == 0) {
-            return res.status(400).json({success: false, errors: {rate: {location: 'body', msg: 'Rate must be more than zero', param: 'rate', value: 0}}, msg: 'Bad request'});
-        }
-        let ex = {
-            _id: new mongoose.Types.ObjectId(),
-            owner: req.user._id,
-            tradeType: stringLodash.escape(req.body.tradeType),
-            coin: req.body.coin,
-            paymentType: stringLodash.escape(req.body.paymentType),
-            paymentTypeDetail: stringLodash.escape(req.body.paymentTypeDetail),
-            currency: stringLodash.escape(req.body.currency),
-            rate: req.body.rate,
-            conditions: stringLodash.escape(req.body.conditions),
-            limits: req.body.limits
-        };
-        new Exchange(ex).save()
-            .then(result => res.json({success: true, exchange: result}))
-            .catch(err => res.status(500).json({success: false, error: err}));
-    });
+    catch (err){
+        console.log(err);
+        return res.status(500);
+    }
 });
 
 router.post('/close', passport.authenticate('jwt', { session: false}), (req, res) => {

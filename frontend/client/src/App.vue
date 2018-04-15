@@ -57,7 +57,7 @@
                                         <span class="hold">(hold)</span>
                                     </span>
                                 </div>
-                                <div v-for="(value, name) in getBalances()" class="currency">
+                                <div v-for="(value, name) in getBalances()" class="currency currency-body">
                                     <span>{{name.toUpperCase()}}</span>
                                     <span class="right">
                                         <span class="total">{{value.total}}</span>
@@ -224,11 +224,12 @@
                 socketReady: false,
                 uncheckedNotifications: 0,
                 balance: {
-                    pfr: {total: 0, hold: 0},
-                    eth: {total: 0, hold: 0}
                 },
                 newNotifications: []
             }
+        },
+        created: function(){
+            document.body.style.overflow = 'initial';
         },
         mounted() {
             this.$events.on('loadingStart', eventData => {this.loading = true;});
@@ -390,6 +391,7 @@
                     changeDealConditions: 'New conditions',
                     dealConditionsAccepted: 'Conditions accepted',
                     changeDealSum: 'Deal sum changed',
+                    changeDealRate: 'Deal rate changed',
                     dealCompleted: 'Deal completed',
                     dealCanseled: 'Deal canceled',
                 };
@@ -567,6 +569,22 @@
                             text: notification.sender.username + ' change deal sum to ' + notification.deal.sum + ' ' + notification.deal.coin + ' in deal ' + notification.deal.name
                         }
                     ],
+                    changeDealRate: [
+                        {
+                            name: 'Deal',
+                            link: {
+                                name: 'deal',
+                                params: {
+                                    id: notification.deal.dId
+                                }
+                            },
+                            text: notification.deal.name
+                        },
+                        {
+                            name: 'Message',
+                            text: notification.sender.username + ' change deal rate to ' + notification.deal.sum + ' ' + notification.deal.coin + ' in deal ' + notification.deal.name
+                        }
+                    ],
                     dealCompleted: [
                         {
                             name: 'Deal',
@@ -708,6 +726,11 @@
     .currency-header{
         font-size: 12px;
     }
+
+    .currency-body{
+        font-size: 12px;
+    }
+
     .currency:last-child{
         border-bottom: 1px solid #dedede;
     }
@@ -715,7 +738,7 @@
         float: right;
     }
     .currencies{
-        width: 250px;
+        width: 300px;
         margin-bottom: 10px;
     }
 

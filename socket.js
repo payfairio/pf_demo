@@ -77,7 +77,7 @@ const findEscrows = deal => {
     }
 };*/
 
-const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
+/*const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
     const from_user = await User.findById(from_id).populate('wallet');
     const to_user = await User.findById(to_id).populate('wallet');
 
@@ -134,7 +134,7 @@ const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
             await from_user.save();
             return true;
     }
-};
+};*/
 
 const checkDispute = decisions => {
     if (decisions.length < 3) {
@@ -327,11 +327,13 @@ module.exports = (server, app) => {
             Deal.findOne({dId: data.deal_id}).populate({path: 'messages', populate: [{path: 'sender', select: ['_id', 'username']}, {path: 'attachments'}]})
                 .populate({path: 'seller', select: ['_id', 'username']})
                 .populate({path: 'buyer', select: ['_id', 'username']})
+                .populate({path: 'exchange', select: 'limits'})
                 .then (deal => {
                     if (!deal) {
                         return;
                     }
                     let role = deal.getUserRole(client.decoded_token._id);
+
                     if (role) {
                         if (role === 'escrow') {
                             let escIndex = 0;
@@ -358,7 +360,7 @@ module.exports = (server, app) => {
                                     if (!doc.length){
                                         can_review = true;
                                     }
-                                        
+
                                     client.emit('initMessages', {
                                         deal: deal,
                                         messages: deal.messages,

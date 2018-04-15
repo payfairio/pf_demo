@@ -42,14 +42,16 @@
                 <b-col sm="12" md="6">
                     <b-card header="PayFair 24 Hour Transactions"
                             align="left">
-                            <b-table striped hover
-                                    :items="hr24"
-                                    :fields="fields"
-                            >
-                                <template slot="coin" slot-scope="row">{{row.value}}</template>
-                                <template slot="sum" slot-scope="row">{{row.value.toFixed(6)}}</template>
-                                <template slot="volume" slot-scope="row">{{row.value.toFixed(6)}}</template>
-                            </b-table>
+                            <div class="scroll-table">
+                                <b-table striped hover
+                                        :items="hr24"
+                                        :fields="fields"
+                                >
+                                    <template slot="coin" slot-scope="row">{{row.value}}</template>
+                                    <template slot="sum" slot-scope="row">{{+ row.value.toFixed(6)}}</template>
+                                    <template slot="volume" slot-scope="row">{{+ row.value.toFixed(6)}}</template>
+                                </b-table>
+                            </div>
                     </b-card>
                 </b-col>
             </b-row>
@@ -108,7 +110,6 @@ export default {
             return promise.then(response => {
                 this.hr24 = response.data.hr24;
                 this.all = response.data.all;
-                console.log();
                 this.datacollection_all_tr91 = {
                     labels: [],
                     datasets: [
@@ -188,6 +189,12 @@ export default {
                         tr += vol.sum;
                         volume += vol.volume;
                         iter++;
+                        if (vol === this.all[this.all.length - 1]) {
+                            this.datacollection_all_tr7.labels.push('');
+                            this.datacollection_all_tr7.datasets[0].data.push(tr / (this.all.length % 7));
+                            this.datacollection_all_usd7.labels.push('');
+                            this.datacollection_all_usd7.datasets[0].data.push(volume / (this.all.length % 7));
+                        }
                     }
                 }
                 iter = 1;
@@ -206,6 +213,12 @@ export default {
                         tr += vol.sum;
                         volume += vol.volume;
                         iter++;
+                        if (vol === this.all[this.all.length - 1]) {
+                            this.datacollection_all_tr91.labels.push('');
+                            this.datacollection_all_tr91.datasets[0].data.push(tr / (this.all.length % 91));
+                            this.datacollection_all_usd91.labels.push('');
+                            this.datacollection_all_usd91.datasets[0].data.push(volume / (this.all.length % 91));
+                        }
                     }
                 }
                 for (var i = 0; i < Math.min(7 * 8, this.all.length); ++i) {
@@ -225,5 +238,8 @@ export default {
 };
 </script>
 <style>
-
+.scroll-table {
+    overflow-y: auto;
+    max-height: 300px;
+}
 </style>

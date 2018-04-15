@@ -191,6 +191,9 @@
                             if (err.response.status === 500) {
                                 vm.errorMsg = 'Some error occured. Try again later';
                             }
+                            if (err.response.status === 403) {
+                                vm.$swal('Error', 'You do not have enough coins', 'error');
+                            }
                         });
                 }
             },

@@ -7,6 +7,7 @@
                     <div>
                         Status: {{deal.status}} <br>
                         Sum: <b>{{deal.sum}} {{deal.coin.toUpperCase()}}</b> <br>
+                        Limits: <b>{{deal.exchange.limits.min}} - {{deal.exchange.limits.max}}</b> <br>
                         <button class="btn btn-sm btn-primary" v-if="deal.status === 'new'" @click="changeSumClick">Change sum</button>
                     </div>
                     <div v-if = "deal.type === 'exchange'">
@@ -65,8 +66,9 @@
                         <div class="messages-box" ref="messages-box">
                             <ul class="chat">
                                 <li v-for="message in messages">
+
                                     <div v-if="message.type === 'message'" :class="message.sender._id == $auth.user()._id ? 'msj macro' : 'msj-rta macro'">
-                                        <div :class="message.sender._id == $auth.user()._id ? 'text text-l' : 'text text-r'">
+                                        <div :class="message.sender._id === $auth.user()._id ? 'text text-l' : 'text text-r'">
                                             <p class="msg-sender">{{message.sender._id == $auth.user()._id ? 'You' : message.sender.username}}</p>
                                             <p class="msg-text">{{message.text}}</p>
                                             <div v-for="attachment in message.attachments" v-if="isType(attachment.name) === 'png' || isType(attachment.name) === 'jpeg' || isType(attachment.name) === 'gif' || isType(attachment.name) === 'bmp'"><img class="img-deal" :src="$config.backendUrl+'/attachments/'+attachment._id"></div>
@@ -77,9 +79,21 @@
                                             </p>
                                         </div>
                                     </div>
+
                                     <div v-if="message.type === 'system'">
                                         <div :class="'system-msg'">
                                             <p class="sys-msg-sender">{{message.sender ? (message.sender._id == $auth.user()._id ? 'You' : message.sender.username) : 'PayFair System'}}</p>
+                                            <p class="sys-msg-text">{{message.text}}</p>
+                                            <p class="sys-msg-time">
+                                                <small v-if="isToday(message.created_at)">Today, {{message.created_at | moment("HH:mm:ss")}}</small>
+                                                <small v-if="!isToday(message.created_at)">{{message.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</small>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div v-if="message.type === 'escrow'">
+                                        <div class="system-msg">
+                                            <p class="sys-msg-sender">Escrow</p>
                                             <p class="sys-msg-text">{{message.text}}</p>
                                             <p class="sys-msg-time">
                                                 <small v-if="isToday(message.created_at)">Today, {{message.created_at | moment("HH:mm:ss")}}</small>
@@ -212,15 +226,7 @@
         name: 'Deal',
         props: ['id'],
         created: function () {
-            const vm = this;
-            vm.$socket.emit('join_chat', {deal_id: this.id});
-            vm.FReader.onload = function (e) {
-                let uintArr = new Uint8Array(e.target.result);
-                let content = uintArr.buffer;
-                vm.$socket.emit('uploadChunk', {
-                    content: content
-                });
-            };
+            this.$socket.emit('join_chat', {deal_id: this.id});
         },
         beforeDestroy: function () {
             this.$socket.emit('leave_chat', {deal_id: this.id});
@@ -245,6 +251,13 @@
                     rate: 0,
                     type: '', //exchange, custom
                     currency: 0,
+                    exchange: {
+                        limits: {
+                            max: 0,
+                            min: 0
+                        }
+                    }
+
                 },
                 form: {
                     text: ''
@@ -290,7 +303,9 @@
                     this.messages.push(data.messages[i]);
                 }
                 this.counterparty = data.counterparty;
+
                 this.deal = data.deal;
+
                 if ((!this.deal.sum || !this.deal.rate) && this.deal.type === 'exchange'){
                     this.deal.sum = 0;
                     this.deal.rate = 0;
@@ -305,7 +320,7 @@
                 vm.$cookie.set('jwt_token', vm.$auth.token().substr(4), {expires: 1, domain: vm.extractHostname(vm.$config.backendUrl)});
                 vm.$nextTick(function () {vm.$refs['messages-box'].scrollTop = this.$refs['messages-box'].scrollHeight;});
 
-                if (data.deal.status == 'completed'){
+                if (data.deal.status === 'completed'){
                     this.reviewModal = data.can_review;
                 }
             },
@@ -564,7 +579,6 @@
                     };
                     vm.$socket.emit('set_deal_rate', data);
                     vm.rateModal = false;
-
                 }
             },
 
@@ -745,6 +759,10 @@
     .macro{
         margin-top:5px;width:85%;border-radius:5px;padding:5px;display:flex;
     }
+
+    .msj-escrow{
+        float:none ;background:white;
+    }
     .msj-rta{
         float:right;background:whitesmoke;
     }
@@ -773,6 +791,18 @@
         border-width: 13px 13px 0 0;
         border-color: whitesmoke transparent transparent transparent;
     }
+
+    /*escrow message*/
+    .escrow-msg {
+        text-align: center;
+        background:white;
+        margin-top:5px;
+        width:85%;
+        border-radius:5px;
+        padding:5px;
+        display:flex;
+    }
+
     /* system messages */
     .system-msg {
         text-align: center;
@@ -873,5 +903,9 @@
     #comment{
         height: 155px;
         resize: none;
+    }
+    .form-group ul {
+        max-height: 150px;
+        overflow-y: auto;
     }
 </style>

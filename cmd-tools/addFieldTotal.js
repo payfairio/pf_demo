@@ -8,11 +8,28 @@ mongoose.connect(config.database, {
 const User = require('../db/models/User.js');
 const Cryptos = require('../db/models/crypto/Crypto');
 
+/*console.log('delete holds field');
+await User.update({}, {$unset: {holds:1}}, {multi: true});
+console.log('delete holds field done');*/
 
-
-User.find({total: {$exists: false}}).then(async function (users) {
+User.find({holds: {$exists: true}}).then(async function (users) {
     //console.log('users: ', users);
-    let db_cryptos = await Cryptos.find({});
+
+    /*console.log('delete holds field');
+    await User.update({}, {$unset: {holds:1}}, {multi: true});
+    console.log('delete holds field done');*/
+
+    let db_crypto = await Cryptos.find({});
+
+    console.log('update start');
+    for (let currCoin of db_crypto){
+        for (let item of users){
+            await User.update({_id: item._id, "total.name": currCoin.name.toLowerCase()}, {$set: {"total.$.holds": '0'}})
+        }
+    }
+    console.log('update done');
+
+    /*let db_cryptos = await Cryptos.find({});
     for (let j in users){
         for (let i in db_cryptos) {
             let currCoin = {
@@ -23,7 +40,7 @@ User.find({total: {$exists: false}}).then(async function (users) {
         }
         console.log('await users[j].save()', await users[j].save());
         await users[j].save();
-    }
+    }*/
     /*users.map(async function (user) {
         for (let i in db_cryptos) {
             let currCoin = {

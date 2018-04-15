@@ -195,20 +195,23 @@
             }
         },
         computed: {
-            averageRating: function(){
+            averageRating: function() {
                 const vm = this;
                 var review = 0;
                 var totalRating = 0;
-                for (var i = 0; i < vm.reviews.length; i++){
-                    review = vm.reviews[i].rating;
-                    totalRating = totalRating + review;
+                var len = 0;
+                for (var i = 0; i < vm.reviews.length; i++) {
+                    if (vm.reviews[i].rating != null) {
+                        review = vm.reviews[i].rating;
+                        totalRating += review;
+                        len++;
+                    }
                 }
-                if(Object.keys(vm.reviews).length === 0){
+                if (Object.keys(vm.reviews).length === 0) {
                     return 0;
-                } else{
-                    return (Math.round(totalRating / vm.reviews.length * 100) / 100);    
+                } else {
+                    return (Math.round(totalRating / len * 100) / 100);
                 }
-                
             }
         }
     }

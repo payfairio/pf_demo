@@ -13,9 +13,10 @@
                             <p><b>Created at:</b> {{created_at}}</p>
                             <p><b>Status:</b> {{status}}</p>
                             <p><b>Conditions:</b> <br>{{conditions}}</p>
+                            <p><b>Limits:</b> {{limits.min}} - {{limits.max}}</p>
                         </div>
                         <b-form-group 
-                            v-if="owner.username != $auth.user().username" 
+                            v-if="owner.username !== $auth.user().username"
                             id="sumInputGroup" 
                             label="Input sum:" 
                             label-for="sum"
@@ -38,7 +39,7 @@
                             </b-button>
                         </div>
                         <div v-if="!$auth.check()">
-                            Please sign in for {{tradeType}} coins: <router-link :to="{name: 'login'}" class="btn btn-success">Login</router-link>
+                            Please sign in to {{tradeType}} Coins: <router-link :to="{name: 'login'}" class="btn btn-success">Login</router-link>
                         </div>
                     </b-card>
                 </b-col>
@@ -96,6 +97,10 @@ export default {
             paymentType: '',
             paymentTypeDetail:'',
             rate: '',
+            limits: {
+                max: 0,
+                min: 0
+            },
             created_at: '',
             status: '',
             conditions: '',
@@ -107,7 +112,7 @@ export default {
             newreviews: [],
             currentPage: 1,
             perPage: 2,
-            totalRows: 0
+            totalRows: 0,
         }
     },
     methods: {
@@ -122,6 +127,7 @@ export default {
                 let exch = response.data.exchange;
                 vm._id = exch._id;
                 vm.coin = exch.coin;
+                vm.limits = exch.limits;
                 vm.conditions = exch.conditions;
                 vm.created_at = (new Date(exch.created_at)).toLocaleString();
                 vm.currency = exch.currency;
@@ -133,6 +139,7 @@ export default {
                 vm.tradeType = exch.tradeType;
                 vm.paymentTypeDetail = exch.paymentTypeDetail;
                 vm.reviews = response.data.reviews;
+
                 if (vm.reviews.length > 0){
                     for (let i in vm.reviews){
                         vm.totalRating += vm.reviews[i].rating;
@@ -203,19 +210,23 @@ export default {
         }
     },
     computed: {
-        averageRating: function(){
+        averageRating: function() {
             const vm = this;
             var review = 0;
             var totalRating = 0;
-            for (var i = 0; i < vm.reviews.length; i++){
-               review = vm.reviews[i].rating;
-               totalRating = totalRating + review;
+            var len = 0;
+            for (var i = 0; i < vm.reviews.length; i++) {
+                if (vm.reviews[i].rating != null) {
+                    review = vm.reviews[i].rating;
+                    totalRating += review;
+                    len++;
+                }
             }
-            if(Object.keys(vm.reviews).length === 0){
+            if (Object.keys(vm.reviews).length === 0) {
                 return "no reviews";
-            } else{
-                return (Math.round(totalRating / vm.reviews.length * 100) / 100);    
-            }        
+            } else {
+                return (Math.round(totalRating / len * 100) / 100);
+            }
         }
     }
 }

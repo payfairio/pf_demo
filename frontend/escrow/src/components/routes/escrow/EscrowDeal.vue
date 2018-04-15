@@ -44,10 +44,12 @@
                 </b-col>
                 <b-col md="6">
                     <div class="chat-frame">
+                        <div class="messages-box" ref="messages-box">
                         <ul class="chat" ref="messages-box">
                             <li v-for="message in messages">
-                                <div v-if="message.type === 'message'" :class="message.sender._id == deal.seller._id ? 'msj macro' : 'msj-rta macro'">
-                                    <div :class="message.sender._id == deal.seller._id ? 'text text-l' : 'text text-r'">
+
+                                <div v-if="message.type === 'message'" :class="message.sender._id === deal.seller._id ? 'msj macro' : 'msj-rta macro'">
+                                    <div :class="message.sender._id === deal.seller._id ? 'text text-l' : 'text text-r'">
                                         <p class="msg-sender">{{message.sender.username}}</p>
                                         <p class="msg-text">{{message.text}}</p>
                                         <p class="msg-time">
@@ -56,6 +58,7 @@
                                         </p>
                                     </div>
                                 </div>
+
                                 <div v-if="message.type === 'system'">
                                     <div :class="'system-msg'">
                                         <p class="sys-msg-sender">{{message.sender ? message.sender.username : 'PayFair System'}}</p>
@@ -66,8 +69,33 @@
                                         </p>
                                     </div>
                                 </div>
+
+                                <div v-if="message.type === 'escrow'">
+                                    <div class="system-msg">
+                                        <p class="sys-msg-sender">{{message.sender ? (message.sender._id === $auth.user()._id ? 'You' : message.sender.username) : 'Escrow'}}</p>
+                                        <p class="sys-msg-text">{{message.text}}</p>
+                                        <p class="sys-msg-time">
+                                            <small v-if="isToday(message.created_at)">Today, {{message.created_at | moment("HH:mm:ss")}}</small>
+                                            <small v-if="!isToday(message.created_at)">{{message.created_at | moment("MMMM Do YYYY, HH:mm:ss")}}</small>
+                                        </p>
+                                    </div>
+                                </div>
                             </li>
                         </ul>
+                        </div>
+                        <b-form @submit="onSubmit" class="message-form" v-if="deal.status !== 'completed' && deal.status !== 'canceled'">
+                            <b-input-group>
+                                <b-form-textarea id="message-text" @keydown.native="inputHandler" v-model="form.text" :max-rows="1" style="resize: none;"></b-form-textarea>
+                                <b-input-group-button>
+                                    <b-button type="submit" variant="primary">Send</b-button>
+                                </b-input-group-button>
+                            </b-input-group>
+                            <div class="attach-box">
+                                <ul class="attachments-items">
+                                    <li v-for="file, index in attachments">{{index}}.{{file.name}} - {{file.progress}}% <span v-on:click="removeFile(index)">[x]</span></li>
+                                </ul>
+                            </div>
+                        </b-form>
                     </div>
                 </b-col>
                 <b-col md="3">
@@ -107,9 +135,12 @@
                     profileImg: ''
                 },
                 deal: {
+
                     name: '',
                     sum: '',
+                    rate: 0,
                     status: '', // статус сделки, новая, подтверждены условия/в процессе, завершенная, спорная
+                    type: '',
                     acceptedBySeller: false,
                     acceptedByBuyer: false,
                     seller: null,
@@ -118,6 +149,14 @@
                 form: {
                     text: ''
                 },
+
+                //file upload
+                chunkSize: 1024 * 100,
+                FReader: new FileReader(),
+                uploading: false,
+                filesForUpload: [],
+                attachments: [],
+
                 sumModal: false,
                 conditionsModal: false,
                 activeCondition: {
@@ -165,6 +204,54 @@
 
         },
         methods: {
+            onSubmit: function (e) {
+                e.preventDefault();
+                if (this.uploading) {
+                    return;
+                }
+                if (this.form.text.trim() || this.attachments.length > 0) {
+                    let data = {
+                        deal_id: this.id,
+                        text: this.form.text.trim(),
+                        attachments: this.attachments
+                    };
+                    this.form.text = '';
+                    this.attachments = [];
+                    this.$socket.emit('message', data);
+                }
+            },
+
+            inputHandler(e) {
+                if (e.keyCode === 13 && !e.shiftKey && !e.ctrlKey) {
+                    this.onSubmit(e);
+                }
+                if (e.keyCode === 13 && e.ctrlKey) {
+                    this.form.text += "\n";
+                }
+            },
+            openUploadDialog: function () {
+                this.$refs['file-input'].click();
+            },
+            fileChosen: function (e) {
+                const vm = this;
+                Array.from(e.target.files).forEach(function (item) {
+                    vm.attachments.push({
+                        name: item.name,
+                        size: item.size,
+                        file: item,
+                        type: item.type,
+                        progress: 0,
+                        downloaded: 0,
+                        _id: null
+                    });
+                    vm.filesForUpload.push({
+                        id: vm.attachments.length - 1
+                    });
+                });
+                if (!vm.uploading) {
+                    vm.startUploadCurrentFile();
+                }
+            },
             openConditions: function (role) {
                 this.conditionsModal = true;
                 switch (role) {
@@ -209,14 +296,19 @@
 
     /* chat box start*/
     .chat-frame {
-        background:#e0e0de;
-        height: 450px;
         overflow:hidden;
         padding:0;
         position: relative;
         display: flex;
         flex-direction: column;
         justify-content: flex-end;
+    }
+    .messages-box {
+        background:#e0e0de;
+        display:flex;
+        flex-direction: column-reverse;
+        overflow-y: auto;
+        height: 420px;
     }
     .message-form {
         width: 100%;
@@ -264,6 +356,7 @@
     .macro{
         margin-top:5px;width:85%;border-radius:5px;padding:5px;display:flex;
     }
+
     .msj-rta{
         float:right;background:whitesmoke;
     }
@@ -292,6 +385,8 @@
         border-width: 13px 13px 0 0;
         border-color: whitesmoke transparent transparent transparent;
     }
+
+
     /* system messages */
     .system-msg {
         text-align: center;

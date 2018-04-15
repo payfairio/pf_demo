@@ -17,8 +17,7 @@ const Review = new Schema({
         type: String
     },
     rating: {
-        type: Number,
-        default: 0
+        type: Number
     },
     created_at: {
         type: Date,

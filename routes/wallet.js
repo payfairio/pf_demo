@@ -18,7 +18,47 @@ const BigNumber = require('bignumber.js');
 require('../config/passport')(passport);
 const jwt = require('jsonwebtoken');
 
+async function createTrustWallet(data) {
+    return new CWallet(data).save();
+}
+
 module.exports = web3 => {
+
+    router.post('/removeSignWallet', passport.authenticate('jwt', {session: false}), async (req, res) => {
+        try {
+            if (req.user.type !== 'trust'){
+                return res.status(403).json({
+                    success: false,
+                    error: 'forbidden'
+                });
+            }
+
+            if (!req.body.trustWallet){
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invalid request'
+                });
+            }
+
+            let removedWallet = req.body.trustWallet;
+
+            await User.update({_id: req.user._id}, {$pull: {trustWallet: removedWallet._id}});
+
+            await CWallet.remove({$and:[{owner: req.user._id}, {address: removedWallet.address}]});
+
+            let wallets = await CWallet.find({owner: req.user._id});
+            console.log(wallets);
+
+            return res.json({success: true, trustWallet: wallets});
+        }
+        catch (err){
+            console.log(err);
+            return res.status(500).json({
+                success: false,
+                error: err
+            });
+        }
+    });
 
     router.post('/withdraw', passport.authenticate('jwt', {session: false}), async (req, res) => {
         try {
@@ -83,10 +123,10 @@ module.exports = web3 => {
                         if (element.name === coin.name.toLowerCase())
                         {
                             amountCoinUserInDB = new BigNumber(element.amount);
+                            amountCoinUserHoldInDB = new BigNumber(element.holds);
                             return true;
                         }
                     });
-                    amountCoinUserHoldInDB = new BigNumber(user.holds[coin.name.toLowerCase()].toString());
                     if (amountCoinUserInDB.minus(amountCoinUserHoldInDB).comparedTo(amount) === 1){
 
                         let contractData = await contract.methods.transfer(toAddress, amount.multipliedBy(coinDecimal_Wei).toString(10));
@@ -165,11 +205,10 @@ module.exports = web3 => {
                         if (element.name === coin.name.toLowerCase())
                         {
                             amountCoinUserInDB = new BigNumber(web3.utils.toWei(element.amount, 'ether'));
+                            amountCoinUserHoldInDB = new BigNumber(web3.utils.toWei(element.holds, 'ether'));
                             return true;
                         }
                     });
-                    amountCoinUserHoldInDB = new BigNumber(web3.utils.toWei(user.holds[coin.name.toLowerCase()].toString(), 'ether'));
-
 
                     let amountGasForTransaction_eth = new BigNumber(await web3.eth.estimateGas({to: toAddress, value: amount_wei}));
                     let amountEthForTransaction_eth = amountGasForTransaction_eth.multipliedBy(gasPrise);
@@ -220,8 +259,6 @@ module.exports = web3 => {
                         });
                     }
 
-                    break;
-
                 default:
                     console.log('undefined type monet');
 
@@ -229,8 +266,6 @@ module.exports = web3 => {
                         success: false,
                         error: 'Undefined type monet'
                     });
-
-                    break;
             }
         }
         catch (err) {
@@ -246,56 +281,83 @@ module.exports = web3 => {
         try {
             let user = await User.findOne({username: req.user.username}).populate('trustWallet').select("-password");
 
-            if (user.length === 0 || user === undefined || user === null){
-                throw {};
+            if (!user){
+                return res.status(404).json({
+                    success: false,
+                    error: 'User not found'
+                });
             }
 
             switch (user.type){
                 case 'trust':
+                    if (user.trustWallet.length === 0 || user.trustWallet === undefined) {
+                        user.status = "unverified";
+                        await user.save();
+                        return res.status(400).json({
+                            success: false,
+                            error: 'wallet not found'
+                        });
+                    }
 
-                        if (user.trustWallet === '' || user.trustWallet === undefined) {
-                            user.status = "unverified";
-                            await user.save();
+                        /*let trustWallet = await CWallet.findOne({_id: user.trustWallet});
 
-                            return res.status(400).json({
-                                success: false,
-                                error: 'wallet not found'
-                            });
+                        let totalBalance = new BigNumber(0);
+
+
+                        //TODO
+                        for (let currWallet of trustWallet.wallets){
+
+
+                            let db_pfr = await Crypto.findOne({$and: [{name: 'PFR'}, {active: true}]});
+
+                            let coinDecimal = new BigNumber('10').pow(db_pfr.decimals);
+
+                            let contract = new web3.eth.Contract(require('../abi/pfr/Token.json'), db_pfr.address);
+
+                            let balance = new BigNumber(await contract.methods.balanceOf(currWallet.address).call()).dividedBy(coinDecimal);
+
+                            currWallet.balancePfr = balance.toString(10);
+                            currWallet.countNode = balance.idiv(10000).toString(10);
+
+                            totalBalance = totalBalance.plus(balance);
                         }
 
-                        let trustWallet = await CWallet.findOne({_id: user.trustWallet});
+                        console.log(totalBalance.toString(10));*/
 
-                        let db_pfr = await Crypto.findOne({$and: [{name: 'PFR'}, {active: true}]});
+                    let allWalletsCurrUser = await CWallet.find({owner: user._id});
 
-                        let coinDecimal = new BigNumber('10').pow(db_pfr.decimals);
+                    let totalBalanceCurrUser = new BigNumber(0);
 
-                        let contract = new web3.eth.Contract(require('../abi/pfr/Token.json'), db_pfr.address);
+                    let db_pfr = await Crypto.findOne({$and: [{name: 'PFR'}, {active: true}]});
+                    let coinDecimal = new BigNumber('10').pow(db_pfr.decimals);
+                    let contract = new web3.eth.Contract(require('../abi/pfr/Token.json'), db_pfr.address);
 
-                        let balance = new BigNumber(await contract.methods.balanceOf(trustWallet.address).call()).dividedBy(coinDecimal);
+                    for (let currWallet of allWalletsCurrUser){
+                        let balanceCurrWallet = new BigNumber(await contract.methods.balanceOf(currWallet.address).call()).dividedBy(coinDecimal);
 
+                        currWallet.balancePfr = balanceCurrWallet.toString(10);
+                        currWallet.countNode = balanceCurrWallet.idiv(10000).toString(10);
 
+                        await currWallet.save();
 
-                        trustWallet.balancePfr = balance.toString(10);
-                        trustWallet.countNode = balance.idiv(10000).toString(10);
+                        totalBalanceCurrUser = totalBalanceCurrUser.plus(balanceCurrWallet);
+                    }
 
-                        if (balance.comparedTo(10000) > -1){
-                            user.status = "active";
-                            await user.save();
-                            await trustWallet.save();
-                            return res.json({
-                                success: true,
-                            });
-                        }
-                        else {
-                            user.status = "unverified";
-                            await user.save();
-                            await trustWallet.save();
+                    if (totalBalanceCurrUser.comparedTo(10000) > -1){
+                        await User.update({_id: user._id}, {$set:{status: 'active'}});
 
-                            return res.status(400).json({
-                                success: false,
-                                error: 'Not enougth coins'
-                            });
-                        }
+                        return res.json({
+                            success: true,
+                        });
+                    }
+                    else {
+                        await User.update({_id: user._id}, {$set:{status: 'unverified'}});
+
+                        return res.status(400).json({
+                            success: false,
+                            error: 'Not enougth coins'
+                        });
+                    }
 
                 default:
                     return res.status(400).json({
@@ -303,10 +365,6 @@ module.exports = web3 => {
                         error: 'Access to the user with this status is closed'
                     });
             }
-
-            return res.status(500).json({
-                success: false,
-            });
         }
         catch (err){
             console.log('err /CheckWallet: '+ err);
@@ -327,9 +385,8 @@ module.exports = web3 => {
 
             switch (user.type){
                 case 'trust':
-                    let address = req.body.address;
+                    let address = req.body.address.toLowerCase();
                     let sig = req.body.sig;
-
 
                     if (sig.length < 10/*132*/ || address.length < 10 /*42*/){
                         return res.status(400).json({
@@ -341,18 +398,64 @@ module.exports = web3 => {
                     let encrAddress = await web3.eth.accounts.recover(user.username, sig);
 
                     if (encrAddress.toLowerCase() === address){
+
                         let db_pfr = await Crypto.findOne({$and: [{name: 'PFR'}, {active: true}]});
-
                         let coinDecimal = new BigNumber('10').pow(db_pfr.decimals);
-
                         let contract = new web3.eth.Contract(require('../abi/pfr/Token.json'), db_pfr.address);
 
-                        let balance = new BigNumber(await contract.methods.balanceOf(address).call()).dividedBy(coinDecimal);
+                        let currBalance = new BigNumber(await contract.methods.balanceOf(address).call()).dividedBy(coinDecimal);
 
-                        let trustWallet = await CWallet.findOne({_id: user.trustWallet});
+                        //Search in registered wallets
+                        let usedWallet = await CWallet.find({address: address});
 
-                        if (balance.comparedTo(10000) > -1 ){
-                            let currwal = await CWallet.find({address: address});
+                        if (usedWallet.length === 0){
+                            let newTrustWallet = await createTrustWallet({
+                                owner: user._id,
+                                address: address,
+                                balancePfr: currBalance.toString(10),
+                                countNode: currBalance.idiv(10000).toString(10),
+                            });
+
+                            await User.update({_id: user._id}, {$push: {trustWallet: newTrustWallet._id}})
+                        }
+                        else {
+                            return res.status(400).json({
+                                success: false,
+                                error: 'Such a wallet already exists'
+                            });
+                        }
+
+                        let allWalletsCurrUser = await CWallet.find({owner: user._id});
+
+                        let totalBalanceCurrUser = new BigNumber(0);
+
+                        for (let currWallet of allWalletsCurrUser){
+                            let balanceCurrWallet = new BigNumber(await contract.methods.balanceOf(currWallet.address).call()).dividedBy(coinDecimal);
+
+                            totalBalanceCurrUser = totalBalanceCurrUser.plus(balanceCurrWallet);
+                        }
+                        if (totalBalanceCurrUser.comparedTo(10000) > -1){
+                            await User.update({_id: user._id}, {$set:{status: 'active'}});
+
+                            return res.json({
+                                success: true,
+                            });
+                        }
+                        else {
+                            console.log('111');
+                            await User.update({_id: user._id}, {$set:{status: 'unverified'}});
+
+                            return res.status(400).json({
+                                success: false,
+                                error: 'Not enougth coins'
+                            });
+                        }
+
+
+
+                        //let trustWallet = await CWallet.findOne({_id: user.trustWallet});
+
+                        /*let currwal = await CWallet.find({address: address});
 
                             if (currwal.length !== 0) {
                                 return res.status(400).json({
@@ -376,9 +479,8 @@ module.exports = web3 => {
                             return res.json({
                                 success: true,
                             });
-
-                        }
-                        else {
+                           */
+                        /*else {
                             if (user.trustWallet.address !== ''){
 
 
@@ -408,7 +510,7 @@ module.exports = web3 => {
                                 success: false,
                                 error: 'Not enougth coins'
                             });
-                        }
+                        }*/
                     }
                     else {
                         return res.status(400).json({
@@ -462,10 +564,6 @@ module.exports = web3 => {
                         error: 'Access to the user with this status is closed'
                     });
             }
-
-            return res.status(500).json({
-                success: false,
-            });
         }
         catch (err){
             console.log('err /addConfirmWallet: '+ err);

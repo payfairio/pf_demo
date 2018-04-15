@@ -89,12 +89,20 @@ router.post('/create', passport.authenticate('jwt', {session: false}), (req, res
             name: {
                 notEmpty: {
                     errorMessage: 'Suggestion name is required'
-                }
+                },
+                matches: {
+                    options: /^[\S]+[a-zA-Z0-9_-\s.,!?]{1,30}$/i,
+                    errorMessage: 'Wrong name.'
+                },
             },
             text: {
                 notEmpty: {
                     errorMessage: 'Text is required'
-                }
+                },
+                matches: {
+                    options: /^[a-zA-Z0-9_-\s.,!?]{1,100}$/i,
+                    errorMessage: 'Wrong text.'
+                },
             }
         });
         req.getValidationResult().then(result => {
@@ -172,6 +180,41 @@ router.post('/suggestion/:id/vote', passport.authenticate('jwt', {session: false
             }).catch(err => {
                 return res.status(500).json({success: false, error: err});
             });
+});
+
+router.post('/suggestion/:id/changevote', passport.authenticate('jwt', {session: false}), (req, res) => {
+    if (req.user.type !== 'trust') {
+        return res.status(403).json({
+            error: "Forbidden"
+        });
+    }
+    Suggestions.findOne({_id: req.params.id}).populate('author', ['-password', '-wallet'])
+        .then(doc => {
+            if (!doc) {
+                return res.status(404).json({
+                    error: "Suggestion not found"
+                });
+            }
+
+            if (doc.like.indexOf(req.user._id) !== -1){
+                doc.like.splice(doc.like.indexOf(req.user._id), 1);
+            } else if (doc.dislike.indexOf(req.user._id) !== -1) {
+                doc.dislike.splice(doc.dislike.indexOf(req.user._id), 1);
+            }
+
+            if (doc.like.length === need_likes_to_change_status && doc.status == statuses[0]) {
+                doc.status = statuses[1];
+            }
+
+            if (doc.dislike.length === need_dislikes_to_change_status && doc.status == statuses[0]) {
+                doc.status = statuses[3];
+            }
+
+            doc.save();
+            return res.json({suggestion: doc, can_vote: true});
+        }).catch(err => {
+            return res.status(500).json({success: false, error: err});
+        });
 });
 
 module.exports = router;

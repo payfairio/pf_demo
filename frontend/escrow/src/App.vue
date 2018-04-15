@@ -188,6 +188,9 @@
                 newNotifications: []
             }
         },
+        created: function(){
+            document.body.style.overflow = 'initial';
+        },
         mounted() {
             this.$events.on('loadingStart', eventData => {this.loading = true;});
             this.$events.on('loadingEnd', eventData => {this.loading = false;});

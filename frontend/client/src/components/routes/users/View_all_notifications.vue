@@ -71,6 +71,7 @@
                     changeDealConditions: 'New conditions',
                     dealConditionsAccepted: 'Conditions accepted',
                     changeDealSum: 'Deal sum changed',
+                    changeDealRate: 'Deal rate changed',
                     dealCompleted: 'Deal completed'
                 };
                 return titles[notification.type];
@@ -95,6 +96,9 @@
                     } break;
                     case 'changeDealSum' : {
                         result = notification.sender.username + ' change deal sum to ' + notification.deal.sum + ' ' + notification.deal.coin + ' in deal ' + notification.deal.name
+                    } break;
+                    case 'changeDealRate' : {
+                        result = notification.sender.username + ' change deal rate to ' + notification.deal.rate + ' ' + notification.deal.currency + ' in deal ' + notification.deal.name
                     } break;
                     case 'dealCompleted' : {
                         result = notification.deal.name + ' was completed';

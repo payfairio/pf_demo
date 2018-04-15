@@ -95,6 +95,9 @@
                     if (err.response.status === 500) {
                         vm.errorMsg = 'Some error occured. Try again later';
                     }
+                    if (err.response.status === 403) {
+                        vm.errorMsg = 'You entered a value that is too small';
+                    }
                 });
             },
             isValid: function (key) {

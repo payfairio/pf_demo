@@ -25,7 +25,7 @@ const Message = new Schema({
     },
     type: {
         type: String,
-        default: 'message' // message, system
+        default: 'message' // message, escrow, system
     },
     viewed: [
         {

@@ -6,15 +6,15 @@
                     <b-card header="Your balance" class="currencies">
                         <div class="currency-header"><span>Currency</span><span class="right"><span>Total</span><span> (hold)</span></span></div>
                         <div v-for="(count, name) in balance" :class="'currency' + (name == active_currency ? ' active' : '')" @click="changeCurrency(name)">
-                            <span class="left">{{name.toUpperCase()}}</span><span class="right">{{count.total}} ({{count.hold}})</span>
+                            <span class="left">{{name.toUpperCase()}}</span><span class="right">{{+count.total.toFixed(10)}} ({{count.hold}})</span>
                         </div>
                     </b-card>
 
                     <b-card header="History" class="currencies">
                         <div v-for="note in history" :class="'currency' + (note === active_currency ? ' active' : '')" @click="openHistory(note)">
-                            <span :style="note.charge ? 'color: green' : 'color: red'" class="left">{{note.amount}} {{note.coinName.toUpperCase()}}</span>
-                            <span v-if="!note.address && note.address !== null" class="right">{{note.charge ? `from ${note.fromUser}`  : `to ${note.toUser}`}}</span>
-                            <span v-else class="right">{{note.charge ? `received`  : `withdrawal`}}</span>
+                            <span v-if="!note.address && note.address !== null" class="left">{{note.charge ? `From ${note.fromUser}`  : `To ${note.toUser}`}}</span>
+                            <span v-else class="left">{{note.charge ? `Received`  : `Withdrawal`}}</span>
+                            <span :style="note.charge ? 'color: green' : 'color: red'" class="right">{{+note.amount}} {{note.coinName.toUpperCase()}}</span>
                         </div>
                     </b-card>
                     <b-pagination :total-rows="totalRows" :per-page="perPage" v-model="currentPage" @input="getHistory" />
@@ -46,18 +46,18 @@
             <span style="font-weight: bold">{{activeHistory.date | moment("MMMM Do YYYY, HH:mm:ss")}}</span>
             <div v-if="!activeHistory.address && activeHistory.address !== null">
                 <span class="left" v-if="activeHistory.charge">Received from <a style="font-weight: bold">{{activeHistory.fromUser}}</a> <br>
-                    <a style="color: green; font-weight: bold">{{activeHistory.amount}} {{activeHistory.coinName}}</a>
+                    <a style="color: green; font-weight: bold">{{+activeHistory.amount}} {{activeHistory.coinName}}</a>
                 </span>
                 <span class="left" v-else>Transferred to <a style="font-weight: bold">{{activeHistory.toUser}}</a> <br>
-                    <a style="color: red; font-weight: bold">{{activeHistory.amount}} {{activeHistory.coinName}}</a>
+                    <a style="color: red; font-weight: bold">{{+activeHistory.amount}} {{activeHistory.coinName}}</a>
                 </span>
             </div>
             <div v-else>
                 <span class="left" v-if="activeHistory.charge">Received <br>
-                    <a style="color: green; font-weight: bold">{{activeHistory.amount}} {{activeHistory.coinName}}</a>
+                    <a style="color: green; font-weight: bold">{{+activeHistory.amount}} {{activeHistory.coinName}}</a>
                 </span>
                 <span class="left" v-else>Transferred to <a style="font-weight: bold">{{activeHistory.address}}</a> <br>
-                    <a style="color: red; font-weight: bold">{{activeHistory.amount}} {{activeHistory.coinName}}</a>
+                    <a style="color: red; font-weight: bold">{{+activeHistory.amount}} {{activeHistory.coinName}}</a>
                 </span>
             </div>
             <div slot="modal-footer" class="w-100">
@@ -65,8 +65,6 @@
             </div>
         </b-modal>
     </div>
-
-
 </template>
 <script>
     export default {
@@ -74,10 +72,6 @@
         data: () => {
             return {
                 errors: [],
-                history:[],
-                currentPage: 1,
-                perPage: 7,
-                totalRows: 0,
 
                 send_form:{
                     address: '',
@@ -88,6 +82,10 @@
                 address: '',
                 sending: false,
 
+                history:[],
+                currentPage: 1,
+                perPage: 7,
+                totalRows: 0,
                 historyModal: false,
                 activeHistory: '',
             }
@@ -95,13 +93,7 @@
         created: function(){
             this.updateBalance();
             this.getHistory();
-            const limit = Number.MAX_SAFE_INTEGER;
-            /*
-             this.$http.get(`/history?limit=${limit}&offset=0&sortBy=name&order=false`)
-             .then(response => {
-             this.totalRows = response.data.length;
-             });
-             */
+
         },
         methods: {
             changeCurrency: function(name){
@@ -109,19 +101,6 @@
                 this.send_form.address = '';
                 this.send_form.amount = '';
             },
-            /*getHistory: function(ctx){
-                const limit = ctx.perPage;
-                const offset = (ctx.currentPage - 1) * ctx.perPage;
-                const sortBy = ctx.sortBy;
-                const order = ctx.sortDesc;
-
-                 let promise = this.$http.get(`/history?limit=${limit}&offset=${offset}&sortBy=${sortBy}&order=${order}`);
-                 return promise.then(function (response) {
-                 return(response.data || []);
-                 }, function (err) {
-                 return [];
-                 });
-            },*/
             getHistory: function () {
                 const vm = this;
 

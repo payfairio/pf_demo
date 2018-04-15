@@ -29,6 +29,6 @@ const Suggestion = new Schema({
         type: String,
         default: "Active"
     }
-});
+}, { usePushEach: true });
 
 module.exports = mongoose.model('Suggestion', Suggestion);

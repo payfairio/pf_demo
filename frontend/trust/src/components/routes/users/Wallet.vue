@@ -1,26 +1,6 @@
 <template>
     <div class="container">
         <div class="wallet">
-            <b-card v-if="false" header="History" id="history">
-                <b-table>
-                    <b-table striped hover
-                                :items="getHistory"
-                                :fields="historyFields"
-                                :current-page="currentPage"
-                                :per-page="perPage"
-                                sort-by="created_at"
-                                :sort-desc="true"
-                        >
-                            <template slot="created_at" slot-scope="row">{{row.value | date}}</template>
-                            <template slot="from" slot-scope="row">{{row.value}}</template>
-                            <template slot="comment" slot-scope="row">{{row.value}}</template>
-                            <template slot="amount" slot-scope="row">{{row.value}}</template>
-
-                        </b-table>
-
-                        <b-pagination :total-rows="totalRows" :per-page="perPage" v-model="currentPage" />
-                </b-table>
-            </b-card>
             <b-row v-if="$auth.user().status === 'active'">
                 <b-col md="4">
                     <b-card header="Your balance" class="currencies">
@@ -50,7 +30,7 @@
 
             <b-row v-if="$auth.user().status === 'active'">
                 <b-col md="4">
-                    <b-card header="Instruction" class="currencies">
+                    <b-card header="Instruction">
                         <b-form>
                             <p style="font-weight: bolder">Go to the website <a href="https://www.myetherwallet.com/signmsg.html">https://www.myetherwallet.com/signmsg.html</a><br>
                                 Unlock your wallet under "How would you like to access your wallet" <br>
@@ -65,17 +45,18 @@
 
                 <b-col md="8">
                     <b-card :header="'Specify a new wallet'" class="send">
-                        <pre>Your signed wallet: {{trustWallet}}</pre>
                         <b-form @submit="addConfirmWallet">
                             <b-form-group id="sigInputGroup" label="Signature" label-for="Signature">
                                 <b-form-textarea id="sig" placeholder="Here must be your signature" :rows="8" v-model="textArea_form.text"></b-form-textarea>
                             </b-form-group>
-
                             <b-button type="submit" variant="primary">
                                 Check and add wallet
                             </b-button>
                         </b-form>
-
+                        <hr>
+                        <div v-for="note in trustWallet">
+                            <b-button class="btn btn-sm btn-danger" v-on:click="removeSignWallet(note)">x</b-button> <span class="left">{{note.address}}</span><span style="font-weight: bold"> {{note.balancePfr}}</span>
+                        </div>
                     </b-card>
                 </b-col>
             </b-row>
@@ -106,7 +87,7 @@ export default {
                 amount: ''
             },
 
-            trustWallet: 'Not specified',
+            trustWallet: [],
             active_currency: 'pfr',
             balance: {},
             address: '',
@@ -124,26 +105,26 @@ export default {
         */
     },
     methods: {
+        //TODO доделать удаление кошельков
+        removeSignWallet: function (signWallet) {
+            if (confirm('Are you sure want to delete the wallet?')) {
+                let promise = this.$http.post('/wallet/removeSignWallet', {trustWallet: signWallet});
+
+                return promise.then(res => {
+                    this.$swal('Success', 'Wallet deleted', 'success');
+                }).catch(err => {
+                    this.$swal('Error', 'Wallet was not deleted', 'error');
+                    console.log(err);
+                })
+            }
+        },
+
         changeCurrency: function(name){
             this.active_currency = name;
             this.send_form.address = '';
             this.send_form.amount = '';
         },
-        getHistory: function(ctx){
-            const limit = ctx.perPage;
-            const offset = (ctx.currentPage - 1) * ctx.perPage;
-            const sortBy = ctx.sortBy;
-            const order = ctx.sortDesc;
 
-            /*
-            let promise = this.$http.get(`/history?limit=${limit}&offset=${offset}&sortBy=${sortBy}&order=${order}`);
-            return promise.then(function (response) {
-                return(response.data || []);
-            }, function (err) {
-                return [];
-            });
-            */
-        },
         sendSubmit: function(e){
             e.preventDefault();
             if (this.sending) {
@@ -203,7 +184,7 @@ export default {
                 }
                 this.balance[i].total = balances[i];
             }
-            this.trustWallet = currUser.trustWallet.address;
+            this.trustWallet = currUser.trustWallet;
             this.address = currUser.address;
         },
         isValid: function (key) {
@@ -225,6 +206,7 @@ export default {
     .currencies .card-body{
         padding-left: 0!important;
         padding-right: 0!important;
+        width: 100%;
     }
     .currency{
         display: block;

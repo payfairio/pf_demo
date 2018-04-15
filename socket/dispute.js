@@ -1,3 +1,4 @@
+const Review = require('../db/models/Review.js');
 const Deal = require('../db/models/Deal');
 const Message = require('../db/models/Message');
 const Notification = require('../db/models/Notification');
@@ -7,8 +8,10 @@ const CommissionWallet = require('../db/models/crypto/commissionWallet');
 const HistoryTransaction = require('../db/models/HistoryTransaction');
 
 const strings = require('../config/strings');
-
+const mongoose = require('mongoose');
 const BigNumber = require('bignumber.js');
+
+const namePlatform = 'PayFair';
 
 const getDealBydId = (dId) => {
     return Deal
@@ -23,9 +26,21 @@ const getDealBydId = (dId) => {
         });
 };
 
-const findEscrows = deal => {
-    const used_ids = deal.escrows.map(escrow => escrow.escrow);
-    return User.find({$and: [{type: 'escrow'}, {_id: {$nin: used_ids}}/*, {statusEscrowBool: {$exists: true}}, {statusEscrowBool: true}*/]});
+const findEscrows = async deal => {
+    try {
+        const used_ids = deal.escrows.map(escrow => escrow.escrow);
+        return await User.find({$and: [
+                    {type: 'escrow'},
+                    {_id: {$nin: used_ids}},
+                    {statusEscrowBool: true},
+                    {"online.status": true}
+                ]
+        });
+    }
+    catch (err) {
+        console.log(err);
+        return [];
+    }
 };
 
 const createAndSendNotification = async (notification, io) => {
@@ -68,7 +83,7 @@ const checkDispute = decisions => {
     }
 };
 
-const distribCommission = async (comSum, db_crypto) => {
+const distribCommission = async (deal ,comSum, db_crypto, decision) => {
     try {
         let comWallet = await CommissionWallet.findOne();
 
@@ -80,12 +95,46 @@ const distribCommission = async (comSum, db_crypto) => {
 
         let comMaintenance = comSumTrustAndMaint.minus(comTrust);
 
-        comWallet.escrow.find(function (element) {
+
+        let cntDecision = 0;
+        for (let escrow of deal.escrows){
+            if (escrow.decision === decision){
+                cntDecision++;
+            }
+        }
+
+        let payOutToOneEscrow = comEscrow.dividedBy(cntDecision).toFixed(8, 1);
+
+        for (let item of deal.escrows){
+            if (item.decision === decision){
+                let currEscrow = await User.findOne({_id: item.escrow});
+
+                comEscrow = comEscrow.minus(payOutToOneEscrow);
+
+                currEscrow.total.find(function (element) {
+                    if (element.name === deal.coin.toLowerCase()){
+                        element.amount = new BigNumber(element.amount).plus(payOutToOneEscrow).toString(10)
+                    }
+                });
+
+                currEscrow.save();
+
+                await HistoryTransaction.update({owner: currEscrow._id}, {$push:{ inPlatform:
+                            {fromUser: namePlatform, toUser: currEscrow.username, coinName: deal.coin.toLowerCase(), charge: true, amount: payOutToOneEscrow.toString(10)}
+                }});
+            }
+        }
+
+        //The remainder
+        comTrust = comTrust.plus(comEscrow);
+
+        /*comWallet.escrow.find(function (element) {
             if (element.name === db_crypto.name.toLowerCase()){
                 element.amount = new BigNumber(element.amount).plus(comEscrow).toString(10);
                 return true;
             }
-        });
+        });*/
+
         comWallet.trust.find(function (element) {
             if (element.name === db_crypto.name.toLowerCase()){
                 element.amount = new BigNumber(element.amount).plus(comTrust).toString(10);
@@ -108,7 +157,7 @@ const distribCommission = async (comSum, db_crypto) => {
     }
 };
 
-const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
+const sendCoins = async (deal, from_id, to_id, sum, coin, decision) =>{
      try{
          const from_user = await User.findById(from_id).populate('wallet');
          const to_user = await User.findById(to_id).populate('wallet');
@@ -122,7 +171,7 @@ const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
          let sumBN = new BigNumber(sum);
          let comSum = sumBN.dividedBy(100).multipliedBy(3).decimalPlaces(8);
 
-         if (distribCommission(comSum, db_crypto)){
+         if (distribCommission(deal ,comSum, db_crypto, decision)){
              switch (db_crypto.typeMonet){
                  case 'erc20':
                      to_user.total.find(function (element) {
@@ -134,11 +183,11 @@ const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
                      from_user.total.find(function (element) {
                          if (element.name === db_crypto.name.toLowerCase()){
                              element.amount = new BigNumber(element.amount).minus(sumBN).toString(10);
+                             element.holds = new BigNumber(element.holds).minus(sum).toString(10);
                              return true;
                          }
                      });
-                     from_user.holds[coin.toLowerCase()] -= parseFloat(sum);
-                     from_user.markModified('holds.' + coin.toLowerCase());
+
 
                      await to_user.save();
                      await from_user.save();
@@ -162,11 +211,11 @@ const sendCoins = async (deal, from_id, to_id, sum, coin) =>{
                      from_user.total.find(function (element) {
                          if (element.name === db_crypto.name.toLowerCase()){
                              element.amount = new BigNumber(element.amount).minus(sumBN).toString(10);
+                             element.holds = new BigNumber(element.holds).minus(sum).toString(10);
                              return true;
                          }
                      });
-                     from_user.holds.eth -= parseFloat(sum);
-                     from_user.markModified('holds.eth');
+
 
                      await to_user.save();
                      await from_user.save();
@@ -252,24 +301,24 @@ module.exports = (client, io) => {
                         const decision = checkDispute(deal.escrows);
                         if (decision) {
                             if (decision === 'seller') {
-                                await sendCoins(deal, deal.buyer._id, deal.seller._id, deal.sum.toString(), deal.coin);
+                                await sendCoins(deal, deal.buyer._id, deal.seller._id, deal.sum.toString(), deal.coin, decision);
                             } else {
-                                let db_crypto = await Crypto.findOne({$and: [{name: coin.toUpperCase()}, {active: true}]});
+                                let db_crypto = await Crypto.findOne({$and: [{name: deal.coin.toUpperCase()}, {active: true}]});
                                 let user = await User.findById(deal.buyer._id);
 
                                 let sumBN = new BigNumber(deal.sum);
                                 let comSum = sumBN.dividedBy(100).multipliedBy(3).decimalPlaces(8);
 
-                                await distribCommission(comSum, db_crypto);
+                                await distribCommission(deal, comSum, db_crypto, decision);
 
                                 user.total.find(function (element) {
                                     if (element.name === db_crypto.name.toLowerCase()){
                                         element.amount = new BigNumber(element.amount).minus(comSum).toString(10);
+                                        element.holds = new BigNumber(element.holds).minus(deal.sum).toString(10);
                                         return true;
                                     }
                                 });
 
-                                user.holds[deal.coin.toLowerCase()] -= parseFloat(deal.sum);
                                 await user.save();
                             }
 
@@ -282,6 +331,23 @@ module.exports = (client, io) => {
                             deal.disputeDecision = decision;
                             deal.status = 'completed';
                             deal.messages.push(message._id);
+
+                            let reviewBySeller = await new Review({
+                                _id: new mongoose.Types.ObjectId(),
+                                user: deal.buyer._id,
+                                author: deal.seller._id,
+                                comment: 'Completed with Escrow',
+                                deal: deal._id,
+                            });
+                            let reviewByBuyer = await new Review({
+                                _id: new mongoose.Types.ObjectId(),
+                                user: deal.seller._id,
+                                author: deal.buyer._id,
+                                comment: 'Completed with Escrow',
+                                deal: deal._id,
+                            });
+                            await reviewBySeller.save();
+                            await reviewByBuyer.save();
                         } else {
                             const escrows = await findEscrows(deal);
                             if (escrows.length > 0) {
