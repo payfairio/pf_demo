@@ -71,7 +71,7 @@
                                         <p style="font-weight: bolder">Go to the website <a href="https://www.myetherwallet.com/signmsg.html">https://www.myetherwallet.com/signmsg.html</a><br>
                                             Unlock your wallet under "How would you like to access your wallet" <br>
                                             Enter your PayFair <a style="color: red">USERNAME</a> in the Message window and click "Sign Message" <br>
-                                            Copy the "Signature" field and paste it into the "Signature" field below<br>
+                                            Copy the "Signature" textbox field and paste it into the "Signature" field below<br>
                                             Click "Check and add new wallet"<br>
                                             If the wallet is signed correctly and it contains enough PFR (10,000 PFR minimum), it will be connected your profile</p>
                                         <a style="color: red; font-weight: bolder">Use Ropsten accounts</a>

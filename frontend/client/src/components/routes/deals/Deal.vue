@@ -19,6 +19,12 @@
                     <div>
                         Total sum of the deal ≈ {{+deal.sum.toFixed(8)}} ({{deal.coin.toUpperCase()}}) * {{+deal.rate.toFixed(2)}} ({{deal.currency}}) ≈ <b>{{+(deal.sum * deal.rate).toFixed(8)}}</b> ({{deal.currency}}) <br>
                         Commission ≈ <b>{{+(deal.sum / 100).toFixed(8)}}</b> ({{deal.coin.toUpperCase()}})<br>
+                        <hr>
+
+                    </div>
+                    <div v-if="myRole === 'buyer' && deal.status === 'accepted'">
+                        You should get <b>{{+(deal.sum * deal.rate).toFixed(8)}} {{deal.currency}}</b>. <br>
+                        Do not confirm the transaction if you are sure that you have received <b>{{+(deal.sum * deal.rate).toFixed(8)}} {{deal.currency}}</b> into your account.
                     </div>
                 </b-col>
             </b-row>
@@ -238,6 +244,7 @@
                     username: '',
                     profileImg: ''
                 },
+
                 deal: {
                     _id: '',
                     name: '',

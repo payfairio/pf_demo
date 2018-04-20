@@ -765,9 +765,8 @@ module.exports = web3 => {
                     .populate('sender', 'username')
                     .populate({path: 'deal', populate: [{path: 'exchange', select: ['tradeType']}]})
                     .then(_notifications => {
-                        for (let i = 0; i < notifications.length; i++) {
-                            _notifications.push(notifications[i]);
-                        }
+
+                        _notifications = _notifications.concat(notifications);
                         
                         _notifications.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
                         return res.json(_notifications);

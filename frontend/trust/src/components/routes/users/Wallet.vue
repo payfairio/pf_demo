@@ -35,9 +35,9 @@
                             <p style="font-weight: bolder">Go to the website <a href="https://www.myetherwallet.com/signmsg.html">https://www.myetherwallet.com/signmsg.html</a><br>
                                 Unlock your wallet under "How would you like to access your wallet" <br>
                                 Enter your PayFair <a style="color: red">USERNAME</a> in the Message window and click "Sign Message" <br>
-                                Copy the "Signature" field and paste it into the "Signature" field right<br>
+                                Copy the "Signature" textbox field and paste it into the "Signature" field right<br>
                                 Click "Check and add new wallet"<br>
-                                If the wallet is signed correctly and it contains enough PFR (10,000 PFR minimum), it will be connected your profile</p>
+                                If the wallet is signed correctly and sum of all wallets contains enough PFR (10,000 PFR minimum), it will be connected your profile</p>
                             <a style="color: red; font-weight: bolder">Use Ropsten accounts</a>
                         </b-form>
                     </b-card>
@@ -53,7 +53,13 @@
                                 Check and add wallet
                             </b-button>
                         </b-form>
-                        <hr>
+                    </b-card>
+                </b-col>
+
+                <b-col md="4"></b-col>
+
+                <b-col v-if="true" md="8" class="right">
+                    <b-card header="Sign wallets">
                         <div v-for="note in trustWallet">
                             <b-button class="btn btn-sm btn-danger" v-on:click="removeSignWallet(note)">x</b-button> <span class="left">{{note.address}}</span><span style="font-weight: bold"> {{note.balancePfr}}</span>
                         </div>
@@ -97,15 +103,8 @@ export default {
     created: function(){
         this.updateBalance();
         const limit = Number.MAX_SAFE_INTEGER;
-        /*
-        this.$http.get(`/history?limit=${limit}&offset=0&sortBy=name&order=false`)
-            .then(response => {
-                this.totalRows = response.data.length;
-            });
-        */
     },
     methods: {
-        //TODO доделать удаление кошельков
         removeSignWallet: function (signWallet) {
             if (confirm('Are you sure want to delete the wallet?')) {
                 let promise = this.$http.post('/wallet/removeSignWallet', {trustWallet: signWallet});
@@ -164,13 +163,18 @@ export default {
                     sig = currItem[1];
                 }
             }
-            this.$http.post('/wallet/addConfirmWallet', {address: address, sig: sig}).then( function (res) {
-                vm.$swal('Succes', 'Your Payfair Trust node has been activated', 'success');
-                vm.textArea_form.text = '';
-            }, function (err) {
+            let promise = this.$http.post('/wallet/addConfirmWallet', {address: address, sig: sig});
+            return promise.then(res => {
+                if (res.data.success === true){
+                    vm.$swal('Success', 'Your Payfair Trust node has been activated', 'success');
+                    vm.textArea_form.text = '';
+                }
+                else {
+                    vm.$swal('Error', res.data.errorMsg , 'error');
+                }
+            }).catch( err => {
                 vm.$swal('Error', 'There was a problem verifying your wallet', 'error');
-                console.log(err);
-            });
+            })
         },
 
         updateBalance: function () {

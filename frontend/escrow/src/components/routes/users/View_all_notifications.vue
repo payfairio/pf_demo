@@ -71,19 +71,25 @@
                 return titles[notification.type];
             },
             getNotificationText: function (notification) {
-                let result = '';
-                switch (notification.type) {
-                    case 'dispute': {
-                        result = `You need to resolve dispute in deal: ${notification.deal.name}`
-                    } break;
-                    case 'message' : {
-                        result = 'You have ' + notification.notifications + ' unread messages in deal ' + notification.deal.name
-                    } break;
-                    case 'disputeTimesOut': {
-                        result = `Times to resolve dispute is out in deal: ${notification.deal.name}`
-                    } break;
+                try{
+                    let result = '';
+                    switch (notification.type) {
+                        case 'dispute': {
+                            result = `You need to resolve dispute in deal: ${notification.deal.name}`
+                        } break;
+                        case 'message' : {
+                            result = 'You have ' + notification.notifications + ' unread messages in deal ' + notification.deal.name
+                        } break;
+                        case 'disputeTimesOut': {
+                            result = `Times to resolve dispute is out in deal: ${notification.deal.name}`
+                        } break;
+                    }
+                    return result;
                 }
-                return result;
+                catch (e) {
+                    return '';
+                }
+
             },
         },
     }

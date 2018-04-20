@@ -11,7 +11,7 @@
                 <div v-if="needCrop" class="crop-overlay" @mouseup="disableSelection" @mouseleave="disableSelection" @mousemove="updateRec">
                     <div class="crop-modal">
                         <button v-on:click="cancelCrop" class="btn btn-warning">Cancel</button>
-                        <button v-on:click="clip" class="btn btn-primary">Clip</button>
+                        <button v-on:click="clip" class="btn btn-primary">Cut</button>
                         <hr>
                         <div class="crop-wrap">
                             <div class="image-for-crop">

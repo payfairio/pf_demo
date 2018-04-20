@@ -78,7 +78,7 @@
                                     </b-form-group>
                                 </b-col>
                             </b-row>
-                            <b-button type="submit"  variant="primary" :disabled="(form.status === 'closed')">{{manage ? 'Edit' : 'Create'}}</b-button>
+                            <b-button type="submit"  variant="primary" :disabled="(form.status === 'closed')">{{manage ? 'Save' : 'Create'}}</b-button>
                             <b-button v-if="manage" :disabled="(form.status === 'closed')" variant="danger" @click="closeExch">Close</b-button>
                         </b-form>
                     </b-card>

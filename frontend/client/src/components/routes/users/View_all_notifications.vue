@@ -77,34 +77,44 @@
                 return titles[notification.type];
             },
             getNotificationText: function (notification) {
-                let result = '';
-                switch (notification.type) {
-                    case 'newDeal' : {
-                        result = 'You have new deal: ' + notification.deal.name
-                    } break;
-                    case 'message' : {
-                        result = 'You have ' + notification.notifications + ' unread messages in deal ' + notification.deal.name
-                    } break;
-                    case 'dealFromExchange' : {
-                        result = notification.sender.username + ' responded to your ' + notification.deal.exchange.tradeType +' - ' + notification.deal.name
-                    } break;
-                    case 'changeDealConditions' : {
-                        result = notification.sender.username + ' changed conditions in deal ' + notification.deal.name
-                    } break;
-                    case 'dealConditionsAccepted' : {
-                        result = notification.sender.username + ' accepted conditions in deal ' + notification.deal.name
-                    } break;
-                    case 'changeDealSum' : {
-                        result = notification.sender.username + ' change deal sum to ' + notification.deal.sum + ' ' + notification.deal.coin + ' in deal ' + notification.deal.name
-                    } break;
-                    case 'changeDealRate' : {
-                        result = notification.sender.username + ' change deal rate to ' + notification.deal.rate + ' ' + notification.deal.currency + ' in deal ' + notification.deal.name
-                    } break;
-                    case 'dealCompleted' : {
-                        result = notification.deal.name + ' was completed';
-                    } break;
+                try{
+                    let result = '';
+                    if (notification.deal === null) return result;
+                    switch (notification.type) {
+                        case 'newDeal' : {
+                            result = 'You have new deal: ' + notification.deal.name
+                        } break;
+                        case 'message' : {
+                            result = 'You have ' + notification.notifications + ' unread messages in deal ' + notification.deal.name
+                        } break;
+                        case 'dealFromExchange' : {
+                            result = notification.sender.username + ' responded to your ' + notification.deal.exchange.tradeType +' - ' + notification.deal.name
+                        } break;
+                        case 'changeDealConditions' : {
+                            result = notification.sender.username + ' changed conditions in deal ' + notification.deal.name
+                        } break;
+                        case 'dealConditionsAccepted' : {
+                            result = notification.sender.username + ' accepted conditions in deal ' + notification.deal.name
+                        } break;
+                        case 'changeDealSum' : {
+                            result = notification.sender.username + ' change deal sum to ' + notification.deal.sum + ' ' + notification.deal.coin + ' in deal ' + notification.deal.name
+                        } break;
+                        case 'changeDealRate' : {
+                            result = notification.sender.username + ' change deal rate to ' + notification.deal.rate + ' ' + notification.deal.currency + ' in deal ' + notification.deal.name
+                        } break;
+                        case 'dealCompleted' : {
+                            result = notification.deal.name + ' was completed';
+                        } break;
+                        case 'dealCanseled' : {
+                            result = notification.deal.name + ' was canceled';
+                        } break;
+                    }
+                    return result;
                 }
-                return result;
+                catch (e) {
+                    return '';
+                }
+
             },
         },
     }

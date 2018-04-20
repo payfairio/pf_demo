@@ -4,7 +4,7 @@
             <h1>{{deal.name}}</h1>
             <div class="deal-info">
                 Status: {{deal.status}} <br>
-                Sum: <b>{{deal.sum}}ETH</b>
+                Sum: <b>{{deal.sum}} {{deal.coin.toUpperCase()}}</b>
             </div>
             <hr>
             <b-row>
@@ -83,7 +83,7 @@
                             </li>
                         </ul>
                         </div>
-                        <b-form @submit="onSubmit" class="message-form" v-if="deal.status !== 'completed' && deal.status !== 'canceled'">
+                        <b-form @submit="onSubmit" class="message-form" v-if="deal.decision === 'pending'">
                             <b-input-group>
                                 <b-form-textarea id="message-text" @keydown.native="inputHandler" v-model="form.text" :max-rows="1" style="resize: none;"></b-form-textarea>
                                 <b-input-group-button>
@@ -135,7 +135,7 @@
                     profileImg: ''
                 },
                 deal: {
-
+                    coin: '',
                     name: '',
                     sum: '',
                     rate: 0,

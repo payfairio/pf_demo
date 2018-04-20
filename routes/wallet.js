@@ -299,31 +299,6 @@ module.exports = web3 => {
                         });
                     }
 
-                        /*let trustWallet = await CWallet.findOne({_id: user.trustWallet});
-
-                        let totalBalance = new BigNumber(0);
-
-
-                        //TODO
-                        for (let currWallet of trustWallet.wallets){
-
-
-                            let db_pfr = await Crypto.findOne({$and: [{name: 'PFR'}, {active: true}]});
-
-                            let coinDecimal = new BigNumber('10').pow(db_pfr.decimals);
-
-                            let contract = new web3.eth.Contract(require('../abi/pfr/Token.json'), db_pfr.address);
-
-                            let balance = new BigNumber(await contract.methods.balanceOf(currWallet.address).call()).dividedBy(coinDecimal);
-
-                            currWallet.balancePfr = balance.toString(10);
-                            currWallet.countNode = balance.idiv(10000).toString(10);
-
-                            totalBalance = totalBalance.plus(balance);
-                        }
-
-                        console.log(totalBalance.toString(10));*/
-
                     let allWalletsCurrUser = await CWallet.find({owner: user._id});
 
                     let totalBalanceCurrUser = new BigNumber(0);
@@ -380,7 +355,10 @@ module.exports = web3 => {
             let user = await User.findOne({username: req.user.username}).populate("trustWallet").select("-password");
 
             if (user === null){
-                throw {};
+                return res.status(400).json({
+                    success: false,
+                    errorMsg: 'User not found'
+                });
             }
 
             switch (user.type){
@@ -388,10 +366,10 @@ module.exports = web3 => {
                     let address = req.body.address.toLowerCase();
                     let sig = req.body.sig;
 
-                    if (sig.length < 10/*132*/ || address.length < 10 /*42*/){
-                        return res.status(400).json({
+                    if (sig.length !== 132 || !web3.utils.isAddress(address)){
+                        return res.json({
                             success: false,
-                            err: 'Wrong symbol sig'
+                            errorMsg: 'Wrong sign'
                         });
                     }
 
@@ -409,6 +387,7 @@ module.exports = web3 => {
                         let usedWallet = await CWallet.find({address: address});
 
                         if (usedWallet.length === 0){
+
                             let newTrustWallet = await createTrustWallet({
                                 owner: user._id,
                                 address: address,
@@ -419,9 +398,9 @@ module.exports = web3 => {
                             await User.update({_id: user._id}, {$push: {trustWallet: newTrustWallet._id}})
                         }
                         else {
-                            return res.status(400).json({
+                            return res.json({
                                 success: false,
-                                error: 'Such a wallet already exists'
+                                errorMsg: 'This wallet is already in use'
                             });
                         }
 
@@ -442,90 +421,23 @@ module.exports = web3 => {
                             });
                         }
                         else {
-                            console.log('111');
                             await User.update({_id: user._id}, {$set:{status: 'unverified'}});
 
-                            return res.status(400).json({
+                            return res.json({
                                 success: false,
-                                error: 'Not enougth coins'
+                                errorMsg: 'Sum of all wallets not contains enough PFR'
                             });
                         }
-
-
-
-                        //let trustWallet = await CWallet.findOne({_id: user.trustWallet});
-
-                        /*let currwal = await CWallet.find({address: address});
-
-                            if (currwal.length !== 0) {
-                                return res.status(400).json({
-                                    success: false,
-                                    err: 'This wallet is already in use.'
-                                });
-                            }
-
-
-
-                            trustWallet.address = address;
-                            trustWallet.date = Date.now();
-                            trustWallet.balancePfr = balance.toString(10);
-                            trustWallet.countNode = balance.idiv(10000).toString(10);
-
-                            await trustWallet.save();
-
-                            user.status = "active";
-                            await user.save();
-
-                            return res.json({
-                                success: true,
-                            });
-                           */
-                        /*else {
-                            if (user.trustWallet.address !== ''){
-
-
-                                let balanceCurrAccount = new BigNumber(await contract.methods.balanceOf(user.trustWallet.address).call()).dividedBy(coinDecimal);
-
-                                if (balanceCurrAccount.comparedTo(10000) < 0){
-                                    user.status = "unverified";
-                                    trustWallet.balancePfr = balanceCurrAccount.toString(10);
-                                    trustWallet.countNode = balanceCurrAccount.idiv(10000).toString(10);
-
-                                    trustWallet.save();
-                                    await user.save();
-                                }
-                            }
-                            else {
-                                user.status = "unverified";
-
-                                trustWallet.balancePfr = '0';
-                                trustWallet.countNode = '0';
-
-                                await trustWallet.save();
-                                await user.save();
-                            }
-
-
-                            return res.status(400).json({
-                                success: false,
-                                error: 'Not enougth coins'
-                            });
-                        }*/
                     }
                     else {
-                        return res.status(400).json({
+                        return res.json({
                             success: false,
-                            error: 'Wrong account'
+                            errorMsg: 'Wrong sign'
                         });
                     }
 
                 case 'escrow':
                     let db_pfr = await Crypto.findOne({$and: [{name: 'PFR'}, {active: true}]});
-                    /*let userWallet = await User.findById(req.user._id).select("-password").populate('wallet');
-
-                    let contract = new web3.eth.Contract(require('../abi/' + db_pfr.name.toLowerCase() + '/Token.json'), db_pfr.address);
-                    let balance = await contract.methods.balanceOf(userWallet.wallet.address).call();
-                    let priceUSD = Math.pow(10, db_pfr.decimals) * priceCoin.value;*/
 
                     let balance = 0;
 
@@ -556,12 +468,12 @@ module.exports = web3 => {
 
                     return res.status(400).json({
                         success: false,
-                        error: 'Not enougth money'
+                        errorMsg: 'Not enougth money'
                     });
                 default:
                     return res.status(400).json({
                         success: false,
-                        error: 'Access to the user with this status is closed'
+                        errorMsg: 'Access to the user with this status is closed'
                     });
             }
         }
@@ -569,7 +481,7 @@ module.exports = web3 => {
             console.log('err /addConfirmWallet: '+ err);
             return res.status(500).json({
                 success: false,
-                error: err
+                errorMsg: err
             });
         }
     });
@@ -586,10 +498,6 @@ module.exports = web3 => {
             let total = allHistory[0].items.length;
 
             allHistory = allHistory[0].items.sort((a,b) => {return new Date(b.date) - new Date(a.date)}).slice(offset, limit);
-
-            /*console.log(offset, limit);
-            console.log('allHistory', allHistory);
-            console.log('countHistory', total);*/
 
             if (allHistory) {
 

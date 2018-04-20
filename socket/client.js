@@ -489,7 +489,6 @@ module.exports = (client, io) => {
                 //change rate
                 deal.rate = data.rate;
 
-                //TODO fix rate notifications
                 data.text = strings('deal_rate_changed', 'eng', {rate: deal.rate, currency: deal.currency});
 
                 const message = await new Message({

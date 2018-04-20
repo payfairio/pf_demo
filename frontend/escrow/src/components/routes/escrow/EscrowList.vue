@@ -41,7 +41,6 @@
             }
         },
         methods: {
-            // TODO: sort-changed, page-change, filter-change сделать методы
 
             getDeals: function (ctx) {
                 const sortBy = ctx.sortBy;
